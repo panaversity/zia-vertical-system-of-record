@@ -120,8 +120,15 @@ remark plugins into one configurable `remark-tabs` before extracting** — never
 duplication across a seam.
 
 **The exclusion list is now contract, not work-list:** `specs/sor-site/surface/spec.md` binds it
-with CI enforcement (dependency denylist, identifier grep, zero-external-URLs scan of the built
-site). This section remains the survey; the spec is the authority.
+with CI enforcement — a dependency **allowlist** (denylist as lockfile backstop), a parse-based
+boundary test over shipped source and built bundles, and a Playwright tier whose network
+interception proves at runtime that the theme introduces no external requests. This section
+remains the survey; the spec is the authority.
+
+**Token cleanup is extraction work, not later work:** upstream's `doc-pages.css` is 3,997 lines
+carrying 82 `oklch()` + 130 hex literals, which is why `--ifm-color-primary` recolors nothing
+there. The spec's token-discipline gate is baseline **zero** — reducing those 212 literals to
+tokens happens *before* the CSS crosses the seam (never carry known debt across a seam).
 
 **Kernel components in the app** (~14 of ~50 dirs): `quiz/`, `flashcards/`, `ui/`, `ExerciseCard/`,
 `HighlightTip/`, `ImageZoom/`, `ReadingProgress/`, `SearchBar/`, `gallery/`, `cheatsheets/`,
@@ -135,8 +142,13 @@ kernel.
 
 **Branding to lift into the instance:** title/tagline/favicon (`docusaurus.config.ts:482-485`), org
 and project names (528-529), OG/Twitter block (1017-1040), navbar title (1053), footer + copyright
-(1114-1178). Already env-driven, keep: GA4, `SITE_URL`/`BASE_URL`, i18n config, and the runtime
-`data-brand` hostname white-labeling (541-551) — generalize it, don't replace it.
+(1114-1178). Already env-driven, keep: `SITE_URL`/`BASE_URL` only.
+
+> **Correction (2026-08-13):** this list previously said keep GA4, i18n config, and the runtime
+> `data-brand` hostname white-labeling (541-551). All three are now **excluded** by the surface
+> spec's negative contract: the theme carries zero analytics code even env-gated; branding is
+> instance config at build time, so the runtime brand switch has no job here; i18n is deferred
+> wholesale post-v0.
 
 **Search** is `@easyops-cn/docusaurus-search-local` — local index, no external service. Keep.
 

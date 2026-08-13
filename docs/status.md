@@ -125,12 +125,23 @@ and all of Test 2.
 ## The task in flight
 
 `vsor/init` is **ratified** — the first ratified contract (exact-floor pin, native `site/src/`
-layout). `vsor/instance-format` drafted. `sor-site/surface` **drafted early at the owner's request**:
-its negative contract (the product layer — feedback, TeachMe, progress, leaderboard, admin, auth —
-excluded by name, with a dependency denylist and a zero-external-requests promise, all CI-enforced)
-binds regardless of the Node spike; the positive half stays open pending it. Next at the keyboard:
-the **Node spike**, then implementing `init` against its spec — the acceptance script as the red
-test first.
+layout). `vsor/instance-format` drafted. `sor-site/surface` **drafted, then hardened by adversarial
+self-review** (2026-08-13; three hostile lenses, 28 findings — the worst: the original acceptance
+was all static scans, so the audited upstream defects — dead-decoy `themeConfig`, decorative tokens,
+the shipped homepage-404 — would have passed green CI). Now: negative contract closed (no ellipsis;
+closure rule kept ∪ excluded = surveyed set; GA4/analytics and the `data-brand` switch excluded,
+extraction.md corrected), dependency **allowlist** not denylist, and a deterministic **Playwright
+browser tier as the enforcement of record** — runtime network interception proves "the theme phones
+no one", sentinel rebuilds prove every documented seam is live, primitives are clicked, search is
+run. Two scope decisions the review made, flagged for the ratification read: **i18n deferred
+wholesale post-v0**, and **the MDX vocabulary (`<Quiz />` etc.) ships from slice 1** as a small
+fresh-authored preset-classic-compatible package (props from the survey; not copy-gated) so the
+theme upgrade literally changes look, never contract.
+
+Implementation discipline is now a skill — `.agents/skills/implement-spec/SKILL.md` (breakdown per
+aspect, red-first, aggressive review, live/browser verification, detail pass, truth sweep);
+AGENTS.md points to it. Next at the keyboard: the **Node spike**, then implementing `init` against
+its spec — the acceptance script as the red test first.
 
 ## The v0 spec map and build order (2026-08-13)
 

@@ -307,6 +307,11 @@ The code-era rules; they bind the day the first package lands. Precedent: upstre
    measured constants carry their date and method; first-run and empty states are reviewed as
    deliberately as the kernel.
 
+The implementation form of these rules is a skill: **`.agents/skills/implement-spec/SKILL.md`** —
+breakdown per aspect, red acceptance first, aggressive self-review, live verification like a human
+(browser included for anything with a page), the detail pass, the truth sweep. Load it before
+writing the first line of any spec's implementation.
+
 ## Two design tests
 
 Recovered 2026-08-13 — lost in the doc consolidation; they are the deepest output of the design
