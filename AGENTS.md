@@ -72,8 +72,13 @@ evidence, recorded here with a revision note.
    migrations), covering jurisdiction/effective dates, `corpus_id` on the **five** content tables
    (`content_nodes`, `sources`, `chunks`, `slug_aliases`, `node_centroids`), approval rows,
    `text_search_config`, the archive table, auditor role, takedown write path.
-10. **Production database is Neon; development is `docker compose` with `pgvector/pgvector:pg17`,**
-    committed — nothing needs a cloud account to develop against.
+10. **The user's database is any Postgres DSN in `.env`** — Neon free tier recommended (production
+    is already Neon), any commodity Postgres works. **Docker is never a user requirement**; the
+    committed `docker compose` (`pgvector/pgvector:pg17`) is framework dev/CI machinery only.
+    `.env` is the whole user config surface: `DATABASE_URL` + the embedding key (Gemini at beta 1,
+    user-supplied; provider pluggability post-v0).
+    *Revision 2026-08-13: previously framed docker as the dev default for everyone — the user asked
+    the right question ("why docker if Neon?") and the answer split user path from framework path.*
 11. **The user's project is content and config only — machinery invisible** (decided 2026-08-13).
     `init` writes markdown, `instance.md`, skills, `AGENTS.md` — no `pyproject`, no `node_modules`,
     no copied source. **Customization is a verb, not a default:** `vsor eject <component>`
@@ -84,7 +89,13 @@ evidence, recorded here with a revision note.
     shadcn source-access experience, agent-self-served instead of pre-copied. **Composition is
     config, never copies:** a second corpus or SoR is a second collection/instance, not source in
     the project.
-12. **Positioning names the competitor first.** CoCounsel Legal already serves governed professional
+12. **Serving defaults fail safe** (decided 2026-08-13). Local `vsor serve`: auth **off**, bound to
+    `127.0.0.1` only. A public bind fails closed unless an OAuth provider is configured — any
+    standards-compliant service via the MCP auth spec (RFC 9728 protected-resource metadata),
+    Panaversity SSO being one option, never a requirement — or unauthenticated serving is explicitly
+    flagged (`--allow-unauthenticated`). "Disabled by default" must never silently become an open
+    server on the internet.
+13. **Positioning names the competitor first.** CoCounsel Legal already serves governed professional
     knowledge over MCP; our claim is the narrow one — a governed *curriculum* with an *explicit
     abstention guarantee*, instantiable by anyone.
 
@@ -100,7 +111,8 @@ my-sor/                        ← created by `vsor init my-sor`; yours, your li
 │   └── example.md               ONE real example document — never empty directories
 ├── .agents/skills/add-sources/  the one v0 skill: PDFs · folders · URLs → governed markdown
 ├── AGENTS.md                    how an agent works in the scaffolded project
-├── .gitignore                   ignores .vsor/ and build/
+├── .env                         the two things the user supplies: DATABASE_URL + embedding key
+├── .gitignore                   ignores .vsor/, build/ — and .env (a bare .env leaks on deploy)
 └── (git repo, run scripts)
 ```
 

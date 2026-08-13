@@ -68,15 +68,19 @@ human fidelity attestation), or an OCR error in a rate table ships with full aut
 **Never** (evidence in the study): implicit default embedder/model/floor · a vendoring pipeline ·
 a guard-script zoo with debt baselines · committed generated artifacts.
 
-**Unknowns opened by the 2026-08-13 decisions (model C · eject · deploy) — no coverage yet:**
-who supplies the embedding key at level 0 (upstream requires `GEMINI_API_KEY`; an accountant has
-none — local model in the wheel, keyless default, or scope the promise to developers) · whether the
-five-minute promise is genuinely zero-tech when Test 1 starts with `docker compose up` (embedded
-pglite+pgvector, or say plainly it is a developer promise at v0) · the default auth posture of a
-**deployed** level-0 MCP server (the kit is fail-closed and the user has no SSO — refusing to boot
-and an open server are both wrong) · version-pin mechanics (`instance.md` pins vsor; `uvx vsor` runs
-latest — who honors the pin) · `eject` mechanics for Python (`lib/` path preference, and
-upgrade-after-eject).
+**Resolved 2026-08-13 (owner):** embedding key → user-supplied via `.env` at beta 1 (Gemini;
+provider pluggability post-v0), so the five-minute promise carries a stated precondition: *keys in
+hand*, with the agent walking the user through getting them · docker → **never a user requirement**;
+the user's database is any Postgres DSN in `.env` (Neon free tier recommended); docker is framework
+dev/CI only (Test 1 is the framework path; the user path is `.env`) · deployed auth → off by default
+**bound to localhost**; public bind fails closed unless a standards-compliant OAuth provider is
+configured or `--allow-unauthenticated` is explicit (AGENTS.md decision 12).
+
+**Still open:** version-pin mechanics (`instance.md` pins vsor; `uvx vsor` runs latest — v0 minimum:
+`build.lock.json` records the version that ran and `vsor` warns on mismatch; re-exec is a later
+call) · `eject` mechanics for Python (path preference, upgrade-after-eject) and the ejected
+directory's name (`vendor/` leads over `lib/`; decided in the eject spec, which trips the spec
+threshold).
 
 **New unknowns for the skeleton to measure:** behavioural-eval flake rate before gating · does
 docs-in-the-wheel measurably help a coding agent (run Test 2 with and without) · Test 2 driven
