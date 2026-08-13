@@ -89,12 +89,26 @@ evidence, recorded here with a revision note.
     deploy-anywhere Dockerfile; `all` for the kernel), the runtime prefers `lib/` over the installed
     package, and `build.lock.json` records `ejected: [...]` so a build from modified source is
     visibly not a stock build. The scaffolded AGENTS.md tells coding agents the command exists — the
-    shadcn source-access experience, agent-self-served instead of pre-copied. **Customization is a
-    ladder the agent climbs, cheapest rung first — the scaffolded AGENTS.md teaches the order:**
-    (1) config in `instance.md` (branding, retrieval knobs), (2) declared overrides (the
-    tool-description chain product > instance > default already exists upstream; a CSS layer for
-    the site), (3) eject. An ejected-and-modified component makes every subsequent build visibly
-    non-stock via `build.lock.json` — customization allowed, provenance intact. **Composition is
+    shadcn source-access experience, agent-self-served instead of pre-copied.
+    *Revision 2026-08-13, from the customization-surface audit (evidence: both codebases +
+    the book's own method):* **the line between "present source" and "installed machinery" is
+    drawn per layer, and it is the authored-vs-machinery line:*
+    - **The authored layer is real source in the project from day one** — markdown, `instance.md`,
+      and a thin REAL Docusaurus shell (`site/`: config + css tokens + homepage, ~500 lines). No
+      invented mapping layer: agents know `docusaurus.config.ts`, `--ifm` tokens and
+      `docusaurus swizzle` from training data; an instance.md→config indirection would be the one
+      thing nobody knows. (The owner's instinct, confirmed — with the twist that copying the FULL
+      upstream app would be anti-lean: 112k lines, dead decoy seams, product entanglement.)
+    - **Machinery stays installed** — retrieval kernel, ingest, gateway, theme-package internals.
+      Upstream's own practice: no product or instance forks domain source anywhere; its product.md
+      rules against copies verbatim ("a second copy is a second thing to drift"). The kernel has
+      zero training-data presence and its guardrails (5.7k test lines, 672MB eval artifacts)
+      cannot ship in a scaffold.
+    - **The ladder per layer:** site = Docusaurus-native (themeConfig → css tokens → `swizzle
+      --wrap/--eject`, already in agents' training data — nothing to invent); kernel = instance
+      config → declared seams (tool-description chain, serve-time hooks) → eject as the recorded
+      escape hatch. Ejection/swizzle lands in `build.lock.json` either way — customization
+      allowed, provenance intact. **Composition is
     config, never copies:** a second corpus or SoR is a second collection/instance, not source in
     the project.
 12. **Serving defaults fail safe** (decided 2026-08-13). Local `vsor serve`: auth **off**, bound to
@@ -118,6 +132,10 @@ my-sor/                        ← created by `vsor init my-sor`; yours, your li
 ├── knowledge/
 │   └── example.md               ONE real example document — never empty directories
 ├── .agents/skills/add-sources/  the one v0 skill: PDFs · folders · URLs → governed markdown
+├── site/                        a REAL, thin Docusaurus shell — the seams agents know natively:
+│   ├── docusaurus.config.ts       live themeConfig (title, navbar, footer, logo — all wired)
+│   ├── custom.css                 the design tokens, including --ifm-color-primary
+│   └── index.tsx                  the homepage
 ├── AGENTS.md                    how an agent works in the scaffolded project
 ├── .env                         the two things the user supplies: DATABASE_URL + embedding key
 ├── .gitignore                   ignores .vsor/, build/ — and .env (a bare .env leaks on deploy)

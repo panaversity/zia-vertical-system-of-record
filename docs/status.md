@@ -76,6 +76,20 @@ dev/CI only (Test 1 is the framework path; the user path is `.env`) · deployed 
 **bound to localhost**; public bind fails closed unless a standards-compliant OAuth provider is
 configured or `--allow-unauthenticated` is explicit (AGENTS.md decision 12).
 
+**Customization-surface audit (2026-08-13), settled by evidence:** the user project gains a thin
+REAL Docusaurus shell (`site/` — config, css tokens, homepage; measured reference scaffold is 364
+lines) instead of an instance.md→config mapping layer; kernel machinery stays installed. Decisive
+findings: the full upstream app is 112k lines with **dead decoy seams** (its `themeConfig.navbar`
+and `footer` are silently ignored by full-ejection swizzles — an agent following its training data
+edits config and nothing changes) and `--ifm-color-primary` never defined; the kernel has **no
+training-data presence** and the canonical customization ("bias toward newer docs") is a trap in
+raw source — no document date exists in the store, so the obvious SQL edit ships a silently wrong
+signal; upstream itself **never forks domain source** (zia-tutor = declarative product.md + 3,194
+lines of NEW composition code, zero forked kernel lines — the owner's "zia-tutor is already a
+framework package" intuition, confirmed); the book's own asymmetry maps exactly (corpus served
+faithfully = installed; reflexes/map derived and owned = authored files). Full audit in the
+session scratchpad and the run journal.
+
 **Still open:** version-pin mechanics (`instance.md` pins vsor; `uvx vsor` runs latest — v0 minimum:
 `build.lock.json` records the version that ran and `vsor` warns on mismatch; re-exec is a later
 call) · `eject` mechanics for Python (path preference, upgrade-after-eject) and the ejected
