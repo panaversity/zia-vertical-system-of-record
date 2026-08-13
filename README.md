@@ -1,8 +1,8 @@
-# ziavsor
+# vsor
 
-Repo: `zia-vertical-system-of-record-framework` · short binary: `vsor` · Apache-2.0
+Repo: `zia-vertical-system-of-record-framework` · PyPI package and binary: `vsor` · Apache-2.0
 
-`ziavsor` will be a command-line tool for anyone who owns a body of professional knowledge — an
+`vsor` will be a command-line tool for anyone who owns a body of professional knowledge — an
 accountant, a lawyer, a teacher. You put your material in a folder as markdown files and run one
 command. It validates the files, splits them into passages, computes embeddings, and loads them into
 Postgres. From that content it runs two things: **a static website people browse**, and **an MCP

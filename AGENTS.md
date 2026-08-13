@@ -11,7 +11,7 @@ invariants, and how it is built and tested. Loaded every session, so it holds on
 
 ## What this is, in one line
 
-A CLI (`ziavsor`, binary `vsor`) that compiles a folder of governed markdown into two surfaces —
+A CLI (`vsor` — PyPI package and binary share the name) that compiles a folder of governed markdown into two surfaces —
 a static website for people and an MCP server for AI assistants — with cited answers and honest
 abstention. **Nothing is built yet.** It is not an agent framework; it is the knowledge layer agent
 frameworks read from (that layer is `eve`'s — we are upstream of it).
@@ -48,9 +48,12 @@ evidence, recorded here with a revision note.
 1. **Conversation is the interface.** The human types `vsor init <name>`, then talks to the agent
    they already use. CLI verbs are for the *agent* to run. v0 verbs: `init` · `build` · `serve`;
    `check`, `sync`, `info --json` come after v0.
+   *Revision 2026-08-13: package and binary are both `vsor` — PyPI is free, and all four studied
+   frameworks use one name (a rename leaves a deprecation stub forever). The earlier
+   `ziavsor`-package hedge is retired.*
 2. **One project, scaffolded into the user's own repo**, git initialized (existing repos detected,
    never clobbered). Ownership comes from the scaffold, not from repo separation.
-3. **Install:** the CLI is installed via `uvx ziavsor`; the runtime arrives as locked, pinned
+3. **Install:** the CLI is installed via `uvx vsor`; the runtime arrives as locked, pinned
    dependencies — not vendored source. The escape hatch is that your content, config, database
    schema and `build.lock.json` live in *your* repo: walking away loses you nothing.
 4. **Licence:** Apache-2.0, one licence, no code/content split. A vertical's corpus is licensed by
@@ -97,21 +100,33 @@ them.
 
 ## Planned repo layout — none of this exists yet
 
+**Package-per-domain, kept deliberately.** A 2026-08-13 cross-repo study proposed collapsing to two
+packages; the owner rejected it from direct experience — the upstream system ran this exact domain as
+a monolith, paid for the split before release, and the split won. The boundaries are physical: each
+package's tests run in its own environment, so a package cannot import what it does not depend on.
+
 ```
 packages/
-  ziavsor/          the CLI — the only thing a user installs
+  vsor/             the CLI — the only thing a user installs (uvx vsor)
   sor-platform/     db · contracts · config          ← extracted
   sor-gateway-kit/  fail-closed auth · serve loop    ← extracted
   sor-content/      ingest · retrieval · abstain · generations  ← extracted
-  sor-site/         the website surface              ← extracted
-  sor-evals/        the proof                        ← extracted
-templates/          what `init` copies — will be CI-built, evals will be green
+  sor-site/         the website surface (Node)       ← extracted; couples only via build.lock.json
+  sor-evals/        the proof + vsor.testing doubles ← extracted
+templates/          what `init` copies — will be CI-built; evals will be green
 fixtures/tiny/      ~10 markdown files the tests run against
 tests/
 ```
 
-`sor-governance` is deferred with the ladder (level 1+). Never create `knowledge/`, `governance/` or
-`instance.md` at this repo's root — those belong to scaffolded projects.
+**The per-package tax is engineered out, not accepted:** all packages release in **lockstep at one
+shared version** (no version-pin policing between siblings), and one `make` vocabulary covers the
+workspace — AGENTS.md quotes make targets, CI calls make targets, humans type make targets.
+
+**Future domains arrive as new packages.** A write-authority domain (a learner record, an identity
+record) gets its own package exactly as upstream holds them — the structure permits the family
+without naming one. `sor-governance` is deferred with the ladder (level 1+) and arrives the same way.
+Never create `knowledge/`, `governance/` or `instance.md` at this repo's root — those belong to
+scaffolded projects.
 
 ## Tests and evals
 

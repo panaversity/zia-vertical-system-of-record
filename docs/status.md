@@ -3,13 +3,13 @@
 What is true today, what is next, what blocks it. Changes weekly — which is why it is not in
 `AGENTS.md`.
 
-*Last updated: 2026-08-12*
+*Last updated: 2026-08-13*
 
 ---
 
 ## Where it stands
 
-**No code exists.** Zero commits. No build, no tests, no toolchain. The design is settled
+**No code exists.** No build, no tests, no toolchain — documents and git history only. The design is settled
 (`AGENTS.md` § Settled decisions); the kernel being extracted runs in production in two private
 repos, surveyed at pinned SHAs in `docs/extraction.md`. **Nothing in this repository runs.**
 
@@ -38,6 +38,40 @@ fields (when writing `build`) · whether `git rev-parse HEAD:knowledge` is the r
 whether site and ingest share one build (wiring `sor-site`) · level-0 floor behaviour (after the
 experiment below).
 
+## Prior-art study (2026-08-13) — folded in
+
+Four frameworks were profiled in code at pinned SHAs (eve `1cd563b`, deepagents `217b9eb`, openclaw
+`e45a946`, openai-agents-python `fc461ee`); full profiles and synthesis in the session scratchpad
+(`study/`). Our settled decisions matched the field's convergence almost everywhere. The four
+divergence flags were put to the owner and resolved:
+
+| Flag (all four repos differ from us) | Resolution |
+| :--- | :--- |
+| One name for package and binary | **Adopted** — `vsor` everywhere; PyPI free; the ziavsor hedge was unnecessary |
+| Fewer internal packages | **Rejected from experience** — upstream ran this domain as a monolith, paid for the split, and the split won. Package-per-domain stands; the tax is engineered out by lockstep versioning |
+| Nobody gates releases on live-LLM evals | **Precondition added** — measure behavioural-eval flake rate (gold set × N runs) before wiring the gate (B3) |
+| Single-language runtimes | **Stands as settled** — couple through `build.lock.json`, never lockstep releases across languages |
+
+**Skeleton build plan additions from the study:** the scaffold is its own test suite (file-by-file
+assertions including the negative ones — no `governance/`, no empty dirs); snapshot the compiled
+surfaces from the first commit (`tools/list`, citation envelope, abstention text, `/health`, one
+rendered page); AST boundary guards at **baseline zero**; protected wiring (serving without the
+citation envelope or abstention path is a construction-time error); `vsor.testing` deterministic
+doubles as public API; the eval verdict enum (gate / scored / tracked) visible in every result row;
+docs in the wheel + a locator-only SKILL.md; a strict release profile where **a skip is a failure**;
+one `make` vocabulary quoted by AGENTS.md and CI alike; supply-chain trio (uv cooldown, exact dev
+pins, SHA-pinned actions); bounded corpus discovery copied from openclaw (file caps, symlink
+containment); `add-sources` authored in the ecosystem SKILL.md format.
+
+**Never** (evidence in the study): implicit default embedder/model/floor · a vendoring pipeline ·
+a guard-script zoo with debt baselines · committed generated artifacts.
+
+**New unknowns for the skeleton to measure:** behavioural-eval flake rate before gating · does
+docs-in-the-wheel measurably help a coding agent (run Test 2 with and without) · Test 2 driven
+entirely by a coding agent, human only pasting paths · serve-time token cost of the MCP prompt
+surface on `fixtures/tiny/` · scaffold-upgrade story once 0.2.0 meets a 0.1.0 project (record enough
+in `build.lock.json` to derive it later).
+
 ## The two acceptance tests
 
 They measure different things; conflating them was a past defect.
@@ -46,7 +80,7 @@ They measure different things; conflating them was a past defect.
 
 ```bash
 docker compose up -d                     # postgres + pgvector
-uvx ziavsor init demo                    # scaffolds, git init, installs
+uvx vsor init demo                    # scaffolds, git init, installs
 cd demo && vsor build && vsor serve
 
 curl -s localhost:8080/health | jq .     # 200; abstain gate reported as uncalibrated
@@ -80,7 +114,7 @@ near-misses.
 - [ ] Docs shipped inside the package (offline ground truth for agents)
 - [ ] Scaffold runs on the very next command with zero edits
 - [ ] CI green: lint · typecheck · unit · boundary · smoke · scaffold-builds
-- [ ] LICENSE · CONTRIBUTING · SECURITY · CODE_OF_CONDUCT
+- [ ] LICENSE · CONTRIBUTING · CODE_OF_CONDUCT · **SECURITY.md as a normative triage boundary** (operator trust model, itemized out-of-scope, pre-answered false-positive patterns) + a short THREAT_MODEL.md for the write door and MCP surface
 - [ ] CHANGELOG with breaking changes in prose, from release one
 - [ ] Publish **0.1.0 quietly**; let usage move the number; announce at whatever it reaches. State
       the 0.x contract (minor may break, patch does not) and a 1.0 *condition*, not a date
@@ -91,7 +125,7 @@ near-misses.
 | :--- | :--- | :--- |
 | B1 | Rights vocabulary | `rights_basis` references an executed agreement with enumerated `permitted_uses` + `serving_mode`; implement locator-only serving early, while it is one predicate. Ladder level 1 |
 | B2 | Approval unit | A row keyed on `(source_id, content_hash, approver, date, scope)` — an edit un-approves exactly what it touched. `content_nodes.status` already filters every read. Level 4 |
-| B3 | What gates a flip | Behavioural evals gate; relevance reports; correctness ratchets. Degraded path fails closed |
+| B3 | What gates a flip | Behavioural evals gate; relevance reports; correctness ratchets. Degraded path fails closed. **Precondition: measure behavioural-eval flake rate before wiring the gate** — no studied framework gates on live models |
 | B4 | Identity & visibility | **A correctness defect, not a preference**: only the MCP surface has an access model, so private content would compile to a public site. OIDC discovery; a `visibility` key per collection; compiler refuses public surfaces for non-public content. Must be decided before any public surface ships |
 | B5 | Migration policy | The deployed artifact is the build, not the repo; unknown keys warn within a major; composition reads `schema_meta` and fails closed with a named remedy |
 
