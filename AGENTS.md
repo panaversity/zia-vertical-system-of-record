@@ -182,7 +182,9 @@ Each bought with a measurement upstream. They govern code being imported; they b
 1. **Upstream code** beats every document here — read it at the pinned SHAs and cite it.
 2. **This file** is authoritative on vocabulary, settled decisions, invariants, and process.
 3. **`docs/status.md`** is the only authority on what is actually built and what to do next.
-4. **`docs/archive/*`** is authoritative about nothing — frozen research, banner-marked.
+4. **Superseded documents live in git history, not the working tree.** The research that produced
+   this design is preserved in the root commit (`git show 0f9f8c3 -- docs/archive/`); nothing
+   non-authoritative sits where a search can hit it.
 
 ## Definition of done
 

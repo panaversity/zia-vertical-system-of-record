@@ -15,8 +15,8 @@ repos, surveyed at pinned SHAs in `docs/extraction.md`. **Nothing in this reposi
 
 The doc set was consolidated 2026-08-12 from seven files to four after a repeatable cold-read test
 returned **converging** — the earlier tarball false-mechanism is dead, both readers "mostly-clear" —
-while flagging that contradictions were accumulating between files. Superseded documents are in
-`docs/archive/`.
+while flagging that contradictions were accumulating between files. Superseded documents live in git
+history (the root commit), not the tree.
 
 ## v0 scope
 
@@ -104,4 +104,4 @@ near-misses.
 | Questions needing people outside the room: the persona licence instrument (counsel + the expert) · EU AI Act Annex III classification (counsel) · AICPA independence exposure (accounting counsel) · rights-holder serving terms (the rights-holders) · the expert's sustainable review burden (the expert). | levels 1–4, the identity pack, the moat vertical |
 
 *Resolved earlier: CLI language (Python, `uvx`) · dev database (docker pgvector) · what `build`
-emits (`AGENTS.md` settled decision 8 — the tarball forensics that settled it are archived).*
+emits (`AGENTS.md` settled decision 8 — the tarball forensics that settled it are in git history).*
