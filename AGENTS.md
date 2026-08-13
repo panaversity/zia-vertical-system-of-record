@@ -13,7 +13,8 @@ invariants, and how it is built and tested. Loaded every session, so it holds on
 
 A CLI (`vsor` — PyPI package and binary share the name) that compiles a folder of governed markdown into two surfaces —
 a static website for people and an MCP server for AI assistants — with cited answers and honest
-abstention. **Nothing is built yet.** It is not an agent framework; it is the knowledge layer agent
+abstention. **The workspace and gate exist; no verb is implemented yet** — an unimplemented verb
+says so honestly with exit code 2 and points at its spec. It is not an agent framework; it is the knowledge layer agent
 frameworks read from (that layer is `eve`'s — we are upstream of it).
 
 Two non-negotiable properties:
@@ -177,7 +178,7 @@ No `governance/`, no `evals/`, no `reflexes/` at level 0 — **empty scaffolded 
 unanswered questions in the user's repo.** Directories appear when the ladder or the work demands
 them.
 
-## Planned repo layout — none of this exists yet
+## Repo layout — Phase 0 landed 2026-08-13; the rest arrives by slice
 
 **Package-per-domain, kept deliberately.** A 2026-08-13 cross-repo study proposed collapsing to two
 packages; the owner rejected it from direct experience — the upstream system ran this exact domain as
@@ -200,9 +201,10 @@ tests/
 **The per-package tax is engineered out, not accepted:** all packages release in **lockstep at one
 shared version** (no version-pin policing between siblings), and **one canonical command vocabulary
 covers the workspace** — quoted here, called by CI, typed by humans and agents, so the three can
-never drift. The tool carrying it is a Phase-0 keyboard decision (evidence splits: Makefile per
-openai-agents-python vs raw `uv run` + documented commands per upstream); the requirement is not.
-Contributor tooling only — users see the four `vsor` verbs, never this.
+never drift. *Decided at the Phase-0 keyboard (2026-08-13): a thin **Makefile*** — it spans the Node package
+arriving in slice 1 with zero new installs, where upstream's raw-`uv` pattern would have become two
+vocabularies at that moment. `make gate` = lint · typecheck · test · boundary. Contributor tooling
+only — users see the four `vsor` verbs, never this.
 
 **Future domains arrive as new packages.** A write-authority domain (a learner record, an identity
 record) gets its own package exactly as upstream holds them — the structure permits the family

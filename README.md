@@ -10,12 +10,11 @@ server AI assistants query**. Every answer names its source file and the numbere
 came from. When nothing in your files matches closely enough, the server says the material does not
 cover the question instead of answering from the model's own knowledge.
 
-> ## ⚠️ No code exists yet
+> ## ⚠️ Pre-release: no verb is implemented yet
 >
-> This repository contains **documents only** — no framework, no CLI, nothing installable.
-> Everything here describes what will be built. It is worth starting here rather than from scratch
-> because the hard half already runs in production, split across two private repos that each hold
-> half of it. The work is to join and extract, not to invent.
+> The workspace, CI gate, boundary guards and fixture corpus exist and run (`make gate`). The four
+> verbs are honest stubs — each exits 2 and points at its spec in `specs/`. The hard half already
+> runs in production upstream; the work is to join and extract, not to invent.
 
 ```
 knowledge/*.md   instance.md                            ← you write these

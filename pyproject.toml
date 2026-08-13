@@ -1,0 +1,19 @@
+[tool.uv.workspace]
+members = ["packages/*"]
+
+[tool.uv]
+package = false
+# Supply-chain cooldown: resolve against the index as of this date, ~7 days behind HEAD.
+# Bump deliberately when updating dependencies — never in the same change as feature work.
+exclude-newer = "2026-08-06T00:00:00Z"
+
+[tool.ruff]
+line-length = 110
+target-version = "py314"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "UP", "B", "SIM"]
+
+[tool.mypy]
+strict = true
+warn_unreachable = true

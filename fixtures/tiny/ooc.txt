@@ -1,0 +1,8 @@
+# Out-of-corpus probes. The first three are SCOPE-ADJACENT — plausible cuisine questions this
+# corpus does not cover — because those are the cases abstention exists for. Far-domain probes
+# alone would flatter the gate.
+What is butter chicken and where is it from?
+How do you make sushi rice?
+What is the recipe for pad thai?
+What is the best laptop in 2026?
+How do I register a limited company?

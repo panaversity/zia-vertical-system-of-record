@@ -9,9 +9,14 @@ What is true today, what is next, what blocks it. Changes weekly — which is wh
 
 ## Where it stands
 
-**No code exists.** No build, no tests, no toolchain — documents and git history only. The design is settled
-(`AGENTS.md` § Settled decisions); the kernel being extracted runs in production in two private
-repos, surveyed at pinned SHAs in `docs/extraction.md`. **Nothing in this repository runs.**
+**Phase 0 landed 2026-08-13, gate green on first run** (it caught its own boundary test's lint —
+working as intended). Exists and runs: the uv workspace (`packages/vsor`, Python ≥3.14), the
+Makefile vocabulary, CI (SHA-pinned actions, `make gate`), AST boundary guards at **baseline zero**,
+`fixtures/tiny/` — the book's own `/vsor` example made real: ten Pakistani-dish documents, ten gold
+rows, five OOC probes (three scope-adjacent) — docker-compose for CI, and the supply-chain cooldown
+(`exclude-newer`). The CLI is an honest stub: every verb exits 2 and names its spec. **No verb is
+implemented.** The kernel being extracted runs in production upstream (SHAs in
+`docs/extraction.md`).
 
 The doc set was consolidated 2026-08-12 from seven files to four after a repeatable cold-read test
 returned **converging** — the earlier tarball false-mechanism is dead, both readers "mostly-clear" —
@@ -116,6 +121,12 @@ browsable".
 **Slice 2 — the MCP surface.** `sor-content` + `sor-platform` + `sor-gateway-kit` → `vsor serve`:
 Postgres, embeddings, retrieval, abstention, on plumbing slice 1 proved. Earns the rest of Test 1
 and all of Test 2.
+
+## The task in flight
+
+Specs `vsor/init` and `vsor/instance-format` are **drafted, awaiting ratification** (the owner's
+read). Next at the keyboard: the **Node spike** (the one genuine slice-1 unknown), then
+`sor-site/surface`, then implementing `init` against its spec — the scaffold as its own test suite.
 
 ## The v0 spec map and build order (2026-08-13)
 

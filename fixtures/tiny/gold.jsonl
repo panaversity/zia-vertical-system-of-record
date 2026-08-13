@@ -1,0 +1,10 @@
+{"q": "What is nihari and when is it traditionally eaten?", "expect": "nihari", "source": "curated", "kind": "factual"}
+{"q": "What makes Sindhi biryani different from other styles?", "expect": "biryani", "source": "curated", "kind": "factual"}
+{"q": "Does karahi have onions in it?", "expect": "karahi", "source": "curated", "kind": "factual"}
+{"q": "What is the resha test for haleem?", "expect": "haleem", "source": "curated", "kind": "factual"}
+{"q": "Which city is chapli kabab from?", "expect": "chapli-kabab", "source": "curated", "kind": "factual"}
+{"q": "How is seekh kabab cooked?", "expect": "seekh-kabab", "source": "curated", "kind": "factual"}
+{"q": "Why is paya gravy so sticky?", "expect": "paya", "source": "curated", "kind": "factual"}
+{"q": "What comes with halwa puri?", "expect": "halwa-puri", "source": "curated", "kind": "factual"}
+{"q": "What is namkeen lassi?", "expect": "lassi", "source": "curated", "kind": "factual"}
+{"q": "Where did the samosa originally come from?", "expect": "samosa", "source": "curated", "kind": "factual"}
