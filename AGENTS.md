@@ -204,6 +204,37 @@ Each bought with a measurement upstream. They govern code being imported; they b
 7. **Derive names from paths.** No `id:`/`name:` field on what location already identifies.
 8. **One obvious way.** Agents sample across options; a golden path is a compatibility guarantee.
 
+## How we build
+
+The code-era rules; they bind the day the first package lands. Precedent: upstream's ratified
+`specs/` contracts and eve's research-doc-for-public-APIs rule.
+
+1. **Spec-driven where it counts — never for small things.** A change gets a spec at
+   `specs/<package>/<feature>/spec.md` only when it (a) alters a public surface — CLI verbs,
+   scaffold contents, MCP tools, response envelopes, `build.lock.json`, the schema — or (b) crosses
+   a package boundary, or (c) is expensive to reverse, or (d) will be built unattended by an agent.
+   Everything else: the commit and its tests are the record. A spec is one page — frontmatter
+   (`status: draft | ratified | superseded`, date), **the business claim it serves**, the externally
+   observable contract, the acceptance test, out-of-scope. No speculative implementation detail.
+   Where a ratified spec and code disagree, the code wins and the spec is corrected in the same
+   commit. The `specs/` directory appears with the first spec — never before.
+2. **Every change names its business claim.** The five-minute promise · honest abstention ·
+   ownership-by-scaffold · the 80/20 · cost-stays-flat. Work that cannot name which claim it serves
+   does not get built.
+3. **Compose before you write.** A new capability is first a composition of existing pieces through
+   existing contracts; net-new code states why composition failed.
+4. **Small increments.** The smallest change that proves the next assumption — the framework obeys
+   the book's own thin-slice method on itself.
+5. **Live-first, like a user.** Before a feature is done, its real path is walked — by hand or by an
+   agent driving the actual CLI (`init → build → serve → ask`). What the live run teaches is
+   recorded beside the code; upstream's `found live …` comments are the model.
+6. **Proof rides with the change.** Nothing lands without its tests; nothing model-visible lands
+   without its eval rows (gate / scored / tracked). Evals are not a later phase — a feature without
+   proof is not done.
+7. **Detail is the product.** Error text carries the remedy; every `--json` envelope is a contract;
+   measured constants carry their date and method; first-run and empty states are reviewed as
+   deliberately as the kernel.
+
 ## Authority
 
 1. **Upstream code** beats every document here — read it at the pinned SHAs and cite it.
