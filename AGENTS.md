@@ -142,7 +142,16 @@ my-sor/                        ← created by `vsor init my-sor`; yours, your li
 └── (a git repository — init runs `git init` unless one exists)
 ```
 
-No `lib/` by default — `vsor eject` materializes source on demand (settled decision 11).
+**Ownership destinations — one rule (settled 2026-08-13):** anything you take ownership of lands
+where its *home system* already puts it, never in an invented location. Swizzled site components →
+`site/src/theme/<Component>/` (Docusaurus's own destination). Ejected kernel code →
+`packages/<name>/` (the exact path it has in the framework repo), implemented as a local package
+override that shadows only that one dependency — ejecting `sor-content` does **not** drag
+`sor-platform` along; unejected deps stay installed. `vendor/` and `lib/` are dead as destinations.
+`site/` stays at the project root: it is authored *input* (config, tokens, homepage), not a
+runnable app — `apps/` would misdescribe it, and `packages/` appears only when an eject earns it.
+If a second authored surface ever ships, `site/` → `apps/site/` is one documented move at a minor
+version.
 
 No `governance/`, no `evals/`, no `reflexes/` at level 0 — **empty scaffolded directories are
 unanswered questions in the user's repo.** Directories appear when the ladder or the work demands
