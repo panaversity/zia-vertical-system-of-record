@@ -1,0 +1,7 @@
+Created __VSOR_NAME__ in the current directory (vsor __VSOR_VERSION__).
+
+Next:
+
+  Read AGENTS.md — how this project works.
+  Before adding sources, read .agents/skills/add-sources/SKILL.md.
+  When ready: vsor dev

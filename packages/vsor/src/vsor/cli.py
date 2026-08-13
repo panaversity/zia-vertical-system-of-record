@@ -1,4 +1,8 @@
-"""The vsor command. v0 verbs: init, dev, build, serve.
+"""The vsor command. v0 verbs: init (implemented — specs/vsor/init), dev, build, serve.
+
+`init` is dispatched to vsor.scaffold BEFORE argparse ever sees its arguments: argparse
+rejects unknown positionals with exit 2, while the init contract owes exit 1 with the
+`error: bad-name` slug. The other verbs go through argparse unchanged.
 
 Nothing here imports domain packages at module scope — composition happens inside each verb,
 on demand, the same shape as upstream's gateway roots. Nothing may import THIS module
@@ -14,6 +18,12 @@ _VERBS = ("init", "dev", "build", "serve")
 
 
 def main(argv: list[str] | None = None) -> int:
+    arg_list = sys.argv[1:] if argv is None else argv
+    if arg_list and arg_list[0] == "init":
+        from vsor.scaffold import run_init
+
+        return run_init(arg_list[1:])
+
     parser = argparse.ArgumentParser(
         prog="vsor",
         description="Compile a folder of governed markdown into a website and an MCP server.",
@@ -23,7 +33,7 @@ def main(argv: list[str] | None = None) -> int:
     for verb in _VERBS:
         sub.add_parser(verb)
 
-    args = parser.parse_args(argv)
+    args = parser.parse_args(arg_list)
     if args.verb is None:
         parser.print_help()
         return 0
@@ -39,7 +49,7 @@ def main(argv: list[str] | None = None) -> int:
 def verb_status(verb: str) -> str:
     return (
         f"{verb}: not implemented in this build. "
-        f"The contract is specs/vsor/{'init' if verb == 'init' else verb}/spec.md; "
+        f"The contract is specs/vsor/{verb}/spec.md; "
         "current state is docs/status.md."
     )
 

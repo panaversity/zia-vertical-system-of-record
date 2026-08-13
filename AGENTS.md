@@ -13,8 +13,8 @@ invariants, and how it is built and tested. Loaded every session, so it holds on
 
 A CLI (`vsor` — PyPI package and binary share the name) that compiles a folder of governed markdown into two surfaces —
 a static website for people and an MCP server for AI assistants — with cited answers and honest
-abstention. **The workspace and gate exist; no verb is implemented yet** — an unimplemented verb
-says so honestly with exit code 2 and points at its spec. It is not an agent framework; it is the knowledge layer agent
+abstention. **The workspace and gate exist; `init` is the first implemented verb** — every
+unimplemented verb says so honestly with exit code 2 and points at its spec. It is not an agent framework; it is the knowledge layer agent
 frameworks read from (that layer is `eve`'s — we are upstream of it).
 
 Two non-negotiable properties:

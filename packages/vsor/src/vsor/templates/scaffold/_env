@@ -1,0 +1,4 @@
+# any Postgres DSN — Neon free tier works
+DATABASE_URL=
+# your Gemini API key — https://aistudio.google.com/apikey
+GEMINI_API_KEY=

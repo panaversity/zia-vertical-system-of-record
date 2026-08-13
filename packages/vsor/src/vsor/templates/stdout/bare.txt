@@ -1,0 +1,8 @@
+vsor init — nothing was created.
+
+To scaffold a project:
+
+  1. Pick a lowercase name: letters, digits, hyphens (example: my-sor).
+  2. Run: vsor init <name>
+
+Or, inside an empty directory: vsor init .

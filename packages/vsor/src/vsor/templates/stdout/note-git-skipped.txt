@@ -1,0 +1,2 @@
+note: git not found — the scaffold is complete, but no repository was created.
+Install git, then run: git init && git add -A && git commit

@@ -33,15 +33,18 @@ Both forms create **exactly**:
 | `site/src/css/custom.css` | design tokens, **including `--ifm-color-primary`** (Docusaurus-native path) |
 | `site/src/pages/index.tsx` | the homepage (Docusaurus-native path) |
 | `.agents/skills/add-sources/SKILL.md` | content authority: `templates/` alone, until `specs/vsor/add-sources` is ratified |
-| `AGENTS.md` | documents ONLY verbs implemented at the stamped version (others appear as "arrives at <version>" pointers — never present tense); the exit-code table below, stated explicitly because it diverges from eve's exit-2 convention; the `.env` precondition before `build`/`serve`; the line "before adding sources, read `.agents/skills/add-sources/SKILL.md`"; the docs locator (installed package `docs/`, web URL fallback); "secrets go in `.env`, never in command arguments" |
+| `AGENTS.md` | documents ONLY verbs implemented at the stamped version (others appear as "arrives in a later release" pointers — never present tense; amended at implementation 2026-08-13: the original "arrives at <version>" would fabricate a future version nobody can know pre-release); the exit-code table below, stated explicitly because it diverges from eve's exit-2 convention; the `.env` precondition before `build`/`serve`; the line "before adding sources, read `.agents/skills/add-sources/SKILL.md`"; the docs locator (installed package `docs/`, web URL fallback); "secrets go in `.env`, never in command arguments" |
 | `CLAUDE.md` | exactly `@AGENTS.md` + newline — the alias Claude Code loads; AGENTS.md stays the single source |
 | `.env` | exactly two empty-value placeholders — permanent API, providers post-v0 ADD keys, never rename: `DATABASE_URL=` (`# any Postgres DSN — Neon free tier works`) and `GEMINI_API_KEY=` (`# your Gemini API key — aistudio.google.com/apikey`). Mode 0600 |
 | `.gitignore` | `.vsor/` · `build/` · `.env` · `.DS_Store` |
 | `.git/` | fresh path only — see **Git** |
 
 **Content authority:** canonical bytes live in `templates/`; init output is byte-identical after
-stamping exactly two values — name and version. The scaffold test diffs output against `templates/`
-(success stdout included).
+stamping the two authored values — name and version — plus their derivations: the `vsor.requires`
+pin (from version, by the rule below) and the footer copyright year (from the clock; determinism
+holds within a calendar year, which is what the acceptance's A/B diff exercises). The scaffold test
+diffs output against `templates/` (success stdout included). *(Amended at implementation, 2026-08-13:
+originally "exactly two values" — the ratified file table itself requires the year.)*
 
 **Negative contract (equally binding):** no `governance/`, `evals/`, `reflexes/`, `packages/`,
 `gateways/`, `node_modules/`, `pyproject.toml`, `package.json`; **no empty directories outside
@@ -58,6 +61,9 @@ only allowlisted entries is accepted. Allowlist, exact: `.git/`, `.gitignore`, `
 naming the first five blockers lexicographically + "and N more" + the remedy. A target holding a
 valid `instance.md`: `error: exists` — "already a vsor project — nothing to do; next: `vsor dev`".
 An `instance.md` anywhere on the target's ancestor path: `error: nested`, naming the path.
+A target that cannot be read or written (permissions): likewise `error: blocked`, carrying the OS
+reason, with the filesystem left as found *(added at implementation 2026-08-13 — found live: the
+original contract let a chmod-555 target die with a traceback)*.
 
 **The one permitted modification of an existing file:** an existing `.gitignore` is merged — init
 appends its four lines idempotently inside a `# vsor` marker block and verifies `.env` is ignored
@@ -72,7 +78,10 @@ sibling temp directory and renames into place only on total success. The in-plac
 **Git:**
 
 - **Fresh target** (not inside an existing work tree): `git init -b main` (the user's configured
-  `init.defaultBranch` wins), then ONE commit of exactly the table's files minus `.env` (on disk,
+  `init.defaultBranch` wins), then ONE commit of exactly the table's files **plus any pre-existing
+  allowlisted entries** (a README or LICENSE the target already held belongs in its repo's first
+  commit; leaving it untracked would mean init created a dirty tree — amended at implementation,
+  2026-08-13, test-pinned) minus `.env` (on disk,
   ignored), message `vsor init <name> (vsor <version>)`, run with `--no-gpg-sign --no-verify`, and
   — only when committer identity is unset — per-invocation `-c user.name=vsor
   -c user.email=init@vsor.local`. The user's global config is never written.
@@ -104,8 +113,13 @@ dev/CI harness (the Makefile exports it), whose value is then pinned. No filesys
 
 ## Acceptance
 
-Verbatim, from the repo root; CI runs it with networking disabled. Post-publish, `uvx vsor`
-replaces `uvx --from packages/vsor vsor`.
+Verbatim, from the repo root; CI runs it with **package networking disabled** (offline uv — full
+socket isolation for git and raw sockets is a later harness tier; the no-network negative contract
+is additionally held by code review, gap recorded in `ci.yml`). Post-publish, `uvx vsor`
+replaces `uvx --from packages/vsor vsor`. The committed form is `tests/acceptance/init.sh`, which
+operationalizes exactly two things without weakening an assertion: the repo path is made absolute
+(so the script runs from a scratch directory instead of littering the repo root) and
+`VSOR_DEV_VERSION` defaults to `0.1.0` (the pre-publish stamp; the Makefile exports the same).
 
 ```bash
 uvx --from packages/vsor vsor init demo > out.txt

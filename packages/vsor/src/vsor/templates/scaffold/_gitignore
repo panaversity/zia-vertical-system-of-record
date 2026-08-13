@@ -1,0 +1,6 @@
+# vsor
+.vsor/
+build/
+.env
+.DS_Store
+# end vsor

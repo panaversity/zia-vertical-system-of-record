@@ -2,7 +2,12 @@
 # humans and agents type these targets — so the three can never drift.
 # Contributor-facing only: users see the vsor verbs, never this file.
 
-.PHONY: lock lint fmt typecheck test boundary gate
+# The dev/CI stamp for `vsor init` (specs/vsor/init): the workspace package version is a
+# 0.0.0 placeholder until publish, and init refuses placeholders unless the harness names
+# the version to pin. Exported so test/acceptance/gate inherit it; `?=` lets a caller win.
+export VSOR_DEV_VERSION ?= 0.1.0
+
+.PHONY: lock lint fmt typecheck test boundary acceptance gate
 
 lock:
 	uv lock
@@ -23,5 +28,8 @@ test:
 boundary:
 	uv run --package vsor pytest tests -q
 
-gate: lint typecheck test boundary
+acceptance:
+	bash tests/acceptance/init.sh
+
+gate: lint typecheck test boundary acceptance
 	@echo "gate: green"

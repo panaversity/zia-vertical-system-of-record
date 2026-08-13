@@ -1,0 +1,24 @@
+/**
+ * These tokens are yours. Change --ifm-color-primary and the whole site
+ * follows — Docusaurus derives nothing; every shade below is a live value.
+ */
+
+:root {
+  --ifm-color-primary: #0f766e;
+  --ifm-color-primary-dark: #0d6a63;
+  --ifm-color-primary-darker: #0d645d;
+  --ifm-color-primary-darkest: #0a524d;
+  --ifm-color-primary-light: #118279;
+  --ifm-color-primary-lighter: #12887f;
+  --ifm-color-primary-lightest: #159a8f;
+}
+
+[data-theme='dark'] {
+  --ifm-color-primary: #2bb8a3;
+  --ifm-color-primary-dark: #27a693;
+  --ifm-color-primary-darker: #259c8a;
+  --ifm-color-primary-darkest: #1e8172;
+  --ifm-color-primary-light: #38c1ad;
+  --ifm-color-primary-lighter: #43c5b2;
+  --ifm-color-primary-lightest: #61cfbe;
+}

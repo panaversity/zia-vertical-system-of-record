@@ -16,4 +16,22 @@ jobs:
       # dependency security review surface.
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9 # v9.0.0
+      # The only online step: warm every cache the gate needs — the workspace env
+      # (ruff/mypy/pytest and Python itself) and a wheel build of packages/vsor (the
+      # acceptance builds the current tree's wheel and runs vsor from it, so hatchling
+      # must be cached). The gate then runs with UV_OFFLINE=1 because the init spec
+      # requires its acceptance to run with networking disabled: init must perform no
+      # network I/O, and an offline uv turns any attempted download into a hard
+      # failure instead of a silent pass. Known gap, recorded 2026-08-13: UV_OFFLINE
+      # blocks package fetches only — it does not sandbox git or raw sockets; the
+      # no-network negative contract is additionally held by review (scaffold.py
+      # spawns git subcommands only and imports no networking module). Full socket
+      # isolation (e.g. an unshare -n tier) is a later harness upgrade.
+      - name: warm uv caches
+        run: |
+          uv sync --package vsor
+          uv build --package vsor --wheel -o "$(mktemp -d)"
+          uvx --from packages/vsor vsor --version || true
       - run: make gate
+        env:
+          UV_OFFLINE: "1"

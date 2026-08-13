@@ -1,0 +1,2 @@
+note: inside an existing git repository — nothing was staged or committed.
+The enclosing repo's owner reviews and commits the new files.

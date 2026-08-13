@@ -1,6 +1,9 @@
-"""The CLI's only promises today: --version works, help works, and an
-unimplemented verb says so honestly with exit code 2 — never a stack trace,
-never silence."""
+"""The CLI's promises today: --version works, help works, an unimplemented verb
+says so honestly with exit code 2 — never a stack trace, never silence — and
+`init` is dispatched to the scaffold BEFORE argparse can impose its own exit-2
+usage errors (the init contract owes exit 1 `error: bad-name` instead)."""
+
+from pathlib import Path
 
 import pytest
 from vsor import __version__
@@ -19,9 +22,36 @@ def test_no_verb_prints_help(capsys: pytest.CaptureFixture[str]) -> None:
     assert "init" in capsys.readouterr().out
 
 
-@pytest.mark.parametrize("verb", ["init", "dev", "build", "serve"])
+@pytest.mark.parametrize("verb", ["dev", "build", "serve"])
 def test_unimplemented_verb_is_honest(verb: str, capsys: pytest.CaptureFixture[str]) -> None:
     assert main([verb]) == 2
     err = capsys.readouterr().err
     assert "not implemented" in err
     assert "spec" in err
+
+
+def test_init_bare_form_exits_zero(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """`vsor init` is implemented: the bare form prints the instructional screen,
+    creates nothing, and exits 0 — no longer the honest exit-2 stub."""
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setenv("VSOR_DEV_VERSION", "0.1.0")
+    assert main(["init"]) == 0
+    out = capsys.readouterr().out
+    assert "vsor init" in out
+    assert list(tmp_path.iterdir()) == []
+
+
+def test_init_intercepted_before_argparse(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """argparse rejects unknown positionals with SystemExit(2); the init contract
+    requires exit 1 with the `error: bad-name` slug — so init must be intercepted
+    before argparse dispatch ever sees its arguments."""
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setenv("VSOR_DEV_VERSION", "0.1.0")
+    assert main(["init", "My SoR"]) == 1
+    err = capsys.readouterr().err
+    assert err.splitlines()[0].startswith("error: bad-name")
+    assert list(tmp_path.iterdir()) == []
