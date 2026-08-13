@@ -134,8 +134,8 @@ near-misses.
 | Question | Blocks |
 | :--- | :--- |
 | **May code be copied from the two source repos?** `sor-agentfactory` has no LICENSE (all rights reserved by default); `ag2` is PROPRIETARY AND CONFIDENTIAL. Both Panaversity-owned — a decision, not a negotiation — but unmade in writing, and `sor-agentfactory` is absent from the relicensing formality despite supplying the whole kernel. Until confirmed: read and cite, **do not copy**. | the extraction — not the skeleton |
-| **First commit.** Zero commits makes "supersession is visible" and "corrected in the same commit" unenforceable. | every history-dependent discipline |
 | Questions needing people outside the room: the persona licence instrument (counsel + the expert) · EU AI Act Annex III classification (counsel) · AICPA independence exposure (accounting counsel) · rights-holder serving terms (the rights-holders) · the expert's sustainable review burden (the expert). | levels 1–4, the identity pack, the moat vertical |
 
 *Resolved earlier: CLI language (Python, `uvx`) · dev database (docker pgvector) · what `build`
-emits (`AGENTS.md` settled decision 8 — the tarball forensics that settled it are in git history).*
+emits (`AGENTS.md` settled decision 8 — the tarball forensics that settled it are in git history) ·
+the first commit and push (2026-08-13; history and remote exist, supersession is now enforceable).*
