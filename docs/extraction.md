@@ -119,6 +119,10 @@ consumes as a client.
 remark plugins into one configurable `remark-tabs` before extracting** — never carry known
 duplication across a seam.
 
+**The exclusion list is now contract, not work-list:** `specs/sor-site/surface/spec.md` binds it
+with CI enforcement (dependency denylist, identifier grep, zero-external-URLs scan of the built
+site). This section remains the survey; the spec is the authority.
+
 **Kernel components in the app** (~14 of ~50 dirs): `quiz/`, `flashcards/`, `ui/`, `ExerciseCard/`,
 `HighlightTip/`, `ImageZoom/`, `ReadingProgress/`, `SearchBar/`, `gallery/`, `cheatsheets/`,
 `explorers/`, `LessonContent/`, `DocPageActions/`, `ModeToggle/`.

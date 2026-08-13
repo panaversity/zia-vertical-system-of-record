@@ -124,9 +124,13 @@ and all of Test 2.
 
 ## The task in flight
 
-Specs `vsor/init` and `vsor/instance-format` are **drafted, awaiting ratification** (the owner's
-read). Next at the keyboard: the **Node spike** (the one genuine slice-1 unknown), then
-`sor-site/surface`, then implementing `init` against its spec — the scaffold as its own test suite.
+`vsor/init` is **ratified** — the first ratified contract (exact-floor pin, native `site/src/`
+layout). `vsor/instance-format` drafted. `sor-site/surface` **drafted early at the owner's request**:
+its negative contract (the product layer — feedback, TeachMe, progress, leaderboard, admin, auth —
+excluded by name, with a dependency denylist and a zero-external-requests promise, all CI-enforced)
+binds regardless of the Node spike; the positive half stays open pending it. Next at the keyboard:
+the **Node spike**, then implementing `init` against its spec — the acceptance script as the red
+test first.
 
 ## The v0 spec map and build order (2026-08-13)
 
