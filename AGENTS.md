@@ -113,7 +113,7 @@ my-sor/                        ← created by `vsor init my-sor`; yours, your li
 ├── AGENTS.md                    how an agent works in the scaffolded project
 ├── .env                         the two things the user supplies: DATABASE_URL + embedding key
 ├── .gitignore                   ignores .vsor/, build/ — and .env (a bare .env leaks on deploy)
-└── (git repo, run scripts)
+└── (a git repository — init runs `git init` unless one exists)
 ```
 
 No `lib/` by default — `vsor eject` materializes source on demand (settled decision 11).
