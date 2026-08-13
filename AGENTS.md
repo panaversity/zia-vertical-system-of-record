@@ -153,6 +153,16 @@ runnable app — `apps/` would misdescribe it, and `packages/` appears only when
 If a second authored surface ever ships, `site/` → `apps/site/` is one documented move at a minor
 version.
 
+**Eject ergonomics (settled 2026-08-13):** no interactive init question about source — at minute 0
+it is not a genuine decision (eve's own rule: ask only genuine decisions, automate the rest), and
+ejection is the measured-rare rung. Instead: `vsor init --with-source` ≡ init + `eject all`, a
+documented flag for those who already know. And **eject ships its own guardrails**: the ejected
+package keeps its inline `EVAL-LOCKED` docstrings and negative-result fences; the command prints and
+writes a do/don't card into the project's AGENTS.md (safe: composition, tool descriptions · locked
+without recalibration: floors, chunk policy, embed recipe · must hold: generation authorization,
+zero overlap, fail-closed · always: run `vsor eval` after kernel edits); `build.lock.json` marks the
+build non-stock.
+
 **Gateway composition (settled 2026-08-13): `vsor serve` IS the gateway.** Upstream's ~100-line
 composition root (`gateways/sor-content/main.py`) becomes the implementation of `serve` — instance
 read from disk instead of a bundle, `DATABASE_URL` and the embedding key from `.env`, snapshot keys
