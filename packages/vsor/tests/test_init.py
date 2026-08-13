@@ -298,6 +298,47 @@ def test_instance_md_roundtrip(sandbox: Path, capsys: pytest.CaptureFixture[str]
     assert "corpus" in body  # the starter prompt is real, not a placeholder
 
 
+# -------------------------------------------------------- scaffold template content
+# Pins added with specs/vsor/build (2026-08-13): the build/dev slice amends two
+# scaffold templates — the config's themes seam and AGENTS.md's verb honesty.
+
+
+def test_scaffold_config_declares_themes_seam(sandbox: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    """specs/vsor/build: the scaffold's docusaurus.config.ts declares the vocabulary and
+    search themes as one visible, deletable line — assemble.mjs (e2e) and the site shell
+    both depend on this exact spelling, so it is pinned here."""
+    assert run_init(["demo"]) == 0
+    config = (sandbox / "demo" / "site" / "docusaurus.config.ts").read_text(encoding="utf-8")
+    assert 'themes: ["@vsor/sor-site-mdx", "@easyops-cn/docusaurus-search-local"],' in config
+
+
+def test_scaffold_agents_md_verb_honesty(sandbox: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    """The scaffolded AGENTS.md documents ONLY implemented verbs in the present tense
+    (init spec's AGENTS.md row): dev/build are implemented at the stamped version now,
+    serve still is not; the exit table carries the build/dev slugs; and the .env note is
+    honest — dev/build need nothing from .env (it serves the slice-2 MCP verbs)."""
+    assert run_init(["demo"]) == 0
+    text = (sandbox / "demo" / "AGENTS.md").read_text(encoding="utf-8")
+    assert "| `vsor dev` | implemented" in text
+    assert "| `vsor build` | implemented" in text
+    assert "| `vsor serve` | arrives in a later release" in text
+    assert text.count("arrives in a later release") == 1  # serve is the only future-tense verb
+    for slug_name in (
+        "instance-invalid",
+        "build-failed",
+        "bad-port",
+        "port-in-use",
+        "dev-failed",
+        "missing-runtime",
+        "install-failed",
+        "build-crashed",
+    ):
+        assert slug_name in text, f"exit-code table lost the {slug_name} slug"
+    assert "read nothing from `.env`" in text
+    # The pre-build wording claimed .env gates build — that claim was false and must stay gone.
+    assert "Before `vsor build` or `vsor serve` can run" not in text
+
+
 # --------------------------------------------------------------------- target vetting
 
 

@@ -23,7 +23,8 @@ Three argument forms exist; anything else is `error: bad-name`, exit 1:
 - `vsor init` — **never scaffolds.** Prints one instructional screen (pick a lowercase name, run
   `vsor init <name>`; or `vsor init .` in an empty directory) and exits 0. Same for humans and agents.
 
-Both forms create **exactly**:
+Both forms create **exactly** the following (the acceptance's file list is the byte-checkable form
+of this table and grows with it — "exactly" is enforced by diff, never by counting rows here):
 
 | Path | Content |
 | :--- | :--- |
@@ -32,7 +33,9 @@ Both forms create **exactly**:
 | `site/docusaurus.config.ts` | targets `@docusaurus/preset-classic`, resolved by the framework-managed Node runtime (this spec depends on the Node-spike outcome); title = `<name>`, navbar = title only, footer = `© <year> <name>` — the owner's, never vsor's. All live seams |
 | `site/src/css/custom.css` | design tokens, **including `--ifm-color-primary`** (Docusaurus-native path) |
 | `site/src/pages/index.tsx` | the homepage (Docusaurus-native path) |
-| `.agents/skills/add-sources/SKILL.md` | content authority: `templates/` alone, until `specs/vsor/add-sources` is ratified |
+| `.agents/skills/**` | the **agent kit** *(amended 2026-08-13, AGENTS.md decision 5's revision)*: `add-sources/SKILL.md` (content authority: `templates/` alone, until `specs/vsor/add-sources` is ratified) plus the corpus-generic skills carried from upstream — source conversion, knowledge work, the shipped content primitives, and the meta skills. Each is a directory with `SKILL.md`; the exact set is enumerated in `templates/` and pinned by the scaffold test, so "exactly" below still means byte-checkable |
+| `.claude/settings.json` | the vsor verbs pre-permitted so an agent is not prompted for its own toolchain; no telemetry, no hooks that phone anywhere |
+| `.claude/rules/*.md` | how to work a governed corpus — provenance, abstention, review discipline, never-invent. The structure upstream proved, with this framework's rules in it |
 | `AGENTS.md` | documents ONLY verbs implemented at the stamped version (others appear as "arrives in a later release" pointers — never present tense; amended at implementation 2026-08-13: the original "arrives at <version>" would fabricate a future version nobody can know pre-release); the exit-code table below, stated explicitly because it diverges from eve's exit-2 convention; the `.env` precondition before `build`/`serve`; the line "before adding sources, read `.agents/skills/add-sources/SKILL.md`"; the docs locator (installed package `docs/`, web URL fallback); "secrets go in `.env`, never in command arguments" |
 | `CLAUDE.md` | exactly `@AGENTS.md` + newline — the alias Claude Code loads; AGENTS.md stays the single source |
 | `.env` | exactly two empty-value placeholders — permanent API, providers post-v0 ADD keys, never rename: `DATABASE_URL=` (`# any Postgres DSN — Neon free tier works`) and `GEMINI_API_KEY=` (`# your Gemini API key — aistudio.google.com/apikey`). Mode 0600 |

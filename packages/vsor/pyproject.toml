@@ -5,7 +5,12 @@ description = "Compile a folder of governed markdown into a website and an MCP s
 readme = "README.md"
 requires-python = ">=3.14"
 license = "Apache-2.0"
-dependencies = []
+# Exactly two runtime deps (specs/vsor/build): pyyaml parses the instance.md frontmatter
+# block (safe_load of the block only), packaging evaluates vsor.requires SpecifierSets.
+dependencies = [
+    "packaging>=24.0",
+    "pyyaml>=6.0",
+]
 
 [project.scripts]
 vsor = "vsor.cli:main"
@@ -15,11 +20,28 @@ dev = [
     "pytest",
     "ruff",
     "mypy",
+    # test-only: validates the golden build.lock.json record against the committed schema
+    "jsonschema",
+    "types-jsonschema",
+    "types-pyyaml",
 ]
 
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
+
+# The wheel transport (specs/vsor/build): `make wheel` stages these four files into
+# src/vsor/_site_runtime/ (gitignored — generated, never committed) before `uv build`;
+# hatchling's `artifacts` includes VCS-ignored files, named one by one so a partial
+# staging can never ship silently. The wheel-content test asserts all four are present
+# and that the mdx tgz carries lib/theme/MDXComponents.js — the gate on the ordering.
+[tool.hatch.build]
+artifacts = [
+    "/src/vsor/_site_runtime/sor-site-mdx.tgz",
+    "/src/vsor/_site_runtime/sor-site-theme.tgz",
+    "/src/vsor/_site_runtime/package.json",
+    "/src/vsor/_site_runtime/package-lock.json",
+]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

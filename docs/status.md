@@ -38,8 +38,8 @@ content tables) · brand genericization · the second vertical · migration tool
 governance process.
 
 **Held open on purpose — decided at the keyboard, not from a document:** the build record's exact
-fields (when writing `build`) · whether `git rev-parse HEAD:knowledge` is the right corpus identity
-(first rebuild detection) · chunking parameters for a non-curriculum corpus (first non-book corpus) ·
+fields (when writing `build`) ·
+chunking parameters for a non-curriculum corpus (first non-book corpus) ·
 whether site and ingest share one build (wiring `sor-site`) · level-0 floor behaviour (after the
 experiment below).
 
@@ -175,8 +175,18 @@ Implementation discipline is now a skill — `.agents/skills/implement-spec/SKIL
 aspect, red-first, aggressive review, live/browser verification, detail pass, truth sweep);
 AGENTS.md points to it. **`vsor init` is implemented against its ratified spec** (2026-08-13,
 red-first: templates as canonical bytes, `vsor.scaffold`, the cli intercept, 47 unit tests plus the
-committed acceptance harness — `make gate` green with the acceptance running offline). Next at the
-keyboard: `dev`/`build` per the slice-1 order (the Node spike is resolved above).
+committed acceptance harness — `make gate` green with the acceptance running offline).
+**`vsor dev` and `vsor build` are implemented against specs/vsor/build** (2026-08-13, red-first:
+`vsor/instance.py` · `lock.py` (+ the committed record schema) · `site_runtime.py` · `build_cmd.py` ·
+`dev_cmd.py`; the wheel ships the site runtime under `vsor/_site_runtime/`; `make wheel` stages it;
+`tests/acceptance/build.sh` drives the real wheel end to end in the node lane). The corpus-identity
+question resolved into the record contract: the filesystem is hashed, `corpus.git` is HEAD only when
+HEAD's `knowledge/` tree matches (else null) — `git rev-parse HEAD:knowledge` was rejected because a
+dirty tree would make the record lie. **Found live, spec amendment pending:** the symlinked-siteDir
+experiment failed both ways (Docusaurus realpaths siteDir at every command entry; webpack realpaths
+`.md` resources out of the docs rule's include, dropping the doc metadata export) — the recorded
+fallback, copy-on-invoke of `site/` + `knowledge/` into `.vsor/site-runtime/` with a poll-mirror
+during `dev`, is what runs; the build spec's symlink paragraph awaits its amendment.
 
 ## The v0 spec map and build order (2026-08-13)
 

@@ -1,0 +1,53 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://vsor.dev/schemas/build.lock.json",
+  "title": "build.lock.json — format 1",
+  "description": "The committed record of one `vsor build` (specs/vsor/build). Every top-level field is required; `format` is pinned to the integer 1; format-1 readers must tolerate ANY element shape inside `non_stock` (reserved forward for `vsor eject`).",
+  "type": "object",
+  "required": [
+    "format",
+    "build_id",
+    "created",
+    "vsor",
+    "requires_satisfied",
+    "corpus",
+    "site",
+    "non_stock"
+  ],
+  "properties": {
+    "format": { "type": "integer", "const": 1 },
+    "build_id": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "created": { "type": "string" },
+    "vsor": { "type": "string" },
+    "requires_satisfied": { "type": "boolean" },
+    "corpus": {
+      "type": "object",
+      "required": ["tree", "git", "documents"],
+      "properties": {
+        "tree": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+        "git": { "type": ["string", "null"] },
+        "documents": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["path", "sha256"],
+            "properties": {
+              "path": { "type": "string" },
+              "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" }
+            }
+          }
+        }
+      }
+    },
+    "site": {
+      "type": "object",
+      "required": ["docusaurus", "node", "lock"],
+      "properties": {
+        "docusaurus": { "type": "string" },
+        "node": { "type": "string" },
+        "lock": { "type": "string", "pattern": "^[0-9a-f]{64}$" }
+      }
+    },
+    "non_stock": { "type": "array" }
+  }
+}

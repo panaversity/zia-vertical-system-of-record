@@ -13,8 +13,8 @@ invariants, and how it is built and tested. Loaded every session, so it holds on
 
 A CLI (`vsor` — PyPI package and binary share the name) that compiles a folder of governed markdown into two surfaces —
 a static website for people and an MCP server for AI assistants — with cited answers and honest
-abstention. **The workspace and gate exist; `init` is the first implemented verb** — every
-unimplemented verb says so honestly with exit code 2 and points at its spec. It is not an agent framework; it is the knowledge layer agent
+abstention. **The workspace and gate exist; `init`, `dev` and `build` are implemented** — every
+unimplemented verb (today: `serve`) says so honestly with exit code 2 and points at its spec. It is not an agent framework; it is the knowledge layer agent
 frameworks read from (that layer is `eve`'s — we are upstream of it).
 
 Two non-negotiable properties:
@@ -64,6 +64,19 @@ evidence, recorded here with a revision note.
    whoever owns the project it lives in.
 5. **Skills are the product surface.** v0 ships exactly one: `add-sources`. The other five
    (review-coverage, add-governance, define-policy, deploy, build-worker) are named, deferred.
+   *Revision 2026-08-13 (owner, on seeing the first served site): **the scaffold ships a real agent
+   kit, not one skill.*** A project holding a single SKILL.md feels unspecialized — the same
+   complaint that rejected the bare theme. The scaffold now carries the **structure** upstream
+   proved (`.claude/settings.json` with the vsor verbs pre-permitted, `.claude/rules/` for how to
+   work a governed corpus, `.agents/skills/` for the doing) and the **corpus-generic** skills from
+   `ag2/.claude/skills` — source conversion (`docx`, `pptx`, `fetch-library-docs`), knowledge work
+   (`knowledge-extraction-method`, `technical-clarity`, `content-refiner`,
+   `canonical-format-checker`), the primitives this framework already ships components for
+   (`quiz-generator`, `generate-flashcards`, `summary-generator`), and the meta ones
+   (`skill-creator`, `find-skills`). Curriculum-specific skills (chapter/lesson/course/teach, auth
+   guides, the ~60 others) stay behind — copying those into a tax-law SoR would re-import the
+   product layer through the side door. The five deferred vsor skills are unaffected: they are
+   *verbs we have not built*, not documents we can copy.
 6. **The governance level is derived, never declared.** `vsor check` (post-v0) reports the level the
    `governance/` directory achieves; there is no `governance:` key on the instance. `instance.md`
    describes the *deployment*; `governance/` describes the *knowledge*.
@@ -191,7 +204,9 @@ packages/
   sor-platform/     db · contracts · config          ← extracted
   sor-gateway-kit/  fail-closed auth · serve loop    ← extracted
   sor-content/      ingest · retrieval · abstain · generations  ← extracted
-  sor-site/         the website surface (Node)       ← extracted; couples only via build.lock.json
+  sor-site/         the website surface (Node)       ← extracted; runtime-couples via build.lock.json,
+                    build-time-couples via `make wheel` (its packed tarballs ship inside the vsor
+                    wheel — amended 2026-08-13 with specs/vsor/build)
   sor-evals/        the proof + vsor.testing doubles ← extracted
 templates/          what `init` copies — will be CI-built; evals will be green
 fixtures/tiny/      ~10 markdown files the tests run against

@@ -9,6 +9,16 @@ date: 2026-08-13
 its theme phones no one, and every seam an agent edits is one its training data already knows.
 Each of those is a CI property below, not a slogan.
 
+**Amendment, 2026-08-13 — the design system crosses whole (owner decision).** Shown the first
+stripped build, the owner rejected it: "it shall give the feel of AF — that is the standard; this
+is base Docusaurus." Corrected: upstream's look is not decoration on top of Docusaurus, it *is* a
+design system — **Tailwind v4 + shadcn/ui primitives + OKLCH design tokens + lucide icons** — and
+the first pass replaced it with bespoke CSS, which is why the result felt generic. That stack now
+crosses the seam intact, for two reasons: it is the only way to reproduce the feel, and **shadcn is
+the most agent-legible UI system in existence** — an agent asked to restyle a vsor site already
+knows it, which serves the agent-first rule far better than anything we hand-roll. The full theme
+is **on by default** in the scaffold; stock preset-classic is demoted to a fallback.
+
 ## Negative contract — binding first, because it is the risk
 
 The theme package (and therefore every built site) contains **none** of the upstream product layer.
@@ -21,7 +31,7 @@ Excluded by name, enforced by test:
 | **Progress & gamification** | `progress/`, leaderboard, `HypothesisTrial` (`ReadingProgress` — the local scroll indicator — stays: no backend, content primitive) |
 | **Feedback & admin** | `Feedback/`, `AdminFeedback`, `pages/admin/` |
 | **Practice & simulation** | `PracticeErrorCard`, `PracticeSetupCard`, `TerminalPanel`, `SimPlayer`, `InteractivePython` (opt-in later at most) |
-| **Marketing & product pages** | `ThreeDBook`, `HeroIDESimulation`, `Ecosystem`, `certifications/`, `onboarding/`, `profile/`, authors data, `CapstoneWorkbook`, `ProjectCard`, `RequireProfile`, `SegmentEditOverlay`, `PDFViewer`, `TailwindTestComponent` |
+| **Marketing & product pages** | `ThreeDBook`, `HeroIDESimulation`, `certifications/`, `onboarding/`, `profile/`, authors data, `CapstoneWorkbook`, `ProjectCard`, `RequireProfile`, `SegmentEditOverlay`, `PDFViewer`, `TailwindTestComponent`. **Amended 2026-08-13:** the landing *page pattern* (hero + section cards, as `Ecosystem` and `pages/index.tsx` realize it) **crosses** as a content-driven primitive — what stays excluded is upstream's copy, its product links, and the sibling-app cards. A generic site needs a homepage; ours is that pattern with the project's own name, tagline and corpus sections |
 | **Content-as-code** | `explorers/`, `cheatsheets/` — course artifacts, not machinery |
 | **Product config & analytics** | all 12 `customFields` endpoints; the dual-brand runtime switch (branding is instance config at build time); GA4 and all analytics wiring, *even env-gated* (`AnalyticsTracker`) — the theme carries zero analytics code |
 | **Tab-plugin companions** | `CoworkTabs`, `ToolTabs`, `WebAgentTabs`, `OSTabs` app components — superseded by the collapsed `remark-tabs` + the mdx package's `Tabs`/`TabItem` mapping |
@@ -41,12 +51,19 @@ interception test (Acceptance B8), on a fixture whose corpus is asserted externa
 so anything found is theme-introduced.
 
 **Dependency allowlist** (the manifest form of the same promise — allowlist gates, denylist
-backstops): `packages/sor-site` direct runtime deps must appear in a committed allowlist — initially
+backstops): `packages/sor-site` direct runtime deps must appear in a committed allowlist —
 `react`/`react-dom`, `@docusaurus/*` (peers), `@mdx-js/react`, `clsx`, `prism-react-renderer`,
-`@easyops-cn/docusaurus-search-local`, and the workspace-internal remark/loader packages. Growth
-edits the allowlist in the same reviewed commit. Backstop: a lockfile-wide scan for the known-bad
-names (`better-auth`, `@openai/chatkit-react`, `@chatscope/*`, `@monaco-editor/react`, `@xterm/*`,
-`ts-fsrs`, `recharts`) catches them even transitively.
+`@easyops-cn/docusaurus-search-local`, the workspace-internal remark/loader packages, **and — added
+2026-08-13 with the design system — `tailwindcss` v4 + `@tailwindcss/postcss` + `postcss` +
+`autoprefixer` + `tailwindcss-animate`, `lucide-react`, `class-variance-authority`,
+`tailwind-merge`, and the `@radix-ui/react-*` primitives that the kept shadcn components require
+(each named individually, never a wildcard)**. Growth edits the allowlist in the same reviewed
+commit — this amendment *is* that mechanism working, not an exception to it. `framer-motion`,
+`cmdk`, `next-themes` and `sonner` stay out at v0 (`tailwindcss-animate` plus CSS covers the kept
+chrome); a kept component that provably needs one is reported, not quietly added. Backstop
+unchanged: a lockfile-wide scan for the known-bad names (`better-auth`, `@openai/chatkit-react`,
+`@chatscope/*`, `@monaco-editor/react`, `@xterm/*`, `ts-fsrs`, `recharts`) catches them even
+transitively.
 
 ## Positive contract
 
@@ -71,11 +88,21 @@ names (`better-auth`, `@openai/chatkit-react`, `@chatscope/*`, `@monaco-editor/r
   `--ifm` tokens are **effective**, not merely defined; swizzles land in `site/src/theme/`.
   Components that render `themeConfig` data are **wrap-only**; a full ejection is legal only if the
   liveness suite still passes against it. Search stays the local index — no external service.
-- **Token discipline:** no raw color literals (hex/oklch/rgb/hsl) in package CSS outside the
-  designated token file(s); everything else consumes `var(--ifm-*)`/theme tokens. Baseline zero
-  after extraction cleanup — reducing upstream's 212 literals is a named work-list item in
-  `docs/extraction.md`.
-- **Slice 1 ships on stock `@docusaurus/preset-classic`**; this package arrives as an upgrade.
+- **The chrome crosses** *(added 2026-08-13)*: `Navbar` (with its mobile sheet), `Footer`,
+  `Layout`, `Root`, and the doc-page polish (`doc-pages.css`, `sidebar.css`) — de-branded and
+  de-producted on the way (the navbar loses auth, locale dropdown, voice control, leaderboard and
+  the updates badge; what remains is title, corpus nav, search, theme toggle). This is what makes a
+  vsor site look like a product instead of a docs template, and it is why `themeConfig` liveness
+  (B12) is now load-bearing rather than theoretical: these are full swizzles.
+- **Token discipline** — restated for the shadcn architecture: raw color literals (oklch/hex/rgb/
+  hsl) appear **only** in the token-definition layer (`:root` and the dark variant in
+  `tokens.css`); every other rule consumes `var(--…)`. Docusaurus's `--ifm-*` variables are *bridged*
+  onto those tokens, so an owner editing one token recolors both the theme and Docusaurus chrome —
+  the defect upstream has, fixed on the way across rather than imported. Baseline zero, CI-enforced.
+- **The scaffold ships the full theme on by default** *(amended 2026-08-13; was "slice 1 ships on
+  stock preset-classic, this package arrives as an upgrade")*. Stock preset-classic remains a
+  supported fallback and both configurations stay under the same B-suite (B14), so the guarantee
+  "the theme changes look, never contract" is still enforced — only the default flipped.
 
 ## Acceptance
 

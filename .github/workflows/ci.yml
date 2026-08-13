@@ -36,10 +36,13 @@ jobs:
         env:
           UV_OFFLINE: "1"
 
-  # Browser tier of specs/sor-site/surface (B5–B14): the only node job — the
-  # python gate above stays node-free. `make surface` assembles the fixture
-  # sites (stock + themed, each also with B12 sentinels), builds them with
-  # Docusaurus, serves them statically and runs the Playwright acceptance.
+  # Browser tier of specs/sor-site/surface (B5–B14) plus the build/dev acceptance
+  # of specs/vsor/build: the only node job — the python gate above stays node-free.
+  # `make surface` first runs `make build-acceptance` (tests/acceptance/build.sh:
+  # stages the site runtime via `make wheel`, builds the vsor wheel, drives
+  # `vsor build`/`vsor dev` for real), then assembles the fixture sites
+  # (stock + themed, each also with B12 sentinels), builds them with Docusaurus,
+  # serves them statically and runs the Playwright acceptance.
   surface:
     runs-on: ubuntu-latest
     steps:
@@ -49,6 +52,10 @@ jobs:
           node-version: "24"
           cache: npm
           cache-dependency-path: packages/sor-site/package-lock.json
+      # uv drives the build acceptance (wheel build + uvx vsor); this job runs
+      # online — the acceptance itself disables networking for exactly the rows
+      # that claim reuse (offline second build).
+      - uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9 # v9.0.0
       - run: npm ci
         working-directory: packages/sor-site
       # Chromium version comes from the @playwright/test pin in the lockfile.

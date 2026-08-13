@@ -1,7 +1,8 @@
-"""The CLI's promises today: --version works, help works, an unimplemented verb
-says so honestly with exit code 2 — never a stack trace, never silence — and
-`init` is dispatched to the scaffold BEFORE argparse can impose its own exit-2
-usage errors (the init contract owes exit 1 `error: bad-name` instead)."""
+"""The CLI's promises today: --version works, help works, the one unimplemented
+verb (`serve`) says so honestly with exit code 2 — never a stack trace, never
+silence — and `init` is dispatched to the scaffold BEFORE argparse can impose its
+own exit-2 usage errors (the init contract owes exit 1 `error: bad-name` instead).
+The `build`/`dev` contracts live in test_build_dev.py."""
 
 from pathlib import Path
 
@@ -22,9 +23,10 @@ def test_no_verb_prints_help(capsys: pytest.CaptureFixture[str]) -> None:
     assert "init" in capsys.readouterr().out
 
 
-@pytest.mark.parametrize("verb", ["dev", "build", "serve"])
-def test_unimplemented_verb_is_honest(verb: str, capsys: pytest.CaptureFixture[str]) -> None:
-    assert main([verb]) == 2
+def test_unimplemented_serve_is_honest(capsys: pytest.CaptureFixture[str]) -> None:
+    """`serve` is the one remaining stub. `dev` and `build` are implemented now —
+    their contract lives in test_build_dev.py and never exits 2."""
+    assert main(["serve"]) == 2
     err = capsys.readouterr().err
     assert "not implemented" in err
     assert "spec" in err
