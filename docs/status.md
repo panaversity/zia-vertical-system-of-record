@@ -59,7 +59,8 @@ rendered page); AST boundary guards at **baseline zero**; protected wiring (serv
 citation envelope or abstention path is a construction-time error); `vsor.testing` deterministic
 doubles as public API; the eval verdict enum (gate / scored / tracked) visible in every result row;
 docs in the wheel + a locator-only SKILL.md; a strict release profile where **a skip is a failure**;
-one `make` vocabulary quoted by AGENTS.md and CI alike; supply-chain trio (uv cooldown, exact dev
+one canonical command vocabulary quoted by AGENTS.md and called by CI (tool — Makefile vs raw uv —
+decided at the Phase-0 keyboard; evidence splits between openai-sdk and upstream); supply-chain trio (uv cooldown, exact dev
 pins, SHA-pinned actions); bounded corpus discovery copied from openclaw (file caps, symlink
 containment); `add-sources` authored in the ecosystem SKILL.md format — **and every converted
 document carries an origin-artifact record** (converter + version, source-bytes hash, page range,

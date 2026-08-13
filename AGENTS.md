@@ -198,8 +198,11 @@ tests/
 ```
 
 **The per-package tax is engineered out, not accepted:** all packages release in **lockstep at one
-shared version** (no version-pin policing between siblings), and one `make` vocabulary covers the
-workspace — AGENTS.md quotes make targets, CI calls make targets, humans type make targets.
+shared version** (no version-pin policing between siblings), and **one canonical command vocabulary
+covers the workspace** — quoted here, called by CI, typed by humans and agents, so the three can
+never drift. The tool carrying it is a Phase-0 keyboard decision (evidence splits: Makefile per
+openai-agents-python vs raw `uv run` + documented commands per upstream); the requirement is not.
+Contributor tooling only — users see the four `vsor` verbs, never this.
 
 **Future domains arrive as new packages.** A write-authority domain (a learner record, an identity
 record) gets its own package exactly as upstream holds them — the structure permits the family
