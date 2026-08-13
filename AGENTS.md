@@ -46,8 +46,11 @@ One line each; the reasoning lived in review and needs no re-litigating. Reversi
 evidence, recorded here with a revision note.
 
 1. **Conversation is the interface.** The human types `vsor init <name>`, then talks to the agent
-   they already use. CLI verbs are for the *agent* to run. v0 verbs: `init` · `build` · `serve`;
-   `check`, `sync`, `info --json` come after v0.
+   they already use. CLI verbs are for the *agent* to run. v0 verbs: `init` · `dev` · `build` · `serve`;
+   `check`, `sync`, `info --json` come after v0. `dev` is watch mode — the site hot-reloads
+   straight from `knowledge/`, the MCP surface serves the latest build with a debounced
+   incremental re-ingest (content-hash carry-forward: only changed documents re-embed, so cost ∝
+   change). `serve` is production: built artifacts, nothing watching.
    *Revision 2026-08-13: package and binary are both `vsor` — PyPI is free, and all four studied
    frameworks use one name (a rename leaves a deprecation stub forever). The earlier
    `ziavsor`-package hedge is retired.*
@@ -86,7 +89,12 @@ evidence, recorded here with a revision note.
     deploy-anywhere Dockerfile; `all` for the kernel), the runtime prefers `lib/` over the installed
     package, and `build.lock.json` records `ejected: [...]` so a build from modified source is
     visibly not a stock build. The scaffolded AGENTS.md tells coding agents the command exists — the
-    shadcn source-access experience, agent-self-served instead of pre-copied. **Composition is
+    shadcn source-access experience, agent-self-served instead of pre-copied. **Customization is a
+    ladder the agent climbs, cheapest rung first — the scaffolded AGENTS.md teaches the order:**
+    (1) config in `instance.md` (branding, retrieval knobs), (2) declared overrides (the
+    tool-description chain product > instance > default already exists upstream; a CSS layer for
+    the site), (3) eject. An ejected-and-modified component makes every subsequent build visibly
+    non-stock via `build.lock.json` — customization allowed, provenance intact. **Composition is
     config, never copies:** a second corpus or SoR is a second collection/instance, not source in
     the project.
 12. **Serving defaults fail safe** (decided 2026-08-13). Local `vsor serve`: auth **off**, bound to
