@@ -116,6 +116,24 @@ browsable".
 Postgres, embeddings, retrieval, abstention, on plumbing slice 1 proved. Earns the rest of Test 1
 and all of Test 2.
 
+## The v0 spec map and build order (2026-08-13)
+
+Seven specs, derived from the spec threshold (public surface · cross-package · hard to reverse ·
+agent-built): `vsor/init` · `vsor/instance-format` · `vsor/build-lock` · `sor-site/surface` ·
+`vsor/add-sources` (slice 1) · `vsor/serve` · `vsor/eject` (slice 2). One page each: business claim
+→ observable contract → acceptance test → out-of-scope. Extraction needs no spec —
+`docs/extraction.md` is that work list.
+
+Order: **Phase 0** (workspace, Makefile, CI shell, boundary tests at baseline zero, `fixtures/tiny`
+— no spec, nothing blocks it) → **slice 1** (specs 1–2 → Node spike → spec 4 → init/dev/build-site
+→ specs 3, 5 → timed site acceptance) → **slice 2** (kernel extraction → spec 6 → serve → gold set
++ abstention experiment → spec 7 → Tests 1+2 → checklist → quiet 0.1.0).
+
+**Decoupling that changes the blocker math:** slice 1 ships on the **stock Docusaurus classic
+theme** — the `learn-app` theme extraction becomes an upgrade, not a prerequisite. Therefore: Phase
+0 and all of slice 1 are blocked by **nothing**; copy authorization gates only slice 2's kernel
+extraction (+ the theme upgrade); the PyPI claim gates only the final publish.
+
 ## The two acceptance tests
 
 They measure different things; conflating them was a past defect.
