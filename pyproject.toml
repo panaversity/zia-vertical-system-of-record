@@ -1,5 +1,8 @@
 [tool.uv.workspace]
 members = ["packages/*"]
+# sor-site is the Node workspace (npm, packages/sor-site/package.json) — not a uv member.
+# Without this exclude, uv refuses the whole workspace and `make gate` cannot run.
+exclude = ["packages/sor-site"]
 
 [tool.uv]
 package = false

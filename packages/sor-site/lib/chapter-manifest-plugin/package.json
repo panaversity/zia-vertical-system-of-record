@@ -1,0 +1,16 @@
+{
+  "name": "@vsor/lib-chapter-manifest-plugin",
+  "version": "0.1.0",
+  "private": true,
+  "license": "Apache-2.0",
+  "description": "Docusaurus plugin that builds a chapter manifest of all docs via global data (copied from ag2 libs/docusaurus/chapter-manifest-plugin at d764f334, de-branded).",
+  "main": "index.js",
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "@vsor/lib-shared": "0.1.0",
+    "glob": "^13.0.0",
+    "gray-matter": "^4.0.3"
+  }
+}

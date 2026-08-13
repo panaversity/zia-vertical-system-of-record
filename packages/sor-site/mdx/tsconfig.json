@@ -1,0 +1,27 @@
+{
+  // Client-code build: everything under src/ is theme/component code that
+  // only webpack ever loads, so it compiles to ESM — the Docusaurus
+  // webpack/babel pipeline parses theme client code as ESM and CJS output
+  // breaks in the browser bundle ("exports is not defined", found live
+  // 2026-08-13). The Node-loaded plugin entry is the hand-written CJS
+  // ./index.js, deliberately outside this compilation.
+  // target ES2018: lowers optional chaining/nullish coalescing so the
+  // output runs even when the consuming site's babel step is skipped
+  // (package under node_modules without a "docusaurus" path segment).
+  "compilerOptions": {
+    "target": "ES2018",
+    "lib": ["ES2020", "DOM", "DOM.Iterable"],
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    "jsx": "react",
+    "strict": true,
+    "declaration": true,
+    "outDir": "lib",
+    "rootDir": "src",
+    "esModuleInterop": true,
+    "isolatedModules": true,
+    "forceConsistentCasingInFileNames": true,
+    "skipLibCheck": true
+  },
+  "include": ["src"]
+}

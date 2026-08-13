@@ -1,0 +1,11 @@
+{
+  "name": "@vsor/lib-plugin-structured-data",
+  "version": "0.1.0",
+  "private": true,
+  "license": "Apache-2.0",
+  "description": "Docusaurus plugin injecting schema.org JSON-LD (Organization, WebSite, Article) into built HTML — copied from ag2 libs/docusaurus/plugin-structured-data at d764f334; organization is plugin options, Course schema and locale trees stripped.",
+  "main": "index.js",
+  "engines": {
+    "node": ">=20"
+  }
+}

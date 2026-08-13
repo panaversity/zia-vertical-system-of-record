@@ -1,0 +1,17 @@
+{
+  "name": "@vsor/lib-remark-content-enhancements",
+  "version": "0.1.0",
+  "private": true,
+  "license": "Apache-2.0",
+  "description": "Composable remark plugin for frontmatter-driven content enhancements (slides) — copied from ag2 libs/docusaurus/remark-content-enhancements at d764f334, i18n-stripped, practice/simulation branch removed.",
+  "main": "index.js",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "test": "node --test"
+  },
+  "dependencies": {
+    "unist-util-visit": "^5.0.0"
+  }
+}

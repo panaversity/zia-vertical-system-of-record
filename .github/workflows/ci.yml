@@ -35,3 +35,23 @@ jobs:
       - run: make gate
         env:
           UV_OFFLINE: "1"
+
+  # Browser tier of specs/sor-site/surface (B5–B14): the only node job — the
+  # python gate above stays node-free. `make surface` assembles the fixture
+  # sites (stock + themed, each also with B12 sentinels), builds them with
+  # Docusaurus, serves them statically and runs the Playwright acceptance.
+  surface:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: packages/sor-site/package-lock.json
+      - run: npm ci
+        working-directory: packages/sor-site
+      # Chromium version comes from the @playwright/test pin in the lockfile.
+      - run: npx playwright install --with-deps chromium
+        working-directory: packages/sor-site
+      - run: make surface

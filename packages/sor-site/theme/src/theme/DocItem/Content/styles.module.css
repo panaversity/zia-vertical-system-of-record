@@ -1,0 +1,12 @@
+/**
+ * DocItem/Content header row — from upstream's .doc-content-header
+ * (doc-pages.css at d764f334), reduced to the actions-only row this theme
+ * keeps. No color literals (token discipline).
+ */
+
+.contentHeader {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  margin-bottom: 1rem;
+}

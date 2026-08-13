@@ -1,0 +1,18 @@
+{
+  "name": "@vsor/lib-remark-flashcards",
+  "version": "0.1.0",
+  "private": true,
+  "license": "Apache-2.0",
+  "description": "Remark plugin that injects co-located .flashcards.yaml decks as props into <Flashcards /> (copied from ag2 libs/docusaurus/remark-flashcards at d764f334).",
+  "main": "index.js",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "test": "node --test"
+  },
+  "dependencies": {
+    "@vsor/lib-shared": "0.1.0",
+    "unist-util-visit": "^5.0.0"
+  }
+}

@@ -1,0 +1,21 @@
+{
+  "name": "@vsor/lib-shared",
+  "version": "0.1.0",
+  "private": true,
+  "license": "Apache-2.0",
+  "description": "Shared loaders and helpers for the sor-site content pipeline (copied from ag2 libs/docusaurus/shared at d764f334, de-branded).",
+  "main": "index.js",
+  "exports": {
+    ".": "./index.js",
+    "./siteConfig": "./siteConfig.js",
+    "./normalizeToDocId": "./normalizeToDocId.js",
+    "./flashcardLoader": "./flashcardLoader.js",
+    "./galleryLoader": "./galleryLoader.js"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "yaml": "^2.8.2"
+  }
+}

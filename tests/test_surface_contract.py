@@ -1,0 +1,341 @@
+"""Phase A of the sor-site surface contract — specs/sor-site/surface/spec.md.
+
+Source + manifest checks only (spec: "runs the day the package lands"). Boundary
+tier: reads files, never imports, never runs Node — `make gate` stays node-free.
+The browser tier (Phase B, B5-B14) is a separate suite and a separate make target.
+
+  A1  every direct runtime dep of packages/sor-site is in the committed allowlist;
+      the lockfile contains no denylisted name (transitives included)
+  A2  zero matches of the committed exclusion list over shipped source
+      (.ts/.tsx/.js/.css under packages/sor-site and the templates site shell —
+      never markdown, specs, or any corpus); ReadingProgress carved out of any
+      progress pattern
+  A3  token lint: zero raw color literals outside the designated token files
+  A4  exported primitive prop types match the frozen baseline byte-for-byte
+
+Plus two fixture preconditions Phase B's B8/B13 rely on (the spec asserts them of
+the fixture corpus; they are pure source checks, so they live in this tier).
+"""
+
+import json
+import re
+from pathlib import Path
+
+REPO = Path(__file__).resolve().parent.parent
+SOR_SITE = REPO / "packages" / "sor-site"
+# The templates site shell — the other shipped surface the A2 scan covers.
+TEMPLATE_SITE = REPO / "packages" / "vsor" / "src" / "vsor" / "templates" / "scaffold" / "site"
+FIXTURE = REPO / "fixtures" / "tiny"
+LOCKFILE = SOR_SITE / "package-lock.json"
+
+# A3: the designated token files (spec "Token discipline" — "the designated
+# token file(s)"). Every color literal in shipped CSS lives in one of these;
+# everything else consumes var(--…).
+#   - tokens.css: the theme package's token file.
+#   - the scaffold's custom.css: the CONSUMING site's token seam — B12's
+#     sentinel builds patch exactly its --ifm-color-primary lines and the
+#     scaffold AGENTS.md names it "the design tokens". Designated here
+#     2026-08-13: the A3 scan previously covered packages/sor-site only, so a
+#     raw literal added to any other scaffold CSS would have passed unseen.
+TOKEN_FILE = SOR_SITE / "theme" / "src" / "css" / "tokens.css"
+TOKEN_FILES = (
+    TOKEN_FILE,
+    TEMPLATE_SITE / "src" / "css" / "custom.css",
+)
+
+# A4: the frozen prop baseline. packages/sor-site/mdx/src/types.ts is the single
+# public prop-type module; changing it means editing this baseline in the same
+# reviewed change — and the spec says changing a baseline requires touching the spec.
+PROP_MODULE = SOR_SITE / "mdx" / "src" / "types.ts"
+BASELINE = REPO / "tests" / "baselines" / "sor-site-props.ts"
+
+SOURCE_EXTS = {".ts", ".tsx", ".js", ".css"}
+
+# Compiled output (gitignored per packages/sor-site/.gitignore) — the scan covers
+# shipped source; built-bundle scanning is Phase B's B7, in the node tier.
+_GENERATED = (SOR_SITE / "mdx" / "lib", SOR_SITE / "theme" / "lib")
+
+# Out of A2/A3 scope by the spec's own words — the scan covers "the package's
+# shipped source (src/, theme/, css) and the templates/ site shell", and the e2e
+# acceptance harness is neither: B6 requires it to NAME the forbidden route words
+# (profile, onboarding, …) to assert their absence, and e2e/.scratch/ is
+# gitignored assembly/build output whose bundles B7 scans at runtime in the
+# browser tier. (Recorded 2026-08-13, green phase: the scan originally covered
+# e2e/ and failed on the harness's own B6 word list — a misread of A2's scope.)
+_OUT_OF_SCOPE = (SOR_SITE / "e2e",)
+
+
+def _is_scannable(path: Path) -> bool:
+    if not path.is_file() or path.suffix not in SOURCE_EXTS:
+        return False
+    if "node_modules" in path.parts:
+        return False
+    if any(root in path.parents for root in _OUT_OF_SCOPE):
+        return False
+    return all(gen not in path.parents for gen in _GENERATED)
+
+
+def _source_files(root: Path) -> list[Path]:
+    return [p for p in sorted(root.rglob("*")) if _is_scannable(p)]
+
+
+# --------------------------------------------------------------------------- A1
+# Allowlist gates, denylist backstops (spec "Dependency allowlist").
+# Direct runtime deps = dependencies + peerDependencies of every workspace
+# package.json. Growth edits this set in the same reviewed commit.
+
+ALLOWLIST_PREFIXES = (
+    "@docusaurus/",  # peers — the host framework
+    "@vsor/",  # workspace-internal packages
+)
+ALLOWLIST_EXACT = {
+    # Initial allowlist, verbatim from the spec:
+    "react",
+    "react-dom",
+    "@mdx-js/react",
+    "clsx",
+    "prism-react-renderer",
+    "@easyops-cn/docusaurus-search-local",
+    # Growth — each entry justified by an extraction report (2026-08-13):
+    "react-markdown",  # mdx+theme: renders quiz/flashcard markdown and the summary tab, as upstream did
+    "photoswipe",  # mdx: ImageZoom engine; self-contained, no network
+    "turndown",  # theme: client-side Copy-Markdown — a spec-kept DocPageActions action
+    "lunr",  # theme: bundled search index — replaces upstream's runtime CDN load (would fail B8)
+    "unist-util-visit",  # lib: remark plugins' tree walker, upstream pin
+    "yaml",  # lib/shared: flashcard/gallery deck loaders
+    "glob",  # lib: chapter-manifest + summaries corpus walks
+    "gray-matter",  # lib: chapter-manifest frontmatter parsing
+    "satori",  # lib/plugin-og-image: SVG card renderer (build-time only)
+    "sharp",  # lib/plugin-og-image: SVG→PNG (build-time only)
+}
+
+# Known-bad names: product deps that must never appear, even transitively.
+DENYLIST = (
+    "better-auth",
+    "@openai/chatkit-react",
+    "@chatscope",
+    "@monaco-editor/react",
+    "@xterm",
+    "ts-fsrs",
+    "recharts",
+)
+
+
+def _manifests() -> list[Path]:
+    return [
+        p
+        for p in sorted(SOR_SITE.rglob("package.json"))
+        if "node_modules" not in p.parts and all(gen not in p.parents for gen in _GENERATED)
+    ]
+
+
+def test_a1_direct_runtime_deps_are_allowlisted() -> None:
+    manifests = _manifests()
+    assert manifests, f"no package.json found under {SOR_SITE} — did the workspace move?"
+    violations: list[str] = []
+    for manifest in manifests:
+        data = json.loads(manifest.read_text())
+        runtime = {**data.get("dependencies", {}), **data.get("peerDependencies", {})}
+        for name in sorted(runtime):
+            if name in ALLOWLIST_EXACT or name.startswith(ALLOWLIST_PREFIXES):
+                continue
+            violations.append(f"{manifest.relative_to(REPO)}: {name}")
+    assert not violations, (
+        "direct runtime deps outside the committed allowlist (specs/sor-site/surface/spec.md) — "
+        "either the dep leaves or the allowlist grows in the same reviewed commit:\n"
+        + "\n".join(violations)
+    )
+
+
+def test_a1_lockfile_contains_no_denylisted_name() -> None:
+    assert LOCKFILE.exists(), (
+        f"{LOCKFILE.relative_to(REPO)} is missing — the workspace lockfile is committed "
+        "(settled lead decision); the denylist backstop scans it for transitive product deps"
+    )
+    text = LOCKFILE.read_text()
+    hits = [name for name in DENYLIST if name in text]
+    assert not hits, (
+        f"denylisted names present in {LOCKFILE.relative_to(REPO)} (transitives included): {hits}"
+    )
+
+
+# --------------------------------------------------------------------------- A2
+# The committed exclusion list — ONE file, packages/sor-site/e2e/tests/
+# exclusions.json, consumed here (tier "source") and by the browser tier's B7
+# bundle scan (tier "bundle") so the two scans can never drift again (they had —
+# found 2026-08-13: B7's hand-maintained copy omitted a dozen A2 patterns and
+# used case-exact brand strings). Row names mirror the spec's table; patterns
+# are word-boundary and case-sensitive unless an entry says otherwise; dir rows
+# (`progress/` …) match as path segments — in imports and in file paths.
+
+EXCLUSIONS_FILE = SOR_SITE / "e2e" / "tests" / "exclusions.json"
+_EXCLUSIONS_DATA = json.loads(EXCLUSIONS_FILE.read_text())
+
+
+def _tier_patterns(tier: str) -> list[tuple[str, re.Pattern[str]]]:
+    """(row label, compiled pattern) for every exclusion entry active in `tier`."""
+    out: list[tuple[str, re.Pattern[str]]] = []
+    for row in _EXCLUSIONS_DATA["rows"]:
+        for entry in row["patterns"]:
+            if isinstance(entry, str):
+                pattern, tiers, flags = entry, ("source", "bundle"), ""
+            else:
+                pattern = entry["pattern"]
+                tiers = tuple(entry.get("tiers", ("source", "bundle")))
+                flags = entry.get("flags", "")
+            if tier in tiers:
+                out.append((row["row"], re.compile(pattern, re.IGNORECASE if "i" in flags else 0)))
+    return out
+
+
+# Spec A2: "ReadingProgress carved out of any progress pattern". The local scroll
+# indicator is a kept content primitive; its name (and its stable data-attribute /
+# token spelling) is removed from the text before any pattern runs.
+_CARVE_OUTS: tuple[str, ...] = tuple(_EXCLUSIONS_DATA["carveOuts"]["tokens"])
+
+# Directory/file names that must not exist in the shipped tree at all — catches
+# excluded material arriving as files the content scan's extension filter skips.
+EXCLUDED_PATH_NAMES = {
+    "progress",
+    "Feedback",
+    "AdminFeedback",
+    "admin",
+    "explorers",
+    "cheatsheets",
+    "certifications",
+    "onboarding",
+    "profile",
+    "DESIGN_SYSTEM.md",
+}
+
+
+def _a2_files() -> list[Path]:
+    return _source_files(SOR_SITE) + _source_files(TEMPLATE_SITE)
+
+
+def test_a2_exclusion_list_returns_zero_matches() -> None:
+    patterns = _tier_patterns("source")
+    assert patterns, f"no source-tier patterns in {EXCLUSIONS_FILE.relative_to(REPO)}"
+    files = _a2_files()
+    assert files, "A2 found no source files to scan — did packages/sor-site or the templates shell move?"
+    violations: list[str] = []
+    for path in files:
+        text = path.read_text()
+        for token in _CARVE_OUTS:
+            text = text.replace(token, "")
+        for line_no, line in enumerate(text.splitlines(), start=1):
+            for row, pattern in patterns:
+                if pattern.search(line):
+                    violations.append(
+                        f"{path.relative_to(REPO)}:{line_no} [{row}: {pattern.pattern}] {line.strip()[:80]}"
+                    )
+    assert not violations, (
+        "excluded identifiers in shipped source (specs/sor-site/surface/spec.md, negative contract "
+        "— the scan covers comments too; scrub or reword, never carry the name across the seam):\n"
+        + "\n".join(violations)
+    )
+
+
+def test_a2_excluded_names_absent_from_paths() -> None:
+    violations: list[str] = []
+    for path in sorted(SOR_SITE.rglob("*")):
+        if "node_modules" in path.parts or any(gen in path.parents or gen == path for gen in _GENERATED):
+            continue
+        if any(root in path.parents or root == path for root in _OUT_OF_SCOPE):
+            continue
+        if path.name in EXCLUDED_PATH_NAMES or path.name.startswith("docs-"):
+            violations.append(str(path.relative_to(REPO)))
+    assert not violations, (
+        "excluded directory/file names present in the shipped tree:\n" + "\n".join(violations)
+    )
+
+
+# De-brand (settled lead decision, 2026-08-13): no upstream brand strings in
+# shipped source — branding comes from the consuming site's config. The pattern
+# lives in exclusions.json so the B7 bundle scan runs the identical one.
+_BRAND_RE = re.compile(
+    _EXCLUSIONS_DATA["brand"]["pattern"],
+    re.IGNORECASE if "i" in _EXCLUSIONS_DATA["brand"].get("flags", "") else 0,
+)
+
+
+def test_a2_no_brand_strings_in_shipped_source() -> None:
+    violations: list[str] = []
+    for path in _a2_files():
+        for line_no, line in enumerate(path.read_text().splitlines(), start=1):
+            if _BRAND_RE.search(line):
+                violations.append(f"{path.relative_to(REPO)}:{line_no} {line.strip()[:80]}")
+    assert not violations, (
+        "brand strings in shipped source (de-brand is part of the negative contract):\n"
+        + "\n".join(violations)
+    )
+
+
+# --------------------------------------------------------------------------- A3
+
+_COLOR_RE = re.compile(r"#[0-9a-fA-F]{3,8}\b|\b(?:rgb|rgba|hsl|hsla|oklch|oklab)\(")
+
+
+def test_a3_zero_color_literals_outside_token_files() -> None:
+    for token_file in TOKEN_FILES:
+        assert token_file.exists(), f"designated token file missing: {token_file.relative_to(REPO)}"
+    violations: list[str] = []
+    for path in _source_files(SOR_SITE) + _source_files(TEMPLATE_SITE):
+        if path.suffix != ".css" or path in TOKEN_FILES:
+            continue
+        for line_no, line in enumerate(path.read_text().splitlines(), start=1):
+            if _COLOR_RE.search(line):
+                violations.append(f"{path.relative_to(REPO)}:{line_no} {line.strip()[:80]}")
+    names = ", ".join(str(f.relative_to(REPO)) for f in TOKEN_FILES)
+    assert not violations, (
+        f"raw color literals outside the designated token files ({names}) — every color becomes a "
+        "named token there and the site consumes var(--…) (spec: token discipline, baseline zero):\n"
+        + "\n".join(violations)
+    )
+
+
+# --------------------------------------------------------------------------- A4
+
+
+def test_a4_prop_types_match_frozen_baseline() -> None:
+    assert PROP_MODULE.exists(), f"prop-type module missing: {PROP_MODULE.relative_to(REPO)}"
+    assert BASELINE.exists(), f"frozen baseline missing: {BASELINE.relative_to(REPO)}"
+    assert PROP_MODULE.read_bytes() == BASELINE.read_bytes(), (
+        f"{PROP_MODULE.relative_to(REPO)} differs from the frozen baseline "
+        f"{BASELINE.relative_to(REPO)} — the primitive prop contract is pinned; changing it means "
+        "updating the baseline in the same reviewed change AND touching specs/sor-site/surface/spec.md"
+    )
+
+
+# ------------------------------------------------------- fixture preconditions
+# The spec's Phase B builds against fixtures/tiny and relies on two properties
+# of the corpus itself; both are pure source assertions, so they gate here.
+
+_EXTERNAL_RE = re.compile(r"https?://|\bwww\.")
+_SEARCH_PHRASE = "shorba-x7q1"  # B13 types this into SearchBar; unique to one doc
+
+
+def test_fixture_corpus_contains_no_external_references() -> None:
+    hits: list[str] = []
+    for path in sorted(FIXTURE.rglob("*")):
+        if not path.is_file():
+            continue
+        for line_no, line in enumerate(path.read_text().splitlines(), start=1):
+            if _EXTERNAL_RE.search(line):
+                hits.append(f"{path.relative_to(REPO)}:{line_no} {line.strip()[:80]}")
+    assert not hits, (
+        "external references in the fixture corpus — B8's 'anything found is theme-introduced' "
+        "argument requires the corpus itself to be external-reference-free:\n" + "\n".join(hits)
+    )
+
+
+def test_fixture_unique_search_phrase_appears_exactly_once() -> None:
+    occurrences = [
+        path.relative_to(REPO)
+        for path in sorted(FIXTURE.rglob("*.md"))
+        for _ in range(path.read_text().count(_SEARCH_PHRASE))
+    ]
+    assert len(occurrences) == 1, (
+        f"the unique search phrase {_SEARCH_PHRASE!r} must appear exactly once in fixtures/tiny "
+        f"(B13 asserts one search hit linking to that doc); found {len(occurrences)}: {occurrences}"
+    )

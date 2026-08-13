@@ -222,6 +222,7 @@ scaffolded projects.
 | Boundary | `tests/test_boundaries.py` | reads source, parses with `ast`, never imports | ✅ |
 | Composition smoke | `tests/test_*_smoke.py` | real composition root; fake pool that *raises if touched* | ✅ |
 | Scaffold | one job | runs `vsor init` and builds the output | ✅ |
+| Surface | `make surface` (Playwright over the built fixture site, B5–B14 of `specs/sor-site/surface`) | Node + pinned Chromium; static server on 127.0.0.1; deterministic by construction — DOM-state waits only, no screenshots | own job (needs Node) |
 | Database | `skipif` on an env pair | disposable local Postgres | opt-in |
 | Eval | console scripts, not pytest | live provider | release gate |
 

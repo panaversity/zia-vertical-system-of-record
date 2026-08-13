@@ -1,0 +1,18 @@
+{
+  "name": "sor-site",
+  "private": true,
+  "description": "npm workspace root for the website surface. Contract: specs/sor-site/surface/spec.md",
+  "engines": {
+    "node": ">=20"
+  },
+  "workspaces": [
+    "mdx",
+    "theme",
+    "lib/*",
+    "e2e"
+  ],
+  "scripts": {
+    "build": "npm run build --workspaces --if-present",
+    "test": "npm test --workspaces --if-present"
+  }
+}

@@ -1,0 +1,145 @@
+{
+  "$comment": "THE committed exclusion list of specs/sor-site/surface/spec.md — one fact, one file. Consumed by BOTH tiers: tests/test_surface_contract.py (A2, source scan over shipped .ts/.tsx/.js/.css) and e2e/tests/static.spec.ts (B7, scan over built JS bundles). A pattern written as a bare string runs in both tiers, word-boundary and case-sensitive as written; an object entry narrows to one tier ('source' | 'bundle') and records why in its 'why'. The two files previously carried two hand-maintained copies and had diverged at birth (found 2026-08-13); do not add a pattern to one tier's consumer directly — add it here.",
+  "carveOuts": {
+    "$comment": "Spec A2: 'ReadingProgress carved out of any progress pattern' — the local scroll indicator is a kept content primitive. Both tiers scrub every occurrence of these tokens from the text before any pattern runs.",
+    "tokens": ["ReadingProgress", "reading-progress"]
+  },
+  "brand": {
+    "$comment": "De-brand (settled lead decision 2026-08-13): no upstream brand strings in shipped source or built output; branding comes from the consuming site's config. Case-insensitive so AgentFactory/agent-factory/AGENT_FACTORY cannot slip past a case-exact scan.",
+    "pattern": "panaversity|agent[\\s_-]?factory|\\bzia\\b",
+    "flags": "i"
+  },
+  "rows": [
+    {
+      "row": "Auth & gating",
+      "patterns": [
+        "\\bbetter-auth\\b",
+        "\\bNavbarAuth\\b",
+        "\\bContentGate\\b",
+        "\\bGatedQuiz\\b",
+        "\\bGatedSummary\\b"
+      ]
+    },
+    {
+      "row": "Tutor & AI panels",
+      "patterns": [
+        "\\bTeachMePanel\\b",
+        "\\bTeachingGuideSheet\\b",
+        "\\bStudyMode\\b",
+        "\\buseStudyMode\\b",
+        "\\bVoiceControlDock\\b",
+        "\\bAICheck\\b",
+        "\\bChatKit\\b",
+        "\\bchatkit\\b"
+      ]
+    },
+    {
+      "row": "Progress & gamification",
+      "patterns": [
+        "\\bprogress/",
+        "\\bprogressApiUrl\\b",
+        "\\bleaderboard\\b",
+        "\\bLeaderboard\\b",
+        "\\bHypothesisTrial\\b"
+      ]
+    },
+    {
+      "row": "Feedback & admin",
+      "patterns": ["\\bFeedback/", "\\bAdminFeedback\\b", "\\bpages/admin\\b"]
+    },
+    {
+      "row": "Practice & simulation",
+      "patterns": [
+        "\\bPracticeErrorCard\\b",
+        "\\bPracticeSetupCard\\b",
+        "\\bTerminalPanel\\b",
+        "\\bSimPlayer\\b",
+        "\\bInteractivePython\\b",
+        {
+          "pattern": "\\bmonaco\\b",
+          "tiers": ["bundle"],
+          "why": "dependency name: source-level enforcement is A1's lockfile denylist, and shipped-source comments legitimately name stripped deps when documenting the strip"
+        },
+        {
+          "pattern": "\\bxterm\\b",
+          "tiers": ["bundle"],
+          "why": "dependency name — same reason as monaco"
+        },
+        {
+          "pattern": "\\bts-fsrs\\b",
+          "tiers": ["bundle"],
+          "why": "dependency name — same reason as monaco; flashcards extraction comments name it as the denylisted scheduler they replaced"
+        },
+        {
+          "pattern": "\\brecharts\\b",
+          "tiers": ["bundle"],
+          "why": "dependency name — same reason as monaco"
+        }
+      ]
+    },
+    {
+      "row": "Marketing & product pages",
+      "patterns": [
+        "\\bThreeDBook\\b",
+        "\\bHeroIDESimulation\\b",
+        "\\bEcosystem\\b",
+        "\\bcertifications\\b",
+        "\\bonboarding\\b",
+        {
+          "pattern": "\\bprofile\\b",
+          "tiers": ["source"],
+          "why": "react-dom's attribute tables put 'color-profile' and 'profile:null' in every React bundle; the bundle tier scans the path form below instead"
+        },
+        {
+          "pattern": "profile/",
+          "tiers": ["bundle"],
+          "why": "bundle-safe form of the profile exclusion (see the source-tier entry above)"
+        },
+        {
+          "pattern": "\\bauthors\\b",
+          "tiers": ["source"],
+          "why": "@docusaurus/theme-common bundles its blog-authors class-name table even with the blog preset off; the excluded authors DATA cannot reach a bundle without its source first failing this row's source tier or the path scan"
+        },
+        "\\bRequireProfile\\b",
+        "\\bCapstoneWorkbook\\b",
+        "\\bProjectCard\\b"
+      ]
+    },
+    {
+      "row": "Content-as-code",
+      "patterns": ["\\bexplorers\\b", "\\bcheatsheets\\b"]
+    },
+    {
+      "row": "Product config & analytics",
+      "patterns": [
+        {
+          "pattern": "\\bcustomFields\\b",
+          "tiers": ["source"],
+          "why": "Docusaurus itself serializes a customFields key (empty here) into every site bundle, so a bundle string scan cannot distinguish product endpoints from the framework default; the 12 endpoint exclusion is enforced by this source tier plus the A1 allowlist"
+        },
+        "\\bdata-brand\\b",
+        "\\bGA4\\b",
+        "\\bgtag\\b",
+        "googletagmanager",
+        "google-analytics",
+        "\\bAnalyticsTracker\\b",
+        "\\bSegmentEditOverlay\\b",
+        "\\bPDFViewer\\b",
+        "\\bTailwindTestComponent\\b"
+      ]
+    },
+    {
+      "row": "Steering docs",
+      "patterns": ["\\bDESIGN_SYSTEM\\b"]
+    },
+    {
+      "row": "Translated content",
+      "patterns": [
+        "\\bdocs-[a-z]{2}\\b",
+        "\\bRomanUrdu",
+        "\\bLocaleDropdown\\b",
+        "\\bur-Latn\\b"
+      ]
+    }
+  ]
+}

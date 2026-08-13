@@ -1,0 +1,375 @@
+/**
+ * DocPageActions styles — copied from ag2 apps/learn-app src/css/doc-pages.css
+ * (the doc-page-actions / doc-actions rule families) at d764f334, converted
+ * from global classes to a CSS module, tokenized on copy (no raw color
+ * literals — token discipline; tokens live in src/css/tokens.css).
+ *
+ * Dropped with their components (never carry known debt): study-mode /
+ * ask-mode / feedback button rules and their gradient blues, lock/dot
+ * indicator rules, Radix-specific [data-state] menu animation overrides.
+ * The menu panel rules below style this package's own menu instead.
+ */
+
+.root {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+/* Split button container */
+.split {
+  position: relative;
+  display: flex;
+  align-items: stretch;
+  border: 1px solid var(--ifm-color-emphasis-200);
+  border-radius: 8px;
+  background: var(--ifm-background-surface-color);
+  transition: all 180ms cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 1px 2px var(--vsor-shadow-faint);
+}
+
+.split:hover {
+  border-color: var(--ifm-color-primary);
+  box-shadow: 0 2px 8px var(--vsor-shadow-soft);
+}
+
+/* Success state — green border */
+.splitSuccess {
+  border-color: var(--vsor-success) !important;
+}
+
+/* Main (copy) button — icon only */
+.main {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.625rem;
+  min-width: 36px;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  border-radius: 8px 0 0 8px;
+  color: var(--ifm-font-color-base);
+  font-size: 0.8125rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 180ms cubic-bezier(0.4, 0, 0.2, 1);
+  min-height: 36px;
+}
+
+.main:hover {
+  background: var(--ifm-color-emphasis-100);
+  color: var(--ifm-color-primary);
+}
+
+.main:focus-visible {
+  outline: 2px solid var(--ifm-color-primary);
+  outline-offset: -2px;
+  background: var(--ifm-color-emphasis-100);
+}
+
+/* Success state — green */
+.mainSuccess {
+  color: var(--vsor-success) !important;
+  background: var(--vsor-success-tint);
+}
+
+.mainSuccess:hover {
+  background: var(--vsor-success-tint-strong);
+  color: var(--vsor-success-strong) !important;
+}
+
+/* Icon wrapper for animations */
+.iconWrapper {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+}
+
+.icon {
+  transition:
+    transform 180ms cubic-bezier(0.4, 0, 0.2, 1),
+    opacity 180ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.iconSuccess {
+  color: var(--vsor-success);
+  animation: checkPop 300ms cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes checkPop {
+  0% {
+    transform: scale(0.5);
+    opacity: 0;
+  }
+
+  50% {
+    transform: scale(1.2);
+  }
+
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+.iconSpin {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Chevron menu trigger */
+.chevron {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 0.625rem;
+  background: transparent;
+  border: none;
+  border-radius: 0 8px 8px 0;
+  border-left: 1px solid var(--ifm-color-emphasis-200);
+  color: var(--ifm-color-emphasis-600);
+  cursor: pointer;
+  transition: all 180ms cubic-bezier(0.4, 0, 0.2, 1);
+  min-height: 36px;
+  min-width: 32px;
+  position: relative;
+}
+
+.chevron:hover {
+  background: var(--ifm-color-emphasis-100);
+  color: var(--ifm-font-color-base);
+}
+
+.chevron:focus-visible {
+  outline: 2px solid var(--ifm-color-primary);
+  outline-offset: -2px;
+  background: var(--ifm-color-emphasis-100);
+}
+
+.chevron[data-state="open"] .chevronIcon {
+  transform: rotate(180deg);
+}
+
+.chevronIcon {
+  transition: transform 200ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* ============================================================================
+   TOOLTIP — hover, with keyboard shortcut hint
+   ============================================================================ */
+
+.tooltipWrapper {
+  position: relative;
+  display: inline-flex;
+}
+
+.tooltip {
+  position: absolute;
+  left: 50%;
+  top: 100%;
+  margin-top: 6px;
+  transform: translateX(-50%) translateY(4px);
+  padding: 0.375rem 0.625rem;
+  background: var(--vsor-tooltip-bg);
+  color: var(--vsor-tooltip-fg);
+  font-size: 0.75rem;
+  font-weight: 500;
+  white-space: nowrap;
+  border-radius: 6px;
+  pointer-events: none;
+  opacity: 0;
+  visibility: hidden;
+  transition:
+    opacity 150ms ease-out,
+    transform 150ms ease-out,
+    visibility 150ms;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  box-shadow: 0 4px 12px var(--vsor-shadow-strong);
+}
+
+/* Tooltip arrow */
+.tooltip::before {
+  content: "";
+  position: absolute;
+  left: 50%;
+  bottom: 100%;
+  transform: translateX(-50%);
+  border: 5px solid transparent;
+  border-bottom-color: var(--vsor-tooltip-bg);
+}
+
+.tooltipWrapper:hover .tooltip,
+.tooltipWrapper:focus-within .tooltip {
+  opacity: 1;
+  visibility: visible;
+  transform: translateX(-50%) translateY(0);
+}
+
+.shortcut {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.125rem 0.375rem;
+  background: var(--vsor-tooltip-kbd-bg);
+  border-radius: 4px;
+  font-family: ui-monospace, SFMono-Regular, SF Mono, Menlo, monospace;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+/* ============================================================================
+   MENU — this package's own accessible menu (replaces the Radix dropdown)
+   ============================================================================ */
+
+.menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  min-width: 220px;
+  padding: 0.375rem;
+  border-radius: 10px;
+  background: var(--ifm-background-surface-color);
+  box-shadow:
+    0 4px 20px var(--vsor-shadow-medium),
+    0 0 0 1px var(--ifm-color-emphasis-200);
+  animation: dropdownIn 180ms cubic-bezier(0.4, 0, 0.2, 1);
+  z-index: 60;
+}
+
+@keyframes dropdownIn {
+  from {
+    opacity: 0;
+    transform: translateY(-4px) scale(0.96);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.menuItem {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  width: 100%;
+  padding: 0.5rem 0.75rem;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--ifm-font-color-base);
+  text-align: left;
+  cursor: pointer;
+  font-size: 0.8125rem;
+  transition: background 150ms ease-out;
+}
+
+.menuItem:hover {
+  background: var(--ifm-color-emphasis-100);
+}
+
+.menuItem:focus-visible {
+  outline: 2px solid var(--ifm-color-primary);
+  outline-offset: -2px;
+}
+
+.menuItem:disabled {
+  cursor: default;
+  opacity: 0.7;
+}
+
+.menuItemSuccess {
+  color: var(--vsor-success) !important;
+}
+
+.menuItemContent {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex: 1;
+  min-width: 0;
+}
+
+.menuItemLabel {
+  white-space: nowrap;
+}
+
+.menuItemMeta {
+  font-size: 0.6875rem;
+  color: var(--ifm-color-emphasis-600);
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  opacity: 0.8;
+}
+
+.menuSeparator {
+  height: 1px;
+  margin: 0.25rem 0.375rem;
+  background: var(--ifm-color-emphasis-200);
+}
+
+.menuShortcut {
+  margin-left: auto;
+  padding: 0.125rem 0.375rem;
+  background: var(--ifm-color-emphasis-100);
+  border-radius: 4px;
+  border: none;
+  font-family: ui-monospace, SFMono-Regular, SF Mono, Menlo, monospace;
+  font-size: 0.625rem;
+  font-weight: 500;
+  color: var(--ifm-color-emphasis-600);
+  letter-spacing: 0.02em;
+}
+
+/* ============================================================================
+   RESPONSIVE
+   ============================================================================ */
+
+@media screen and (max-width: 996px) {
+  .main {
+    padding: 0.4375rem 0.75rem;
+  }
+}
+
+@media screen and (max-width: 576px) {
+  .root {
+    position: static;
+  }
+
+  .main {
+    padding: 0.5rem;
+    min-width: 40px;
+    min-height: 40px;
+    justify-content: center;
+  }
+}
+
+/* ============================================================================
+   REDUCED MOTION
+   ============================================================================ */
+
+@media (prefers-reduced-motion: reduce) {
+  .icon,
+  .chevronIcon,
+  .menu,
+  .tooltip {
+    transition: none;
+    animation: none;
+  }
+}

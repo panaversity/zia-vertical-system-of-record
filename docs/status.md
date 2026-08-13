@@ -150,6 +150,27 @@ wholesale post-v0**, and **the MDX vocabulary (`<Quiz />` etc.) ships from slice
 package **extracted from learn-app** (owner decision 2026-08-13 superseded the review's fresh-author proposal: copy authorization granted for learn-app — copy, strip, rework) so the
 theme upgrade literally changes look, never contract.
 
+**`sor-site` landed 2026-08-13 — the extraction is real.** `packages/sor-site/` (npm workspace,
+lockfile committed): `@vsor/sor-site-mdx` (Quiz, flashcards, gallery, ExerciseCard, HighlightTip,
+ImageZoom + `@theme/MDXComponents` mapping — works on stock preset-classic), `@vsor/sor-site-theme`
+(LessonContent, DocPageActions audited to four corpus-neutral actions, ReadingProgress, SearchBar,
+ModeToggle; the token file; wrap-only swizzles), and ten `@vsor/lib-*` content-pipeline packages
+with the five tab plugins collapsed into one `remark-tabs` before crossing the seam — all copied
+from `ag2` at the pinned survey SHA under the owner's copy authorization, stripped per the surface
+spec's exclusion contract, de-branded (CI-scanned). Phase A runs inside `make gate` (allowlist +
+denylist backstop, exclusion boundary scan from the one committed `exclusions.json`, token lint at
+baseline zero, prop baseline); the browser tier is `make surface` — 20 Playwright checks (B5–B14)
+against BOTH stock and themed builds. The live walk caught what suites alone would have shipped:
+React #418 hydration on every themed doc page for Mac readers (Node ≥21's global `navigator` made
+the SSR guard dead), the build host's OS baked into shipped HTML, clipboard junk in
+Copy-as-Markdown — all fixed with red-state evidence and found-live comments. Named follow-up:
+per-primitive render assertions (flashcards, gallery, ExerciseCard, HighlightTip, ImageZoom) land
+with the fixture docs that exercise them; search title-ranking niggle recorded beside the code.
+
+**CI is red for a non-code reason:** GitHub Actions reports "account payments have failed or your
+spending limit needs to be increased" — jobs never start. Owner action; local `make gate` and
+`make surface` are the same checks and are green.
+
 Implementation discipline is now a skill — `.agents/skills/implement-spec/SKILL.md` (breakdown per
 aspect, red-first, aggressive review, live/browser verification, detail pass, truth sweep);
 AGENTS.md points to it. **`vsor init` is implemented against its ratified spec** (2026-08-13,

@@ -1,0 +1,24 @@
+/**
+ * ReadingProgress styles — copied from ag2 apps/learn-app at d764f334.
+ * Tokenized on copy: the hardcoded navy/gray bar colors became
+ * --vsor-reading-progress (defined in src/css/tokens.css as
+ * var(--ifm-color-primary), so a site's primary override recolors the bar —
+ * the token is effective, not merely defined).
+ */
+
+.progressBarContainer {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 4px;
+  background: transparent;
+  z-index: 9999;
+  pointer-events: none;
+}
+
+.progressBar {
+  height: 100%;
+  background: var(--vsor-reading-progress);
+  transition: width 0.1s ease-out;
+}

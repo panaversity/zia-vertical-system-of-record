@@ -1,0 +1,370 @@
+/**
+ * LessonContent styles — copied from ag2 apps/learn-app at d764f334.
+ *
+ * Tokenized on copy: every color literal was replaced by a var() consuming
+ * the designated token file (src/css/tokens.css) — token discipline is
+ * baseline zero. Dead rules dropped rather than carried (never carry known
+ * debt across a seam): tabBadge, summaryHeader/summaryBadge/summaryDisclaimer,
+ * loadingState/loadingSpinner, errorState/retryButton, and the auth-only
+ * tabLocked/tabLockIcon rules (auth & gating excluded by contract).
+ * Non-color local custom properties (spacing, easing) kept as-is.
+ */
+
+/* ============================================
+   Local Scope — spacing and motion only
+   ============================================ */
+.lessonContent {
+  /* Spacing rhythm */
+  --lc-space-xs: 0.25rem;
+  --lc-space-sm: 0.5rem;
+  --lc-space-md: 1rem;
+  --lc-space-lg: 1.5rem;
+  --lc-space-xl: 2rem;
+  --lc-space-2xl: 3rem;
+
+  /* Transitions */
+  --lc-ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --lc-ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --lc-duration-fast: 150ms;
+  --lc-duration-normal: 250ms;
+  --lc-duration-slow: 400ms;
+}
+
+/* ============================================
+   Container
+   ============================================ */
+.lessonContent {
+  position: relative;
+  width: 100%;
+  scroll-margin-top: 80px;
+  padding-top: var(--lc-space-md);
+}
+
+/* ============================================
+   Tab Navigation — sliding indicator track
+   ============================================ */
+.tabNav {
+  display: flex;
+  align-items: stretch;
+  gap: 0;
+  margin-bottom: var(--lc-space-xl);
+  padding: 0;
+  position: relative;
+  background: transparent;
+}
+
+.tabNav::before {
+  content: "";
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: var(--ifm-color-emphasis-200);
+}
+
+/* ============================================
+   Tab Button
+   ============================================ */
+.tab {
+  display: flex;
+  align-items: center;
+  gap: var(--lc-space-sm);
+  padding: var(--lc-space-md) var(--lc-space-lg);
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid transparent;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 0.875rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: var(--vsor-text-muted);
+  transition:
+    color var(--lc-duration-normal) var(--lc-ease-out),
+    border-color var(--lc-duration-normal) var(--lc-ease-out),
+    transform var(--lc-duration-fast) var(--lc-ease-out);
+  position: relative;
+  margin-bottom: -2px;
+  z-index: 1;
+}
+
+.tab:hover:not(.tabActive) {
+  color: var(--ifm-font-color-base);
+}
+
+.tab:focus-visible {
+  outline: 2px solid var(--vsor-accent);
+  outline-offset: 2px;
+}
+
+/* Active Tab — bold indicator */
+.tabActive {
+  color: var(--vsor-ink-strong);
+  border-bottom-color: var(--vsor-ink-soft);
+}
+
+.tabActive:hover {
+  transform: translateY(-1px);
+}
+
+/* ============================================
+   Tab Icon
+   ============================================ */
+.tabIcon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0.6;
+  transition:
+    opacity var(--lc-duration-fast) var(--lc-ease-out),
+    transform var(--lc-duration-normal) var(--lc-ease-spring);
+}
+
+.tabIcon svg {
+  width: 18px;
+  height: 18px;
+  stroke-width: 2;
+}
+
+.tab:hover .tabIcon {
+  opacity: 0.85;
+}
+
+.tabActive .tabIcon {
+  opacity: 1;
+  transform: scale(1.1);
+}
+
+/* ============================================
+   Tab Label
+   ============================================ */
+.tabLabel {
+  white-space: nowrap;
+}
+
+/* ============================================
+   Panel Container
+   ============================================ */
+.panelContainer {
+  position: relative;
+  min-height: 200px;
+}
+
+.panel {
+  animation: panelReveal var(--lc-duration-slow) var(--lc-ease-out) forwards;
+}
+
+.panel[hidden] {
+  display: none;
+}
+
+.panelActive {
+  display: block;
+}
+
+@keyframes panelReveal {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ============================================
+   Summary Content — inset panel
+   ============================================ */
+.summaryContent {
+  position: relative;
+  background: linear-gradient(
+    135deg,
+    var(--vsor-panel-tint-start) 0%,
+    var(--vsor-panel-tint-end) 100%
+  );
+  padding: var(--lc-space-xl);
+  border: 1px solid var(--vsor-panel-border);
+
+  /* Distinctive left accent bar */
+  border-left: 4px solid var(--vsor-accent);
+}
+
+/* ============================================
+   Summary Body — typography
+   ============================================ */
+.summaryBody {
+  font-size: 1rem;
+  line-height: 1.8;
+  color: var(--ifm-font-color-base);
+}
+
+.summaryBody h1,
+.summaryBody h2,
+.summaryBody h3,
+.summaryBody h4 {
+  margin-top: var(--lc-space-xl);
+  margin-bottom: var(--lc-space-md);
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: var(--vsor-ink-strong);
+}
+
+.summaryBody h2 {
+  font-size: 1.25rem;
+  padding-bottom: var(--lc-space-sm);
+  border-bottom: 1px solid var(--vsor-rule);
+}
+
+.summaryBody h3 {
+  font-size: 1.1rem;
+}
+
+.summaryBody h4 {
+  font-size: 1rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  /* found on copy: upstream dark-mode h4 used a dark navy on a dark page
+     (near-invisible); mapped to the accent token instead, which the dark
+     palette overrides legibly. */
+  color: var(--vsor-accent);
+}
+
+.summaryBody p {
+  margin-bottom: var(--lc-space-lg);
+}
+
+.summaryBody p:last-child {
+  margin-bottom: 0;
+}
+
+.summaryBody ul,
+.summaryBody ol {
+  margin-bottom: var(--lc-space-lg);
+  padding-left: var(--lc-space-lg);
+}
+
+.summaryBody li {
+  margin-bottom: var(--lc-space-sm);
+  line-height: 1.7;
+}
+
+.summaryBody li::marker {
+  color: var(--vsor-accent);
+}
+
+.summaryBody strong {
+  font-weight: 700;
+  color: var(--vsor-ink-strong);
+}
+
+.summaryBody code {
+  font-size: 0.875em;
+  padding: 0.15rem 0.4rem;
+  background: var(--vsor-code-bg);
+  color: var(--vsor-ink-soft);
+  font-weight: 500;
+}
+
+.summaryBody blockquote {
+  margin: var(--lc-space-lg) 0;
+  padding: var(--lc-space-md) var(--lc-space-lg);
+  border-left: 3px solid var(--vsor-accent);
+  background: var(--vsor-quote-bg);
+  border-radius: 0 4px 4px 0;
+  font-style: italic;
+  color: var(--vsor-text-subtle);
+}
+
+/* ============================================
+   Responsive
+   ============================================ */
+@media screen and (max-width: 768px) {
+  .lessonContent {
+    padding-top: var(--lc-space-sm);
+  }
+
+  .tabNav {
+    margin-bottom: var(--lc-space-lg);
+  }
+
+  .tab {
+    flex: 1;
+    justify-content: center;
+    padding: var(--lc-space-md) var(--lc-space-sm);
+    font-size: 0.75rem;
+    min-height: 48px; /* Touch target */
+  }
+
+  .tabLabel {
+    display: none;
+  }
+
+  /* Show label on active tab only */
+  .tabActive .tabLabel {
+    display: inline;
+  }
+
+  .tabIcon svg {
+    width: 20px;
+    height: 20px;
+  }
+
+  .summaryContent {
+    padding: var(--lc-space-lg);
+    border-left-width: 3px;
+  }
+
+  .summaryBody {
+    font-size: 0.95rem;
+    line-height: 1.75;
+  }
+
+  .summaryBody h2 {
+    font-size: 1.15rem;
+  }
+
+  .summaryBody h3 {
+    font-size: 1.05rem;
+  }
+}
+
+/* ============================================
+   Print
+   ============================================ */
+@media print {
+  .tabNav {
+    display: none;
+  }
+
+  .panel[hidden] {
+    display: block !important;
+  }
+
+  .summaryContent {
+    background: none;
+    border: 1px solid var(--ifm-color-emphasis-300);
+    border-left: 4px solid var(--vsor-accent);
+    page-break-before: always;
+    margin-top: 2rem;
+  }
+}
+
+/* ============================================
+   Reduced Motion
+   ============================================ */
+@media (prefers-reduced-motion: reduce) {
+  .tab,
+  .tabIcon,
+  .panel {
+    transition: none;
+    animation: none;
+  }
+
+  .panel {
+    opacity: 1;
+    transform: none;
+  }
+}

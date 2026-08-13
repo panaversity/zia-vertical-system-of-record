@@ -1,0 +1,15 @@
+{
+  "name": "@vsor/lib-plugin-og-image",
+  "version": "0.1.0",
+  "private": true,
+  "license": "Apache-2.0",
+  "description": "Docusaurus plugin generating Open Graph card images with bundled self-hosted fonts — copied from ag2 libs/docusaurus/plugin-og-image at d764f334; card text and palette are options, no product defaults.",
+  "main": "index.js",
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "satori": "^0.18.3",
+    "sharp": "^0.34.4"
+  }
+}

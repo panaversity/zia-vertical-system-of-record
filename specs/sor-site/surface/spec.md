@@ -21,9 +21,11 @@ Excluded by name, enforced by test:
 | **Progress & gamification** | `progress/`, leaderboard, `HypothesisTrial` (`ReadingProgress` — the local scroll indicator — stays: no backend, content primitive) |
 | **Feedback & admin** | `Feedback/`, `AdminFeedback`, `pages/admin/` |
 | **Practice & simulation** | `PracticeErrorCard`, `PracticeSetupCard`, `TerminalPanel`, `SimPlayer`, `InteractivePython` (opt-in later at most) |
-| **Marketing & product pages** | `ThreeDBook`, `HeroIDESimulation`, `Ecosystem`, `certifications/`, `onboarding/`, `profile/`, authors data |
+| **Marketing & product pages** | `ThreeDBook`, `HeroIDESimulation`, `Ecosystem`, `certifications/`, `onboarding/`, `profile/`, authors data, `CapstoneWorkbook`, `ProjectCard`, `RequireProfile`, `SegmentEditOverlay`, `PDFViewer`, `TailwindTestComponent` |
 | **Content-as-code** | `explorers/`, `cheatsheets/` — course artifacts, not machinery |
-| **Product config & analytics** | all 12 `customFields` endpoints; the dual-brand runtime switch (branding is instance config at build time); GA4 and all analytics wiring, *even env-gated* — the theme carries zero analytics code |
+| **Product config & analytics** | all 12 `customFields` endpoints; the dual-brand runtime switch (branding is instance config at build time); GA4 and all analytics wiring, *even env-gated* (`AnalyticsTracker`) — the theme carries zero analytics code |
+| **Tab-plugin companions** | `CoworkTabs`, `ToolTabs`, `WebAgentTabs`, `OSTabs` app components — superseded by the collapsed `remark-tabs` + the mdx package's `Tabs`/`TabItem` mapping |
+| **Misc app chrome** | `DocEnhancements`, `SidebarToggle` — not copied, nothing references them (excluded 2026-08-13 closure pass; a later spec revision may re-audit); `LocaleDropdown`, `RomanUrduRouteEffects`, `TranslationBanner`, `TranslationEditor`, `UrduBidiIsolator`, `translation/` go with i18n |
 | **Steering docs** | `DESIGN_SYSTEM.md` and successors — the token file is the documentation |
 | **Translated content** | `docs-*` locale trees; i18n machinery is deferred wholesale post-v0 — the package ships and CI builds the default locale only |
 
@@ -88,15 +90,25 @@ A2  boundary test: parse the package's shipped source (src/, theme/, css) and th
     templates/ site shell — .ts/.tsx/.js/.css only, never markdown, specs, or any
     corpus — and assert zero matches of the committed exclusion list, which equals
     the table above row-for-row; word-boundary, case-sensitive; ReadingProgress
-    carved out of any progress pattern
-A3  token lint: zero raw color literals outside the designated token file(s)
+    carved out of any progress pattern. The one committed list lives at
+    packages/sor-site/e2e/tests/exclusions.json, consumed by this tier and B7;
+    per-tier carve-outs are recorded inline there with their evidence. The
+    framework's own home URL in scaffolded markdown is a recorded brand
+    exception (a factual pointer, verified real — not corpus branding)
+A3  token lint: zero raw color literals outside the designated token files —
+    concretely two: packages/sor-site/theme/src/css/tokens.css and the
+    scaffold's site/src/css/custom.css (the consuming site's token seam, the
+    exact lines B12's sentinels patch)
 A4  exported primitive prop types match the frozen baseline byte-for-byte
 ```
 
 **Phase B — lands in the same change as the fixture-site build.** Build target:
-`templates/` site shell + `fixtures/tiny` as `knowledge/`, extended so every kept primitive appears
-at least once and one doc carries a unique search phrase; the fixture corpus is asserted to contain
-zero external references.
+`templates/` site shell + `fixtures/tiny` as `knowledge/`, extended with one `<Quiz />` and one doc
+carrying a unique search phrase; the fixture corpus is asserted to contain zero external
+references. *(Amended at implementation, 2026-08-13: originally "every kept primitive appears at
+least once" — the landed fixture proves the quiz end-to-end and search; per-primitive render
+assertions for flashcards, gallery, ExerciseCard, HighlightTip and ImageZoom are named follow-up
+work, added with the fixture extension that carries them.)*
 
 ```
 B5  static scan of built HTML+CSS, all request-initiating positions (script src,
@@ -106,7 +118,11 @@ B6  route assertion against the Docusaurus route manifest / sitemap: no route
     outside /docs/** matches {admin, login, auth, signup, profile, onboarding,
     certifications, leaderboard}; corpus-generated /docs/** exempt by
     construction; the corresponding build/ directories do not exist
-B7  the A2 exclusion list also returns zero matches against built JS bundles
+B7  the A2 exclusion list (same committed file) also returns zero matches
+    against built JS bundles, plus a case-insensitive brand scan; recorded
+    bundle-tier carve-outs: react-dom's own attribute tables (profile),
+    theme-common's blog class tables (authors), Docusaurus's serialization of
+    the customFields key itself
 ```
 
 **Browser tier — the enforcement of record.** Deterministic by construction: production build
@@ -126,9 +142,11 @@ B12  seam liveness: build twice with sentinel themeConfig.navbar.title, footer
      copyright, and --ifm-color-primary; each sentinel appears in the built
      output and the old value is gone; a designated painted element's computed
      color derives from the token under both data-theme="light" and "dark"
-B13  primitives: each kept primitive renders; click one quiz option and its
+B13  primitives: the quiz renders end-to-end — click one option and its
      feedback appears; type the unique phrase into SearchBar, a result links to
-     that doc, click it, the page renders
+     that doc, click it, the page renders (amended 2026-08-13 with Phase B's
+     build-target clause: remaining primitives' render assertions are named
+     follow-up, landing with the fixture docs that exercise them)
 B14  the identical B-suite passes against the stock preset-classic
      configuration and the themed configuration
 ```

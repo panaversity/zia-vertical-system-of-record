@@ -1,0 +1,21 @@
+{
+  "name": "@vsor/lib-remark-tabs",
+  "version": "0.1.0",
+  "private": true,
+  "license": "Apache-2.0",
+  "description": "One configurable remark tabs plugin — the collapse of ag2's five near-identical tab plugins (os/channel/deploy/tool/cowork) at d764f334; vocabulary is config, transform is written once.",
+  "main": "index.js",
+  "exports": {
+    ".": "./index.js",
+    "./presets": "./presets.js"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "test": "node --test"
+  },
+  "dependencies": {
+    "unist-util-visit": "^5.0.0"
+  }
+}

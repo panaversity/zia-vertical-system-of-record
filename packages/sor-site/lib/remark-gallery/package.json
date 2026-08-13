@@ -1,0 +1,15 @@
+{
+  "name": "@vsor/lib-remark-gallery",
+  "version": "0.1.0",
+  "private": true,
+  "license": "Apache-2.0",
+  "description": "Remark plugin that injects co-located .gallery.yaml data as props into <ConversationGallery /> (copied from ag2 libs/docusaurus/remark-gallery at d764f334).",
+  "main": "index.js",
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "@vsor/lib-shared": "0.1.0",
+    "unist-util-visit": "^5.0.0"
+  }
+}

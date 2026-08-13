@@ -1,0 +1,483 @@
+/*
+ * Flashcards styles — reworked from upstream Flashcards.module.css (d764f334,
+ * 1,238 lines, 119 raw color literals) per the surface spec's token
+ * discipline: zero raw color literals; every color consumes a --ifm-* token.
+ * Class names are upstream's — the TSX contract did not change. The theme
+ * package restyles by redefining tokens, never by editing this file.
+ */
+
+.container {
+  position: relative;
+  margin: 2rem 0;
+  padding: 1.5rem;
+  border: 1px solid var(--ifm-color-emphasis-300);
+  border-radius: var(--ifm-global-radius);
+  background: var(--ifm-background-surface-color);
+}
+
+.fallbackMessage {
+  margin: 0;
+  color: var(--ifm-color-emphasis-600);
+  text-align: center;
+}
+
+.fullscreen {
+  position: fixed;
+  inset: 0;
+  z-index: 400;
+  margin: 0;
+  border-radius: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  overflow-y: auto;
+}
+
+.closeButton {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+  z-index: 1;
+  width: 2rem;
+  height: 2rem;
+  border: 1px solid var(--ifm-color-emphasis-300);
+  border-radius: 50%;
+  background: var(--ifm-background-color);
+  color: var(--ifm-font-color-base);
+  cursor: pointer;
+}
+
+/* ---------- browse layout ---------- */
+
+.browseLayout {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.navArrow {
+  flex-shrink: 0;
+  width: 2.5rem;
+  height: 2.5rem;
+  border: 1px solid var(--ifm-color-emphasis-300);
+  border-radius: 50%;
+  background: var(--ifm-background-color);
+  color: var(--ifm-font-color-base);
+  font-size: 1.4rem;
+  line-height: 1;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.navArrow:hover:not(:disabled) {
+  background: var(--ifm-hover-overlay);
+}
+
+.navArrow:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.cardArea {
+  flex: 1;
+  min-width: 0;
+  perspective: 1200px;
+}
+
+/* Upstream painted a branded radial glow here; the mdx layer stays flat and
+   leaves any glow to the theme package's restyle. */
+.atmosphericGlow {
+  border-radius: var(--ifm-global-radius);
+}
+
+.cardAnimator {
+  transition: opacity 0.25s ease, transform 0.25s ease;
+}
+
+.cardAnimator.exiting {
+  opacity: 0;
+  transform: translateX(1.5rem);
+}
+
+/* ---------- card ---------- */
+
+.cardWrapper {
+  width: 100%;
+}
+
+.card {
+  outline: none;
+  cursor: pointer;
+}
+
+.card:focus-visible {
+  outline: 2px solid var(--ifm-color-primary);
+  outline-offset: 4px;
+  border-radius: var(--ifm-global-radius);
+}
+
+.cardShell {
+  position: relative;
+  min-height: 260px;
+  transform-style: preserve-3d;
+}
+
+/* End-state / in-flight markers the TSX toggles; kept as real rules so the
+   CSS-modules mapping always yields a class name. */
+.cardShellTurned {
+  transform: none;
+}
+
+.cardAnimating {
+  pointer-events: none;
+}
+
+.cardRevealed {
+  cursor: pointer;
+}
+
+.cardShellForward {
+  animation: flipForward 0.58s ease both;
+}
+
+.cardShellBackward {
+  animation: flipBackward 0.58s ease both;
+}
+
+@keyframes flipForward {
+  from {
+    transform: rotateY(0deg);
+  }
+  to {
+    transform: rotateY(360deg);
+  }
+}
+
+@keyframes flipBackward {
+  from {
+    transform: rotateY(360deg);
+  }
+  to {
+    transform: rotateY(0deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cardShellForward,
+  .cardShellBackward {
+    animation: none;
+  }
+}
+
+.cardFace {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  min-height: 260px;
+  padding: 2rem 1.5rem;
+  border: 1px solid var(--ifm-color-emphasis-300);
+  border-radius: var(--ifm-global-radius);
+  background: var(--ifm-background-color);
+  box-shadow: var(--ifm-global-shadow-lw);
+}
+
+.cardFrontFace {
+  border-left: 4px solid var(--ifm-color-primary);
+}
+
+.cardBackFace {
+  border-left: 4px solid var(--ifm-color-success);
+}
+
+.contentSettling {
+  animation: settle 0.2s ease both;
+}
+
+@keyframes settle {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.copyButton {
+  position: absolute;
+  top: 0.75rem;
+  right: 0.75rem;
+  border: none;
+  background: none;
+  color: var(--ifm-color-emphasis-500);
+  font-size: 1rem;
+  cursor: pointer;
+}
+
+.copyButton:hover {
+  color: var(--ifm-color-primary);
+}
+
+.cardContent {
+  overflow-wrap: anywhere;
+}
+
+.safeCenter {
+  text-align: center;
+  font-size: 1.1rem;
+  line-height: 1.5;
+}
+
+.safeCenter p:last-child {
+  margin-bottom: 0;
+}
+
+.seeAnswerHint {
+  margin-top: 1rem;
+  text-align: center;
+  font-size: 0.8rem;
+  color: var(--ifm-color-emphasis-500);
+}
+
+.whySection {
+  margin-top: 1.25rem;
+  padding-top: 0.75rem;
+  border-top: 1px dashed var(--ifm-color-emphasis-300);
+  font-size: 0.9rem;
+  color: var(--ifm-color-emphasis-700);
+}
+
+.whySection p:last-child {
+  margin-bottom: 0;
+}
+
+.whyLabel {
+  font-weight: 700;
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--ifm-color-emphasis-600);
+  margin-bottom: 0.25rem;
+}
+
+/* ---------- rating ---------- */
+
+.ratingSlot {
+  min-height: 3.25rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 1rem;
+}
+
+.ratingGroup {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.trackerCount {
+  min-width: 1.75rem;
+  text-align: center;
+  font-weight: 700;
+  border-radius: 999px;
+  padding: 0.1rem 0.5rem;
+}
+
+.trackerMissed {
+  background: var(--ifm-color-danger-contrast-background);
+  color: var(--ifm-color-danger-darkest);
+}
+
+.trackerGotIt {
+  background: var(--ifm-color-success-contrast-background);
+  color: var(--ifm-color-success-darkest);
+}
+
+.ratingButton {
+  padding: 0.5rem 1.5rem;
+  border-radius: 999px;
+  border: 1px solid var(--ifm-color-emphasis-300);
+  background: var(--ifm-background-color);
+  color: var(--ifm-font-color-base);
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.ratingMissed:hover,
+.ratingMissed.selected {
+  border-color: var(--ifm-color-danger);
+  background: var(--ifm-color-danger-contrast-background);
+  color: var(--ifm-color-danger-darkest);
+}
+
+.ratingGotIt:hover,
+.ratingGotIt.selected {
+  border-color: var(--ifm-color-success);
+  background: var(--ifm-color-success-contrast-background);
+  color: var(--ifm-color-success-darkest);
+}
+
+/* ---------- progress ---------- */
+
+.progressRow {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-top: 1rem;
+}
+
+.progressBar {
+  flex: 1;
+  height: 6px;
+  border-radius: 3px;
+  background: var(--ifm-color-emphasis-200);
+  overflow: hidden;
+}
+
+.progressFill {
+  height: 100%;
+  border-radius: 3px;
+  background: var(--ifm-color-primary);
+  transition: width 0.3s ease;
+}
+
+.cardCounter {
+  font-size: 0.85rem;
+  color: var(--ifm-color-emphasis-600);
+  white-space: nowrap;
+}
+
+/* ---------- hints & utilities ---------- */
+
+.keyboardHints {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  justify-content: center;
+  margin-top: 0.75rem;
+  font-size: 0.75rem;
+  color: var(--ifm-color-emphasis-600);
+}
+
+.keyHint kbd {
+  border: 1px solid var(--ifm-color-emphasis-300);
+  border-radius: 4px;
+  padding: 0 0.3rem;
+  background: var(--ifm-color-emphasis-100);
+  color: var(--ifm-color-emphasis-800);
+  font-size: 0.75rem;
+}
+
+.utilityRow {
+  display: flex;
+  gap: 0.5rem;
+  justify-content: center;
+  margin-top: 0.75rem;
+}
+
+.utilityButton {
+  padding: 0.35rem 0.9rem;
+  border: 1px solid var(--ifm-color-emphasis-300);
+  border-radius: 999px;
+  background: var(--ifm-background-color);
+  color: var(--ifm-color-emphasis-700);
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.utilityButton:hover {
+  background: var(--ifm-hover-overlay);
+}
+
+.downloadWrapper {
+  position: relative;
+}
+
+.downloadMenu {
+  position: absolute;
+  bottom: calc(100% + 0.35rem);
+  left: 50%;
+  transform: translateX(-50%);
+  border: 1px solid var(--ifm-color-emphasis-300);
+  border-radius: var(--ifm-global-radius);
+  background: var(--ifm-background-surface-color);
+  box-shadow: var(--ifm-global-shadow-md);
+  overflow: hidden;
+  z-index: 10;
+}
+
+.downloadOption {
+  display: block;
+  width: 100%;
+  padding: 0.5rem 1rem;
+  border: none;
+  background: none;
+  color: var(--ifm-font-color-base);
+  font-size: 0.85rem;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.downloadOption:hover {
+  background: var(--ifm-hover-overlay);
+}
+
+/* ---------- session complete ---------- */
+
+.sessionComplete {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 2rem 1rem;
+  text-align: center;
+}
+
+.sessionCompleteTitle {
+  font-size: 1.3rem;
+  font-weight: 700;
+  color: var(--ifm-heading-color);
+}
+
+.sessionStats {
+  display: flex;
+  gap: 0.75rem;
+}
+
+.stat {
+  padding: 0.35rem 1rem;
+  border-radius: 999px;
+  font-weight: 600;
+}
+
+.statMissed {
+  background: var(--ifm-color-danger-contrast-background);
+  color: var(--ifm-color-danger-darkest);
+}
+
+.statGotIt {
+  background: var(--ifm-color-success-contrast-background);
+  color: var(--ifm-color-success-darkest);
+}
+
+.sessionPct {
+  font-size: 1.1rem;
+  color: var(--ifm-color-emphasis-700);
+}
+
+.exitButton {
+  padding: 0.6rem 1.5rem;
+  border: none;
+  border-radius: var(--ifm-global-radius);
+  background: var(--ifm-color-primary);
+  color: var(--ifm-font-color-base-inverse);
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.exitButton:hover {
+  background: var(--ifm-color-primary-dark);
+}

@@ -1,6 +1,6 @@
 ---
 title: Halwa Puri
-description: The weekend breakfast: fried puri bread with semolina halwa and chickpea curry.
+description: "The weekend breakfast: fried puri bread with semolina halwa and chickpea curry."
 ---
 
 # Halwa Puri

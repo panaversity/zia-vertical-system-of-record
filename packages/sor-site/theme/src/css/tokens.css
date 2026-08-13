@@ -1,0 +1,103 @@
+/**
+ * @vsor/sor-site-theme — THE designated token file.
+ *
+ * Token discipline (specs/sor-site/surface/spec.md): this is the only file in
+ * the package allowed to contain raw color literals (hex/oklch/rgb/hsl).
+ * Every other stylesheet consumes var(--ifm-*) or var(--vsor-*) defined here.
+ * The token file is the documentation — there is no separate design-system doc.
+ *
+ * Sources: values extracted from ag2 apps/learn-app at d764f334
+ * (LessonContent/styles.module.css "Polar Night" palette; doc-pages.css
+ * action styles; custom.css action blues), de-branded.
+ *
+ * found live (2026-08-13, B12 sentinel run): this file must NOT declare the
+ * --ifm-color-primary shade set. It originally carried upstream's action-blue
+ * set "as a default the site overrides" — but the theme's client-module CSS
+ * bundles AFTER the site's custom.css, and at equal :root specificity source
+ * order wins, so the theme's palette silently beat the consuming site's and
+ * the primary seam painted nothing (the exact upstream disease the spec's
+ * "effective, not merely defined" clause exists to catch). The primary
+ * palette belongs to the consuming site's custom.css alone; Infima supplies
+ * the fallback. The theme only *consumes* var(--ifm-color-primary).
+ */
+
+:root {
+  /* ------------------------------------------------------------------ *
+   * Ink — text emphasis carried from the upstream "Polar Night" palette.
+   * ------------------------------------------------------------------ */
+  --vsor-ink-strong: #001f3f; /* headings, active tab, strong text */
+  --vsor-ink-soft: #001f3f; /* inline code text, active-tab indicator */
+  --vsor-text-muted: #888888; /* inactive tabs, secondary labels */
+  --vsor-text-subtle: #666666; /* blockquote text, disclaimers */
+
+  /* ------------------------------------------------------------------ *
+   * Accent — the deep-navy accent of the doc-page primitive.
+   * ------------------------------------------------------------------ */
+  --vsor-accent: #001f3f;
+  --vsor-panel-tint-start: rgba(0, 31, 63, 0.08); /* summary panel gradient */
+  --vsor-panel-tint-end: rgba(0, 31, 63, 0.03);
+  --vsor-panel-border: rgba(0, 31, 63, 0.12);
+  --vsor-rule: rgba(0, 31, 63, 0.15); /* heading/hairline rules */
+  --vsor-code-bg: rgba(0, 31, 63, 0.08);
+  --vsor-quote-bg: rgba(0, 31, 63, 0.04);
+
+  /* ------------------------------------------------------------------ *
+   * Success states (copy-success green, upstream doc-pages.css).
+   * ------------------------------------------------------------------ */
+  --vsor-success: oklch(0.723 0.219 149.579);
+  --vsor-success-strong: oklch(0.65 0.219 149.579);
+  --vsor-success-tint: oklch(0.723 0.219 149.579 / 0.1);
+  --vsor-success-tint-strong: oklch(0.723 0.219 149.579 / 0.15);
+
+  /* ------------------------------------------------------------------ *
+   * Shadows and overlays.
+   * ------------------------------------------------------------------ */
+  --vsor-shadow-faint: rgba(0, 0, 0, 0.04);
+  --vsor-shadow-soft: rgba(0, 0, 0, 0.08);
+  --vsor-shadow-medium: rgba(0, 0, 0, 0.12);
+  --vsor-shadow-strong: rgba(0, 0, 0, 0.15);
+  --vsor-overlay: rgba(0, 0, 0, 0.5); /* search modal backdrop */
+
+  /* ------------------------------------------------------------------ *
+   * Tooltip (inverted surface, upstream doc-pages.css).
+   * ------------------------------------------------------------------ */
+  --vsor-tooltip-bg: oklch(0.145 0 0);
+  --vsor-tooltip-fg: #ffffff;
+  --vsor-tooltip-kbd-bg: rgba(255, 255, 255, 0.15);
+
+  /* ------------------------------------------------------------------ *
+   * Component hooks. The reading-progress bar derives from the primary
+   * token so a site's --ifm-color-primary override recolors it (B12's
+   * "effective, not merely defined" has a painted element to point at).
+   * ------------------------------------------------------------------ */
+  --vsor-reading-progress: var(--ifm-color-primary);
+}
+
+[data-theme="dark"] {
+  /* Ink — upstream dark mode swaps navy for white/grays. */
+  --vsor-ink-strong: #ffffff;
+  --vsor-ink-soft: #dddddd;
+  --vsor-text-muted: #aaaaaa;
+  --vsor-text-subtle: #aaaaaa;
+
+  /* Accent — upstream dark mode uses the light gray as accent. */
+  --vsor-accent: #aaaaaa;
+  --vsor-panel-tint-start: rgba(170, 170, 170, 0.06);
+  --vsor-panel-tint-end: rgba(170, 170, 170, 0.02);
+  --vsor-panel-border: rgba(170, 170, 170, 0.15);
+  --vsor-rule: rgba(170, 170, 170, 0.12);
+  --vsor-code-bg: rgba(170, 170, 170, 0.12);
+  --vsor-quote-bg: rgba(170, 170, 170, 0.06);
+
+  /* Shadows deepen in dark mode (upstream doc-pages.css dark section). */
+  --vsor-shadow-faint: rgba(0, 0, 0, 0.2);
+  --vsor-shadow-soft: rgba(0, 0, 0, 0.3);
+  --vsor-shadow-medium: rgba(0, 0, 0, 0.35);
+  --vsor-shadow-strong: rgba(0, 0, 0, 0.4);
+  --vsor-overlay: rgba(0, 0, 0, 0.65);
+
+  /* Tooltip inverts back to light-on-dark-page. */
+  --vsor-tooltip-bg: oklch(0.95 0 0);
+  --vsor-tooltip-fg: oklch(0.15 0 0);
+  --vsor-tooltip-kbd-bg: rgba(0, 0, 0, 0.2);
+}
