@@ -1,5 +1,5 @@
 ---
-status: draft
+status: ratified
 date: 2026-08-13
 ---
 
@@ -30,7 +30,7 @@ Both forms create **exactly**:
 | `instance.md` | valid per `specs/vsor/instance-format`; frontmatter = the required trio only (`format`, `name`, `vsor.requires` — reserved keys stay documented there, never scaffolded); body = a short real starter prompt naming the corpus, the abstention rule, and citations |
 | `knowledge/example.md` | ONE real document. Frontmatter contract, held here until a knowledge-format spec supersedes it: `title:` required, `description:` optional; the origin-artifact block is reserved for `add-sources` |
 | `site/docusaurus.config.ts` | targets `@docusaurus/preset-classic`, resolved by the framework-managed Node runtime (this spec depends on the Node-spike outcome); title = `<name>`, navbar = title only, footer = `© <year> <name>` — the owner's, never vsor's. All live seams |
-| `site/src/css/custom.css` | design tokens, **including `--ifm-color-primary`** (Docusaurus-native path — see ratification note 2) |
+| `site/src/css/custom.css` | design tokens, **including `--ifm-color-primary`** (Docusaurus-native path) |
 | `site/src/pages/index.tsx` | the homepage (Docusaurus-native path) |
 | `.agents/skills/add-sources/SKILL.md` | content authority: `templates/` alone, until `specs/vsor/add-sources` is ratified |
 | `AGENTS.md` | documents ONLY verbs implemented at the stamped version (others appear as "arrives at <version>" pointers — never present tense); the exit-code table below, stated explicitly because it diverges from eve's exit-2 convention; the `.env` precondition before `build`/`serve`; the line "before adding sources, read `.agents/skills/add-sources/SKILL.md`"; the docs locator (installed package `docs/`, web URL fallback); "secrets go in `.env`, never in command arguments" |
@@ -83,8 +83,10 @@ sibling temp directory and renames into place only on total success. The in-plac
   reason; exit 0.
 
 **Version pinning:** the one contract value is the running distribution version
-(`importlib.metadata.version("vsor")`). `vsor.requires` derives from it by one rule (ratification
-note 1). A version that is missing, `0.0.0`, or carrying a dev/pre segment refuses — exit 3,
+(`importlib.metadata.version("vsor")`). `vsor.requires` derives from it by one rule — **exact floor**: running
+`X.Y.Z` writes `>=X.Y.Z,<X.(Y+1)` (a minor floor would let an older cached patch satisfy the pin
+while the scaffold's stamped docs reference newer behavior — the exact drift this pin exists to
+catch). A version that is missing, `0.0.0`, or carrying a dev/pre segment refuses — exit 3,
 `error: unstamped`, naming the packaging defect — unless `VSOR_DEV_VERSION=<x.y.z>` is set by the
 dev/CI harness (the Makefile exports it), whose value is then pinned. No filesystem sniffing, ever.
 
@@ -157,18 +159,3 @@ template/theme selection (post-v0) · any interactive question (never — settle
 `--json` on init at v0 — agents branch on exit codes and the stderr slug; an envelope arrives with
 `info --json` post-v0 · Windows beyond the named refusal · knowledge frontmatter beyond the two
 keys held here.
-
-## Open for ratification
-
-1. **`vsor.requires` floor rule** — running `X.Y.Z` writes either **(a) `>=X.Y.Z,<X.(Y+1)`
-   (RECOMMENDED** — an older cached patch of vsor can otherwise satisfy the pin while the
-   scaffold's stamped docs reference newer behavior — the exact drift `vsor.requires` exists to
-   catch**)** or (b) `>=X.Y,<X.(Y+1)`, matching instance-format's current example. Either way,
-   instance-format's `requires` row becomes a pointer to this rule (one fact, one file).
-2. **Docusaurus-native `site/` layout** — this spec scaffolds `site/src/css/custom.css` and
-   `site/src/pages/index.tsx`, superseding the flat tree in AGENTS.md's scaffold section
-   **(RECOMMENDED** — the flat layout contradicts settled decision 11's own "seams agents know from
-   training data" rationale and the already-settled `site/src/theme/` swizzle destination, and the
-   stock preset silently ignores root-level files**)**. The ratifying commit must carry the
-   AGENTS.md revision note (src/ paths, `CLAUDE.md` row, `.DS_Store` ignore line) — supersession
-   visible, same commit.

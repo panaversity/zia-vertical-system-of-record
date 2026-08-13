@@ -20,8 +20,8 @@ v0 frontmatter — the complete surface:
 format: 1                  # required; the only recognized value
 name: my-sor               # required; identity. Becomes the tool-name brand at slice 2
 vsor:
-  requires: ">=0.1,<0.2"   # pinned by init to the running version;
-                           # v0 behaviour on mismatch: WARN and record in build.lock.json
+  requires: ">=0.1.5,<0.2" # exact-floor pin, derived by the rule in specs/vsor/init
+                           # (one fact, one file); on mismatch: WARN + record in build.lock.json
 ```
 
 Reserved for slice 2, accepted with these defaults, inert in slice 1:
