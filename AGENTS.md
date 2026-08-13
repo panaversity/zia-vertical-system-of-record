@@ -74,7 +74,17 @@ evidence, recorded here with a revision note.
    `text_search_config`, the archive table, auditor role, takedown write path.
 10. **Production database is Neon; development is `docker compose` with `pgvector/pgvector:pg17`,**
     committed — nothing needs a cloud account to develop against.
-11. **Positioning names the competitor first.** CoCounsel Legal already serves governed professional
+11. **The user's project is content and config only — machinery invisible** (decided 2026-08-13).
+    `init` writes markdown, `instance.md`, skills, `AGENTS.md` — no `pyproject`, no `node_modules`,
+    no copied source. **Customization is a verb, not a default:** `vsor eject <component>`
+    materializes framework source into `lib/` on demand (first target: `site`; also `docker` for a
+    deploy-anywhere Dockerfile; `all` for the kernel), the runtime prefers `lib/` over the installed
+    package, and `build.lock.json` records `ejected: [...]` so a build from modified source is
+    visibly not a stock build. The scaffolded AGENTS.md tells coding agents the command exists — the
+    shadcn source-access experience, agent-self-served instead of pre-copied. **Composition is
+    config, never copies:** a second corpus or SoR is a second collection/instance, not source in
+    the project.
+12. **Positioning names the competitor first.** CoCounsel Legal already serves governed professional
     knowledge over MCP; our claim is the narrow one — a governed *curriculum* with an *explicit
     abstention guarantee*, instantiable by anyone.
 
@@ -93,6 +103,8 @@ my-sor/                        ← created by `vsor init my-sor`; yours, your li
 ├── .gitignore                   ignores .vsor/ and build/
 └── (git repo, run scripts)
 ```
+
+No `lib/` by default — `vsor eject` materializes source on demand (settled decision 11).
 
 No `governance/`, no `evals/`, no `reflexes/` at level 0 — **empty scaffolded directories are
 unanswered questions in the user's repo.** Directories appear when the ladder or the work demands

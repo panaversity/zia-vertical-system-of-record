@@ -72,6 +72,20 @@ entirely by a coding agent, human only pasting paths · serve-time token cost of
 surface on `fixtures/tiny/` · scaffold-upgrade story once 0.2.0 meets a 0.1.0 project (record enough
 in `build.lock.json` to derive it later).
 
+## Ship order — two slices (decided 2026-08-13)
+
+**Slice 1 — the site surface.** `learn-app` extraction → `sor-site`; `vsor init` + `vsor build`
+producing a branded website from `knowledge/` + `instance.md`. Needs **no database, no keys** —
+shippable and demoable alone. Owns the two questions that belong at the keyboard: **Node at build
+time** (model C promises the user never installs Node — candidate answers: a managed runtime the way
+Playwright manages browsers, a prebuilt site shell in the wheel, or graceful skip) and the first
+**`vsor eject site`** target. Earns the acceptance line "the site builds and the corpus is
+browsable".
+
+**Slice 2 — the MCP surface.** `sor-content` + `sor-platform` + `sor-gateway-kit` → `vsor serve`:
+Postgres, embeddings, retrieval, abstention, on plumbing slice 1 proved. Earns the rest of Test 1
+and all of Test 2.
+
 ## The two acceptance tests
 
 They measure different things; conflating them was a past defect.

@@ -35,6 +35,10 @@ knowledge/*.md   instance.md                            ← you write these
 
 **It is not an agent framework.** It is the knowledge layer such frameworks read *from*.
 
+Your project stays yours and stays simple — markdown and one config file, no toolchain. When you (or
+your coding agent) want to customize deeper, `vsor eject <component>` puts the actual source in your
+repo, recorded in the build so a modified build is distinguishable from a stock one.
+
 Start with **[AGENTS.md](AGENTS.md)** (how this is built), then **[docs/status.md](docs/status.md)**
 (where things stand this week), then **[docs/extraction.md](docs/extraction.md)** (the work list for
 the join).
