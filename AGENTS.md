@@ -235,6 +235,20 @@ The code-era rules; they bind the day the first package lands. Precedent: upstre
    measured constants carry their date and method; first-run and empty states are reviewed as
    deliberately as the kernel.
 
+## Two design tests
+
+Recovered 2026-08-13 — lost in the doc consolidation; they are the deepest output of the design
+review and apply to every decision below the invariants.
+
+- **Governs acts, not artifacts.** Ask of every mechanism: *which act does this constrain, who
+  performs it, and what row exists afterwards proving they did* — not *what field does this add to a
+  register*. Rights checked at ingest but not at serving, approval attached to a corpus but not to
+  an answer, audit rows that cannot replay a read — all fail this test.
+- **Provenance is not correctness.** Everything here proves *who said something and when*. Nothing
+  yet expresses that a source is contested, a minority position, or superseded — and the expert's
+  judgment, the commercial surface, is precisely the ungoverned part. When adding a mechanism, name
+  which of the two it serves; never sell a provenance mechanism as a correctness one.
+
 ## Authority
 
 1. **Upstream code** beats every document here — read it at the pinned SHAs and cite it.

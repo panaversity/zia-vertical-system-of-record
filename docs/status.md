@@ -61,10 +61,22 @@ doubles as public API; the eval verdict enum (gate / scored / tracked) visible i
 docs in the wheel + a locator-only SKILL.md; a strict release profile where **a skip is a failure**;
 one `make` vocabulary quoted by AGENTS.md and CI alike; supply-chain trio (uv cooldown, exact dev
 pins, SHA-pinned actions); bounded corpus discovery copied from openclaw (file caps, symlink
-containment); `add-sources` authored in the ecosystem SKILL.md format.
+containment); `add-sources` authored in the ecosystem SKILL.md format — **and every converted
+document carries an origin-artifact record** (converter + version, source-bytes hash, page range,
+human fidelity attestation), or an OCR error in a rate table ships with full authority.
 
 **Never** (evidence in the study): implicit default embedder/model/floor · a vendoring pipeline ·
 a guard-script zoo with debt baselines · committed generated artifacts.
+
+**Unknowns opened by the 2026-08-13 decisions (model C · eject · deploy) — no coverage yet:**
+who supplies the embedding key at level 0 (upstream requires `GEMINI_API_KEY`; an accountant has
+none — local model in the wheel, keyless default, or scope the promise to developers) · whether the
+five-minute promise is genuinely zero-tech when Test 1 starts with `docker compose up` (embedded
+pglite+pgvector, or say plainly it is a developer promise at v0) · the default auth posture of a
+**deployed** level-0 MCP server (the kit is fail-closed and the user has no SSO — refusing to boot
+and an open server are both wrong) · version-pin mechanics (`instance.md` pins vsor; `uvx vsor` runs
+latest — who honors the pin) · `eject` mechanics for Python (`lib/` path preference, and
+upgrade-after-eject).
 
 **New unknowns for the skeleton to measure:** behavioural-eval flake rate before gating · does
 docs-in-the-wheel measurably help a coding agent (run Test 2 with and without) · Test 2 driven
