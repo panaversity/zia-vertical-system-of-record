@@ -55,11 +55,13 @@ names (`better-auth`, `@openai/chatkit-react`, `@chatscope/*`, `@monaco-editor/r
   `libs/docusaurus` content-pipeline packages, the five duplicate tab plugins collapsed to one
   *before* crossing the seam.
 - **The MDX vocabulary ships from slice 1**, preset-classic-compatible, as its own small package —
-  **authored fresh in this repo against the pinned props contract** (an interface fact from the
-  survey, so *not* gated on copy authorization; only the upstream restyling is). The theme upgrade
-  only restyles it. So "changes look, never contract" is literal: a corpus using `<Quiz />` builds
-  under both stock and themed configurations, and the identical acceptance suite passes against
-  both. The upgrade may change any pixel the suite does not pin; it may not change an assertion.
+  **extracted from `learn-app`, never re-implemented as a lookalike** *(owner decision 2026-08-13:
+  copy authorization for `ag2/apps/learn-app` granted in the owner's words — "copy and then
+  rework"; this supersedes the review's fresh-author proposal — the real components cross the seam,
+  stripped per the negative contract above)*. The theme upgrade only restyles it. So "changes look,
+  never contract" is literal: a corpus using `<Quiz />` builds under both stock and themed
+  configurations, and the identical acceptance suite passes against both. The upgrade may change
+  any pixel the suite does not pin; it may not change an assertion.
 - **Primitive contracts are pinned.** `<Quiz />` normatively: exactly four `options`,
   `correctOption` index, optional `explanation`/`source`. Exported prop types are diffed against a
   frozen baseline in package CI; changing a baseline requires touching this spec.
