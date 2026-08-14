@@ -12,6 +12,30 @@ vsor dev              # the live site on 127.0.0.1:3000, reloading as you write
 vsor build            # → build/, ready to upload anywhere
 ```
 
+## What you get, out of the box
+
+Four markdown files in `knowledge/` produce this — no theme to pick, no components to wire, no
+build config to write. Both screenshots are the fixture corpus this repository tests against, not
+a mockup.
+
+![The generated homepage: a hero built from the project's own name and tagline, and a panel
+counting the documents in the corpus](docs/images/home.jpg)
+
+![A generated document page: sidebar, breadcrumbs, reading time, copy-as-markdown, an
+in-page table of contents, and an admonition](docs/images/doc-page.jpg)
+
+Your corpus is just a folder. Sub-folders become sections; frontmatter sets titles and order:
+
+```
+knowledge/
+  one-source-two-surfaces.md
+  system-of-record.md
+  vertical-sor.md
+  document-primitives.md      ← <Quiz />, flashcards and callouts, if a document wants them
+instance.md                   ← what this deployment is
+site/docusaurus.config.ts     ← title, navbar, colours — the parts that are yours
+```
+
 ## The problem this exists for
 
 A general-purpose assistant answers everything in the same confident voice: your firm's rules and
