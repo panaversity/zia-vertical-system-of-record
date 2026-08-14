@@ -12,8 +12,8 @@
  * here; real visibility is open decision B4, and browser gating is theater
  * anyway), and the highlight-tip hint for the tutor "Ask" affordance (that
  * component ships in the MDX vocabulary package, not mounted here). Labels
- * are props so no curriculum vocabulary ships as a default ("Full Lesson"
- * upstream -> "Full Text" default here).
+ * are props so none of upstream's domain vocabulary ships as a default
+ * (its own label for the first tab became "Full Text" here).
  */
 
 import React, { useState, useRef, useCallback } from "react";

@@ -3,15 +3,31 @@
  * the corpus actually contains.
  *
  * Reworked from the upstream hero (apps/learn-app/src/pages/index.tsx and
- * index.module.css at d764f334). The proportions are upstream's, to the number:
- * a 32px-inset band at 100vh (styles.module.css `.heroFrame`) holding an 85vh
- * grid, a 1.2fr/1fr split divided by a hairline, the display type UPPERCASE and
- * black and tracking-tighter at leading-none (measured on upstream at 1440px:
- * 72px / 900 / -3.6px), the sub-head at 20px/32px, the last word on its own line
- * in the primary colour, sharp-cornered actions at h-14, and behind the right
- * column the 40px dot field and the blurred primary spotlight. That geometry is
- * most of what makes upstream's page feel built rather than assembled, and none
- * of it names a product, so all of it crossed.
+ * index.module.css at d764f334). The proportions are upstream's: a 32px-inset
+ * band (styles.module.css `.heroFrame`) holding a 1.2fr/1fr grid divided by a
+ * hairline, the display type UPPERCASE and black and tracking-tighter at
+ * leading-none (measured on upstream at 1440px: 72px / 900 / -3.6px), the
+ * sub-head ramping 14→20px, the last word on its own line in the primary colour
+ * at upstream's looser `tracking-tight`, sharp-cornered actions at h-14 with an
+ * 18px label, and behind the right column the 40px dot field and the blurred
+ * primary spotlight. That geometry is most of what makes upstream's page feel
+ * built rather than assembled, and none of it names a product, so all of it
+ * crossed.
+ *
+ * The ONE proportion that is deliberately not upstream's is the reserved height,
+ * and the reason is the divergence in (2)+(3) below rather than taste. Measured
+ * 2026-08-14 at 1440x900 against upstream's own built hero: upstream fills its
+ * 100vh band because its left column carries a kicker, a two-line h1, two
+ * paragraphs, two actions, a social-proof row and a row of author chips — 724px
+ * of ink in a 917px band, 79%. Ours carries an eyebrow, a name, a tagline and
+ * one action, and it must, because the rest of upstream's content is either
+ * product copy or a number a framework cannot honestly invent. Reproducing the
+ * band without the content mass put a 282px block in the middle of 900px of
+ * nothing — the page read as a template rather than a product, which is the
+ * exact complaint the design system was brought across to answer. So the band is
+ * sized to what it holds and capped (`min(100vh, 38rem)`; the grid `min(85vh,
+ * 30rem)`): still a full-bleed opening on a laptop, with the next band showing
+ * at the fold instead of half a screen of background.
  *
  * Three deliberate changes:
  *
@@ -37,11 +53,18 @@
  *    there; a system of record has something truer to show — how much it holds.
  *    It is a real manifest: every number comes from the docs plugin's own global
  *    data, so it cannot drift from the corpus and cannot be inflated.
- * 3. Under the actions upstream ran a pulsing live dot, a learner count, a
+ * 3. Under the actions upstream ran a pulsing live dot, an audience count, a
  *    reviews link and a row of contributor chips. A framework has no honest
  *    version of any of those — an invented count is the one thing a system of
  *    record must never print — so the row is gone rather than reworded, and the
  *    entrance animation it existed to carry moved onto the content itself.
+ *    Upstream's kicker DID survive, as the eyebrow: see DEFAULT_EYEBROW in
+ *    ./index.tsx, which states what the site is rather than what it sells.
+ *
+ * One divergence that is not upstream's and is not a copy: the CTA label is
+ * uppercased in CSS (`uppercase tracking-wide`) where upstream authored the
+ * capitals into the string. Same argument as (1) — the label is a prop an owner
+ * can replace, so the case belongs to the pixels and not to their words.
  *
  * The `m-0` on the manifest list and its rows, and `no-underline` on the two
  * actions, are not decoration: this package ships no Tailwind preflight (see
@@ -156,15 +179,15 @@ export default function Hero({
         <div
           className={
             hasManifest
-              ? "grid min-h-[85vh] grid-cols-1 lg:grid-cols-[1.2fr_1fr]"
-              : "grid min-h-[70vh] grid-cols-1"
+              ? `${styles.heroGrid} grid grid-cols-1 lg:grid-cols-[1.2fr_1fr]`
+              : `${styles.heroGridBare} grid grid-cols-1`
           }
         >
           <div
             className={
               hasManifest
-                ? "flex flex-col justify-center border-border/40 px-6 py-16 md:px-12 lg:border-r lg:px-16 lg:py-24"
-                : "flex flex-col justify-center px-6 py-16 md:px-12 lg:px-16 lg:py-24"
+                ? "flex flex-col justify-center border-border/40 px-6 py-12 md:px-12 lg:border-r lg:px-16 lg:py-0"
+                : "flex flex-col justify-center px-6 py-12 md:px-12 lg:px-16 lg:py-0"
             }
           >
             {eyebrow ? (
@@ -209,14 +232,20 @@ export default function Hero({
               style={step(1)}
             >
               {lead ? <span className="block">{lead}</span> : null}
-              <span className={accent ? "mt-1 block text-primary" : "block"}>
+              {/* `tracking-tight`, not the h1's `tracking-tighter`: upstream
+                  deliberately loosens the accented second line (-0.025em where
+                  the heading sets -0.05em), which at 72px is 1.8px of letter
+                  spacing rather than 3.6px on the single most prominent word on
+                  the page. Inheriting the heading's value set it twice as tight
+                  as the treatment it was copied from. */}
+              <span className={accent ? "mt-1 block text-primary tracking-tight" : "block"}>
                 {last}
               </span>
             </h1>
 
             {tagline ? (
               <p
-                className={`${styles.rise} mb-10 max-w-xl text-base leading-[1.6] text-muted-foreground sm:text-lg lg:text-xl`}
+                className={`${styles.rise} mb-10 max-w-xl text-sm leading-[1.6] text-muted-foreground sm:text-base md:text-lg lg:text-xl`}
                 style={step(2)}
               >
                 {tagline}
@@ -232,7 +261,7 @@ export default function Hero({
                   <Button
                     asChild
                     size="lg"
-                    className="h-12 px-6 text-sm font-bold uppercase tracking-wide sm:h-14 sm:px-8 sm:text-base"
+                    className="h-12 px-6 text-sm font-bold uppercase tracking-wide sm:h-14 sm:px-8 sm:text-lg"
                   >
                     <Link to={cta.href} className="group no-underline hover:no-underline">
                       {cta.label}
@@ -248,7 +277,7 @@ export default function Hero({
                     asChild
                     size="lg"
                     variant="outline"
-                    className="h-12 px-6 text-sm font-bold uppercase tracking-wide sm:h-14 sm:px-8 sm:text-base"
+                    className="h-12 px-6 text-sm font-bold uppercase tracking-wide sm:h-14 sm:px-8 sm:text-lg"
                   >
                     <Link
                       to={secondaryCta.href}
@@ -262,8 +291,14 @@ export default function Hero({
             ) : null}
           </div>
 
+          {/* `lg:min-h-[25rem]`, not `min-h-[25rem]`: the 400px floor exists to
+              give the dot field and the spotlight room BESIDE the text at lg.
+              Below lg the two columns stack, so it reserved 400px under a column
+              that had just ended — measured 2026-08-14 at 375x812, a 198px empty
+              band between the call to action and the manifest panel, on every
+              project-name length. */}
           {hasManifest ? (
-            <div className="relative flex min-h-[25rem] items-center justify-center px-6 py-12 md:px-12 lg:px-10 lg:py-24">
+            <div className="relative flex items-center justify-center px-6 py-6 md:px-12 lg:min-h-[25rem] lg:px-10 lg:py-24">
               <div className={styles.dotField} aria-hidden="true" />
               <div className={styles.spotlight} aria-hidden="true" />
               <dl

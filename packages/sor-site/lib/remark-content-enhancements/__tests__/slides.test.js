@@ -42,7 +42,7 @@ function findViewerIndex(tree, component = "SlidesViewer") {
 
 test("injects slides before the What You'll Learn heading", () => {
   const tree = makeTree([
-    makeHeading(1, "Chapter 1"),
+    makeHeading(1, "Part 1"),
     makeParagraph("Intro"),
     makeHeading(2, "Teaching Aid"),
     makeHeading(2, "What You'll Learn"),
@@ -50,8 +50,8 @@ test("injects slides before the What You'll Learn heading", () => {
 
   transform(
     tree,
-    makeFile("/docs/chapter-1/README.md"),
-    { source: "slides/chapter-1.pdf" },
+    makeFile("/docs/part-1/README.md"),
+    { source: "slides/part-1.pdf" },
     {},
   );
 
@@ -65,27 +65,27 @@ test("injects slides before the What You'll Learn heading", () => {
 
 test("falls back to the Teaching Aid section when What You'll Learn is absent", () => {
   const tree = makeTree([
-    makeHeading(1, "Chapter 23"),
+    makeHeading(1, "Part 23"),
     makeParagraph("Intro"),
     makeHeading(2, "Teaching Aid"),
-    makeHeading(3, "Lesson Map"),
+    makeHeading(3, "Outline"),
   ]);
 
   transform(
     tree,
-    makeFile("/docs/chapter-23/README.md"),
-    { source: "slides/chapter-23.pdf" },
+    makeFile("/docs/part-23/README.md"),
+    { source: "slides/part-23.pdf" },
     {},
   );
 
   const viewerIndex = findViewerIndex(tree);
   assert.equal(viewerIndex, 3);
-  assert.equal(tree.children[viewerIndex + 1].children[0].value, "Lesson Map");
+  assert.equal(tree.children[viewerIndex + 1].children[0].value, "Outline");
 });
 
 test("skips auto-injection when a manual viewer already exists", () => {
   const tree = makeTree([
-    makeHeading(1, "Chapter 31"),
+    makeHeading(1, "Part 31"),
     makeHeading(2, "Teaching Aid"),
     {
       type: "mdxJsxFlowElement",
@@ -98,8 +98,8 @@ test("skips auto-injection when a manual viewer already exists", () => {
 
   transform(
     tree,
-    makeFile("/docs/chapter-31/README.md"),
-    { source: "slides/chapter-31.pdf" },
+    makeFile("/docs/part-31/README.md"),
+    { source: "slides/part-31.pdf" },
     {},
   );
 
@@ -111,14 +111,14 @@ test("skips auto-injection when a manual viewer already exists", () => {
 
 test("emits the configured component name", () => {
   const tree = makeTree([
-    makeHeading(1, "Chapter 1"),
+    makeHeading(1, "Part 1"),
     makeHeading(2, "What You'll Learn"),
   ]);
 
   transform(
     tree,
-    makeFile("/docs/chapter-1/README.md"),
-    { source: "slides/chapter-1.pdf" },
+    makeFile("/docs/part-1/README.md"),
+    { source: "slides/part-1.pdf" },
     { component: "MyViewer" },
   );
 

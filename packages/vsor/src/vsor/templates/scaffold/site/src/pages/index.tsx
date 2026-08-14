@@ -7,7 +7,7 @@
 // There is no copy to maintain here and none to delete.
 //
 // Props are for what the corpus cannot say about itself, e.g.
-//   <Landing eyebrow="Updated monthly" sectionsHeading="The chapters" />
+//   <Landing eyebrow="Updated monthly" sectionsHeading="What is in here" />
 //   <Landing sections={[{ title: "Rulings", href: "/docs/rulings",
 //                         description: "Every published ruling, by year." }]} />
 //   <Landing cta={{ label: "Start reading", href: "/docs/intro" }} />

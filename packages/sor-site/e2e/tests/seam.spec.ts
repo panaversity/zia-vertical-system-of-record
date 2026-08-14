@@ -115,6 +115,92 @@ async function resolveMix(
 }
 
 /**
+ * What a CSS expression computes to in THIS browser, read off a probe element.
+ *
+ * The comparison is then between two values the same engine serialized from the
+ * same construction, which is the only way to assert a `color-mix()` or a
+ * gradient without guessing at Chrome's serialization (rgb? oklab? color(srgb)?)
+ * and without hardcoding a colour the sentinel is supposed to be moving.
+ */
+async function computedFrom(
+  page: import("@playwright/test").Page,
+  property: string,
+  value: string,
+): Promise<string> {
+  return page.evaluate(
+    ([prop, val]) => {
+      const el = document.createElement("div");
+      el.style.setProperty(prop, val);
+      document.body.appendChild(el);
+      const out = getComputedStyle(el).getPropertyValue(prop);
+      el.remove();
+      return out;
+    },
+    [property, value],
+  );
+}
+
+/**
+ * B12, third painted family — the DOC-PAGE chrome, added 2026-08-14.
+ *
+ * The two tests above read the sidebar pill and the hero's call to action. Both
+ * are places where the bridge was already known to be load-bearing. The reading
+ * chrome was not, and that is where upstream's brand survived the fork: the
+ * accent tokens carried upstream's own navy as literals inside the designated
+ * token file, so A3 saw no violation (the literals were where literals belong)
+ * and the A2/B7 brand scans saw no hex to match — while the italic in every
+ * paragraph, the rule under every H2, the second stop of every table header and
+ * some forty rules of the quiz painted a colour no project could reach.
+ *
+ * The sentinel build is what proves it now, and it is what could have proved it
+ * all along: with `--ifm-color-primary` set to a red, the table header used to
+ * sweep RED to NAVY. Nothing looked. These three elements are the cheapest
+ * sample of the family — one text colour, one gradient, one CSS-module tint —
+ * and each reads a different composition (oklab darken, gradient stop, srgb
+ * alpha), so a regression in any one of the three token shapes is visible.
+ */
+test("B12 live: the doc-page accents derive from the token, not from a carried brand", async ({
+  page,
+}, testInfo) => {
+  const env = envFor(testInfo.project.name);
+  const primary = env.sentinelManifest.sentinels.primaryLight.rgb;
+  // The fixture doc that carries an <em>, a table and the quiz at once.
+  await page.goto(inMode(`${env.sentinelUrl}/docs/one-source-two-surfaces/`, "light"));
+  await expect(page.locator("html")).toHaveAttribute("data-theme", "light");
+
+  // 1. Text: --vsor-accent-deep, an oklab darken of the primary.
+  const em = page.locator(".markdown em").first();
+  await expect(em, "the fixture doc sets a phrase in italics").toBeVisible();
+  await expect(em, "italics take the accent DERIVED from the project's primary").toHaveCSS(
+    "color",
+    await computedFrom(page, "color", `color-mix(in oklab, ${primary} 65%, black)`),
+  );
+
+  // 2. A gradient: primary at 0%, the same darken at 100%. Asserted whole, so a
+  //    build where only the first stop moved (the actual 2026-08-14 defect —
+  //    red-to-navy) fails on the string it produced.
+  const thead = page.locator(".markdown thead").first();
+  await expect(thead, "the fixture doc carries a table").toBeVisible();
+  await expect(thead, "both stops of the table header sweep derive from the primary").toHaveCSS(
+    "background-image",
+    await computedFrom(
+      page,
+      "background-image",
+      `linear-gradient(135deg, ${primary} 0%, color-mix(in oklab, ${primary} 65%, black) 100%)`,
+    ),
+  );
+
+  // 3. A CSS-module tint: --vsor-accent-a020, the primary at 20% alpha. This is
+  //    the family that covers the quiz — ~40 rules, all of one shape.
+  const option = page.locator("[class*='optionButton']").first();
+  await expect(option).toBeVisible();
+  await expect(option, "the quiz option's border derives from the primary").toHaveCSS(
+    "border-top-color",
+    await computedFrom(page, "color", `color-mix(in srgb, ${primary} 20%, transparent)`),
+  );
+});
+
+/**
  * B12, second painted element — added 2026-08-14 with the design system.
  *
  * The sidebar item above is painted by Infima, from --ifm-menu-color-active.

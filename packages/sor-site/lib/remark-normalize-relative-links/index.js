@@ -1,3 +1,9 @@
+/**
+ * Remark plugin: resolve bare relative document links against the on-disk
+ * corpus, honouring numbered folder prefixes.
+ *
+ * Copied from ag2 libs/docusaurus/remark-normalize-relative-links at d764f334.
+ */
 const fs = require("fs");
 const path = require("path");
 

@@ -92,10 +92,16 @@ const FAVICON = process.env.VSOR_FAVICON || "img/favicon.svg";
 const SOCIAL_IMAGE = process.env.VSOR_SOCIAL_IMAGE || FAVICON;
 
 /**
- * The remark chain. `remark-directive` first (it parses the `:::` syntax the
- * tab plugin consumes), then the collapsed tabs plugin registered once per tab
+ * The remark chain: the collapsed tabs plugin registered once per tab
  * vocabulary, then the co-located data injectors, then the frontmatter-driven
  * enhancements.
+ *
+ * It opens with NO directive parser, and that is the load-bearing fact about
+ * this array. Docusaurus 3.10's mdx loader parses `:::` itself; adding a second
+ * directive extension — `remark-directive`, which upstream needed on 3.9 —
+ * silently un-handles admonitions, so every `:::tip` in a corpus renders as the
+ * literal text `:::tip` with a green build (see the found-live note inside the
+ * array, and Acceptance B16).
  *
  * Upstream registered five near-identical tab plugins here — one per
  * vocabulary, each a copy of the same transform. They are one plugin now, and
@@ -111,8 +117,9 @@ const remarkPlugins = [
   // directive extension in the chain silently un-handles admonitions — `:::tip`
   // renders as the literal text `:::tip` on every page. Docusaurus's own pass
   // still produces the containerDirective nodes remark-tabs below consumes, so
-  // the plugin is removed rather than pinned.
-  
+  // the plugin is removed rather than pinned, and removed from the dependency
+  // allowlist too (tests/test_surface_contract.py) so nothing reads as an
+  // invitation to add it back.
   [remarkTabs, tabPresets.osTabs],
   require("@vsor/lib-remark-flashcards"),
   require("@vsor/lib-remark-gallery"),
@@ -301,7 +308,7 @@ const config: Config = {
     // (found live 2026-08-14 by rebuilding with a renamed project).
     "@vsor/lib-plugin-structured-data",
     ["@vsor/lib-summaries-plugin", { docsPath: KNOWLEDGE_DIR }],
-    ["@vsor/lib-chapter-manifest-plugin", { docsPath: KNOWLEDGE_DIR }],
+    ["@vsor/lib-section-manifest-plugin", { docsPath: KNOWLEDGE_DIR }],
     // `@/*` -> `src/*`, the alias upstream used and the one every component in
     // this shell is written against.
     function aliasPlugin() {

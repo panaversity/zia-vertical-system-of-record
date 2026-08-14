@@ -58,8 +58,12 @@ export type LandingProps = {
   title?: string;
   /** Hero paragraph. Default: `siteConfig.tagline`. */
   tagline?: string;
-  /** Small mono label above the heading. Default: none. */
-  eyebrow?: string;
+  /**
+   * Small mono label above the heading. Default: "System of record" — what the
+   * page is, the one claim a framework may make on an owner's homepage.
+   * `false` removes it.
+   */
+  eyebrow?: string | false;
   /**
    * The primary call to action. Default: "Read the knowledge base" pointing at
    * the corpus's own main document (the docs plugin's `mainDocId`), so the link

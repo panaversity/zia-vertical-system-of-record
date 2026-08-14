@@ -118,11 +118,19 @@ evidence, recorded here with a revision note.
       rules against copies verbatim ("a second copy is a second thing to drift"). The kernel has
       zero training-data presence and its guardrails (5.7k test lines, 672MB eval artifacts)
       cannot ship in a scaffold.
-    - **The ladder per layer:** site = Docusaurus-native (themeConfig → css tokens → `swizzle
-      --wrap/--eject`, already in agents' training data — nothing to invent); kernel = instance
-      config → declared seams (tool-description chain, serve-time hooks) → eject as the recorded
-      escape hatch. Ejection/swizzle lands in `build.lock.json` either way — customization
-      allowed, provenance intact. **Composition is
+    - **The ladder per layer:** site = Docusaurus-native (themeConfig → css tokens →
+      `site/src/pages/` → `site/sidebars.ts`); kernel = instance config → declared seams
+      (tool-description chain, serve-time hooks) → eject as the recorded escape hatch. Ejection
+      lands in `build.lock.json` — customization allowed, provenance intact.
+      *Revision 2026-08-14, found live:* this rung used to end in `swizzle --wrap/--eject`, and at
+      0.1.0 that is **not a seam the fork implements**. Since the runtime shell became the siteDir,
+      Docusaurus resolves `@theme/*` out of `.vsor/site-runtime/src/theme` — the shell's own — and
+      the shell merges exactly four things from a project's authored `site/`: `sidebars.ts`,
+      `src/pages/`, `src/css/custom.css` and `static/`. A component dropped in `site/src/theme/`
+      is read by nothing. Swizzle is post-v0 and needs a real merge in
+      `packages/sor-site/app/docusaurus.config.ts` before it may be promised again. (What survives
+      of the claim: `themeConfig`, the `--ifm` tokens and a React page under `src/pages/` are all
+      still seams an agent's training data already knows.) **Composition is
     config, never copies:** a second corpus or SoR is a second collection/instance, not source in
     the project.
 12. **Serving defaults fail safe** (decided 2026-08-13). Local `vsor serve`: auth **off**, bound to
@@ -171,8 +179,10 @@ output against the full 27-line file list, and `packages/vsor/tests/test_init.py
 `EXPECTED_FILES` pins the same set. This tree is the map; those two are the contract.
 
 **Ownership destinations — one rule (settled 2026-08-13):** anything you take ownership of lands
-where its *home system* already puts it, never in an invented location. Swizzled site components →
-`site/src/theme/<Component>/` (Docusaurus's own destination). Ejected kernel code →
+where its *home system* already puts it, never in an invented location. When swizzling arrives, a
+swizzled site component will land at `site/src/theme/<Component>/` (Docusaurus's own destination) —
+*stated in the future tense 2026-08-14 because the fork does not read that path yet; see the
+revision under settled decision 11.* Ejected kernel code →
 `packages/<name>/` (the exact path it has in the framework repo), implemented as a local package
 override that shadows only that one dependency — ejecting `sor-content` does **not** drag
 `sor-platform` along; unejected deps stay installed. `vendor/` and `lib/` are dead as destinations.

@@ -113,7 +113,8 @@ consumes as a client.
 
 **Move mostly intact:** `shared/siteConfig.js` (url/baseUrl from env — the white-label seam),
 `normalizeToDocId`, `flashcardLoader` + `galleryLoader`, `plugin-og-image`, `plugin-structured-data`,
-`chapter-manifest-plugin`, `summaries-plugin`, `remark-flashcards` (tested),
+`section-manifest-plugin` (renamed from upstream's chapter-manifest-plugin),
+`summaries-plugin`, `remark-flashcards` (tested),
 `remark-content-enhancements`, `remark-gallery`, `remark-normalize-relative-links`.
 `remark-interactive-python` is curriculum-flavoured — opt-in. **Collapse the five near-identical tab
 remark plugins into one configurable `remark-tabs` before extracting** — never carry known

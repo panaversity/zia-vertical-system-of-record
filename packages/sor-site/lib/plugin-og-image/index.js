@@ -260,7 +260,7 @@ module.exports.runOGGeneration = runOGGeneration;
  *   - the homepage.
  *
  * Nested routes are skipped — they fall back to og-image.jpg: deep content
- * lives at /docs/<Part>/<chapter>/<doc>, i.e. ≥1 slash once the leading
+ * lives at /docs/<folder>/<subfolder>/<doc>, i.e. ≥1 slash once the leading
  * `docs/` is stripped. Measured upstream (2026): that is the >1,000-page bulk
  * none of which is shared individually — kept off the render path so OG
  * generation does not dominate build time or output/cache size.

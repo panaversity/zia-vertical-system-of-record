@@ -28,6 +28,7 @@ can never carry that mismatch.
 
 import base64
 import hashlib
+import importlib.util
 import io
 import json
 import re
@@ -250,6 +251,48 @@ def test_shipped_lockfile_integrity_matches_shipped_tarballs(wheel_path: Path) -
             )
 
 
+def _surface_contract_denylist() -> tuple[str, ...]:
+    """The one committed denylist, loaded from the tier that owns it.
+
+    Imported rather than restated: the surface spec pairs one allowlist with one
+    denylist, and two copies of a security list is one copy that stops being
+    edited. Loaded by path because the boundary tier is a repo-root test module,
+    not an importable package.
+    """
+    path = REPO_ROOT / "tests" / "test_surface_contract.py"
+    spec = importlib.util.spec_from_file_location("vsor_surface_contract", path)
+    assert spec is not None and spec.loader is not None, f"cannot load {path}"
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return tuple(module.DENYLIST)
+
+
+def test_shipped_lockfile_contains_no_denylisted_name(wheel_path: Path) -> None:
+    """The denylist backstop, over the lockfile a USER's `npm ci` actually resolves.
+
+    A1 (tests/test_surface_contract.py) scans the workspace lockfile, which is the
+    development graph — 1,493 packages, resolved from the workspace's own ranges.
+    It is not the graph that reaches a project: `make wheel` regenerates a SEPARATE
+    lockfile by fresh resolution against the shell manifest (Makefile: `npm install
+    --package-lock-only` in the runtime dir), that file ships as
+    `vsor/_site_runtime/package-lock.json`, and `npm ci` installs it into every
+    project's `.vsor/site-runtime`. It resolves a different, larger set and pins
+    different versions, so it is not a subset of the scanned one — a denylisted
+    package could arrive transitively there and nothing looked.
+
+    Added 2026-08-14; verified zero occurrences in the 0.1.0 wheel at the time, so
+    this closes an unguarded gap rather than a live breach.
+    """
+    with zipfile.ZipFile(wheel_path) as whl:
+        text = whl.read("vsor/_site_runtime/package-lock.json").decode("utf-8")
+    hits = [name for name in _surface_contract_denylist() if name in text]
+    assert not hits, (
+        f"denylisted names in the SHIPPED shell lockfile (transitives included): {hits} — "
+        "this is the lockfile a user's `npm ci` resolves, so the product dependency the "
+        "negative contract excludes would land in their .vsor/site-runtime"
+    )
+
+
 def test_shell_template_pins_exact_versions() -> None:
     """Pure — no node needed. The template is the one home of the shell's versions."""
     deps: dict[str, str] = json.loads(TEMPLATE.read_text(encoding="utf-8"))["dependencies"]
@@ -289,24 +332,62 @@ def test_shell_template_pins_exact_versions() -> None:
 _LINEAGE_RE = re.compile(r"\bag2\b|learn[-_ ]app|d764f334", re.IGNORECASE)
 
 
+LIB_SOURCE = REPO_ROOT / "packages" / "sor-site" / "lib"
+
+
+def _shipped_package_dirs() -> list[Path]:
+    """Every package whose self-identity reaches a project: the shell plus the
+    libraries the shell manifest installs beside it.
+
+    Widened 2026-08-14 from two files to all ten packages. The rule was written
+    for the app and enforced only there, so the nine siblings shipped
+    descriptions naming the upstream repository and the short SHA — and those are
+    exactly what `npm ls` and `npm view` print out of a user's
+    `.vsor/site-runtime/node_modules/@vsor/*`. Derived from the tarball names the
+    shell manifest declares rather than listed, so a new library is covered the
+    day it ships.
+    """
+    dirs = [APP_SOURCE]
+    for tarball in LIBRARY_TARBALLS:
+        # lib-remark-tabs.tgz -> packages/sor-site/lib/remark-tabs
+        name = tarball.removesuffix(".tgz").removeprefix("lib-")
+        candidate = LIB_SOURCE / name
+        assert candidate.is_dir(), (
+            f"the shell manifest names {tarball} but {candidate.relative_to(REPO_ROOT)} "
+            "does not exist — the tarball-to-directory mapping moved"
+        )
+        dirs.append(candidate)
+    return dirs
+
+
 def test_shipped_shell_identity_names_no_upstream_repository() -> None:
-    """Pure — no node needed. The shell's own README and description name no fork source."""
-    readme = APP_SOURCE / "README.md"
-    manifest = APP_SOURCE / "package.json"
-    assert readme.is_file() and manifest.is_file(), (
-        f"the shipped shell lost {readme.name} or {manifest.name} — npm packs both, and "
-        "the README is the one document a project's .vsor/site-runtime/ hands a reader"
-    )
+    """Pure — no node needed. No shipped package's README or description names the fork source."""
+    packages = _shipped_package_dirs()
+    assert len(packages) > 1, "the shell manifest declares no library tarballs — did the fork move?"
     violations: list[str] = []
-    for line_no, line in enumerate(readme.read_text(encoding="utf-8").splitlines(), start=1):
-        if _LINEAGE_RE.search(line):
-            violations.append(f"{readme.relative_to(REPO_ROOT)}:{line_no} {line.strip()[:80]}")
-    description = str(json.loads(manifest.read_text(encoding="utf-8")).get("description", ""))
-    if _LINEAGE_RE.search(description):
-        violations.append(f"{manifest.relative_to(REPO_ROOT)}: description: {description[:80]}")
+    for package in packages:
+        manifest = package / "package.json"
+        assert manifest.is_file(), (
+            f"{package.relative_to(REPO_ROOT)} has no package.json — npm packs it, and its "
+            "description is the sentence this package answers with in a stranger's project"
+        )
+        description = str(json.loads(manifest.read_text(encoding="utf-8")).get("description", ""))
+        if _LINEAGE_RE.search(description):
+            violations.append(f"{manifest.relative_to(REPO_ROOT)}: description: {description[:80]}")
+        readme = package / "README.md"
+        if package is packages[0]:
+            assert readme.is_file(), (
+                "the shipped shell lost README.md — npm packs it, and it is the one document "
+                "a project's .vsor/site-runtime/ hands a reader"
+            )
+        if not readme.is_file():
+            continue
+        for line_no, line in enumerate(readme.read_text(encoding="utf-8").splitlines(), start=1):
+            if _LINEAGE_RE.search(line):
+                violations.append(f"{readme.relative_to(REPO_ROOT)}:{line_no} {line.strip()[:80]}")
     assert not violations, (
-        "the shipped shell names the repository it was forked from (de-brand, lead "
+        "a shipped package names the repository it was forked from (de-brand, lead "
         "decision 2026-08-14) — provenance belongs in docs/extraction.md and in the "
-        "source headers, never in what the shell tells a stranger it is:\n"
+        "source headers, never in what a package tells a stranger it is:\n"
         + "\n".join(violations)
     )

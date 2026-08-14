@@ -58,7 +58,7 @@ build-acceptance:
 # tarball. lib/plugin-og-image is deliberately absent: nothing depends on it, and it
 # would drag satori + sharp into every user's install.
 packed := ./app \
-  ./lib/chapter-manifest-plugin \
+  ./lib/section-manifest-plugin \
   ./lib/plugin-structured-data \
   ./lib/remark-content-enhancements \
   ./lib/remark-flashcards \
@@ -104,7 +104,16 @@ wheel:
 	  mv "$$f" "$$(printf '%s' "$$f" | sed -E 's/^vsor-(.*)-[0-9]+\.[0-9]+\.[0-9]+\.tgz$$/\1.tgz/')"; \
 	done
 	cp packages/vsor/src/vsor/templates/site_runtime/package.json $(runtime_dir)/package.json
-	cd $(runtime_dir) && npm install --package-lock-only
+	# --prefer-online, found live 2026-08-14: this is a FRESH resolution against
+	# the registry, and npm answers it from its cached packuments unless told
+	# otherwise. On a machine whose cache predates a recent publish the two
+	# disagree — a package resolves to a new version whose peer range names a
+	# sibling version the stale packument does not list, and the step dies with
+	# `ETARGET ... No matching version found for X@^N` for a version that exists
+	# and that `npm view` prints happily. It failed twice in a row and passed on
+	# the third run only because `npm view` had refreshed the metadata in
+	# between. Revalidating makes the failure impossible instead of intermittent.
+	cd $(runtime_dir) && npm install --package-lock-only --prefer-online
 	uv build --package vsor
 
 # Browser tier of specs/sor-site/surface (B5–B13, B15, B16; B14 retired

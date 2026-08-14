@@ -1,9 +1,9 @@
 {
-  "name": "@vsor/lib-chapter-manifest-plugin",
+  "name": "@vsor/lib-section-manifest-plugin",
   "version": "0.1.0",
   "private": true,
   "license": "Apache-2.0",
-  "description": "Docusaurus plugin that builds a chapter manifest of all docs via global data (copied from ag2 libs/docusaurus/chapter-manifest-plugin at d764f334, de-branded).",
+  "description": "Docusaurus plugin: publishes, as global data, which folder of the corpus each document belongs to and every document in that folder.",
   "main": "index.js",
   "engines": {
     "node": ">=20"

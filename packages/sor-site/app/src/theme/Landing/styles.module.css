@@ -30,13 +30,34 @@
    restating them as sm:/md:/lg: would be a translation of upstream's numbers
    rather than a copy of them. `min-height` drops to auto below 996px for the
    reason upstream drops it — a phone should not have to scroll a viewport-tall
-   hero to reach the first word of content. */
+   hero to reach the first word of content.
+
+   THE CAP (added 2026-08-14, measured). Upstream reserves a flat 100vh and a
+   flat 85vh grid, and fills them: 724px of ink in a 917px band at 1440x900.
+   Ours cannot, and deliberately does not — see the divergences recorded in
+   Hero.tsx — so the same reservation put 282px of content in the middle of
+   900px of background and the page read as a template. `min()` keeps the
+   full-bleed behaviour on anything shorter than the cap and stops the band
+   growing past what it holds on anything taller. 38rem is not chosen: it is
+   30rem of grid plus this block's own 2rem/6rem inset, so the frame and the
+   grid state one height between them. */
 .heroFrame {
     position: relative;
     display: flex;
     align-items: center;
-    min-height: 100vh;
+    min-height: min(100vh, 38rem);
     padding: 2rem 2rem 6rem;
+}
+
+/* The grid inside the frame. Upstream's 85vh and 70vh, under the same cap and
+   for the same reason; the bare variant is the no-corpus hero, which has one
+   column and less in it. */
+.heroGrid {
+    min-height: min(85vh, 30rem);
+}
+
+.heroGridBare {
+    min-height: min(70vh, 24rem);
 }
 
 @media screen and (max-width: 996px) {

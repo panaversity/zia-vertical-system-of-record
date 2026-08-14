@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "license": "Apache-2.0",
-  "description": "Remark plugin that injects co-located .flashcards.yaml decks as props into <Flashcards /> (copied from ag2 libs/docusaurus/remark-flashcards at d764f334).",
+  "description": "Remark plugin: injects a co-located .flashcards.yaml deck as props into <Flashcards /> at build time.",
   "main": "index.js",
   "engines": {
     "node": ">=20"

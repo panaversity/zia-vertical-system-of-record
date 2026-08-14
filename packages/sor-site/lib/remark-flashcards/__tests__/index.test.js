@@ -72,13 +72,13 @@ test("injects cards prop when valid YAML exists", () => {
     cards: [{ id: "c1", front: "Q1?", back: "A1" }],
   };
   const mockLoader = makeMockLoader().mockReturnValue({
-    filePath: "/docs/lesson.flashcards.yaml",
+    filePath: "/docs/document.flashcards.yaml",
     deck,
   });
 
   const tree = makeTree([makeFCNode()]);
   const plugin = remarkFlashcards({ _loader: mockLoader });
-  plugin(tree, makeFile("/docs/lesson.md"));
+  plugin(tree, makeFile("/docs/document.md"));
 
   const injected = getInjectedValue(tree.children[0]);
   assert.deepEqual(injected, deck);
@@ -94,7 +94,7 @@ test("injects cards={null} when no YAML file exists", () => {
 
   const tree = makeTree([makeFCNode()]);
   const plugin = remarkFlashcards({ _loader: mockLoader });
-  plugin(tree, makeFile("/docs/lesson.md"));
+  plugin(tree, makeFile("/docs/document.md"));
 
   const injected = getInjectedValue(tree.children[0]);
   assert.equal(injected, null);
@@ -109,14 +109,14 @@ test("throws when YAML is unparseable", () => {
   const plugin = remarkFlashcards({ _loader: mockLoader });
 
   assert.throws(
-    () => plugin(tree, makeFile("/docs/lesson.md")),
-    /remark-flashcards: failed to load flashcards for "\/docs\/lesson\.md"/,
+    () => plugin(tree, makeFile("/docs/document.md")),
+    /remark-flashcards: failed to load flashcards for "\/docs\/document\.md"/,
   );
 });
 
 test("throws when deck is missing required id field", () => {
   const mockLoader = makeMockLoader().mockReturnValue({
-    filePath: "/docs/lesson.flashcards.yaml",
+    filePath: "/docs/document.flashcards.yaml",
     deck: { deck: {}, cards: [] },
   });
 
@@ -124,14 +124,14 @@ test("throws when deck is missing required id field", () => {
   const plugin = remarkFlashcards({ _loader: mockLoader });
 
   assert.throws(
-    () => plugin(tree, makeFile("/docs/lesson.md")),
+    () => plugin(tree, makeFile("/docs/document.md")),
     /missing required "deck\.id" field/,
   );
 });
 
 test("throws when deck is missing cards array", () => {
   const mockLoader = makeMockLoader().mockReturnValue({
-    filePath: "/docs/lesson.flashcards.yaml",
+    filePath: "/docs/document.flashcards.yaml",
     deck: { deck: { id: "d1" } },
   });
 
@@ -139,7 +139,7 @@ test("throws when deck is missing cards array", () => {
   const plugin = remarkFlashcards({ _loader: mockLoader });
 
   assert.throws(
-    () => plugin(tree, makeFile("/docs/lesson.md")),
+    () => plugin(tree, makeFile("/docs/document.md")),
     /missing required "cards" array/,
   );
 });
@@ -153,10 +153,10 @@ test("normalizes backslashes in file paths", () => {
 
   const tree = makeTree([makeFCNode()]);
   const plugin = remarkFlashcards({ _loader: mockLoader });
-  plugin(tree, makeFile("C:\\Users\\docs\\lesson.md"));
+  plugin(tree, makeFile("C:\\Users\\docs\\document.md"));
 
   // mockLoader should receive forward slashes
-  assert.deepEqual(mockLoader.calls[0], ["C:/Users/docs/lesson.md"]);
+  assert.deepEqual(mockLoader.calls[0], ["C:/Users/docs/document.md"]);
 });
 
 test("processes multiple Flashcards nodes independently", () => {
@@ -177,7 +177,7 @@ test("processes multiple Flashcards nodes independently", () => {
   const node2 = makeFCNode();
   const tree = makeTree([node1, node2]);
   const plugin = remarkFlashcards({ _loader: mockLoader });
-  plugin(tree, makeFile("/docs/lesson.md"));
+  plugin(tree, makeFile("/docs/document.md"));
 
   assert.deepEqual(getInjectedValue(tree.children[0]), deck1);
   assert.deepEqual(getInjectedValue(tree.children[1]), deck2);
@@ -194,7 +194,7 @@ test("skips nodes that already have a cards attribute", () => {
   };
   const tree = makeTree([makeFCNode([existingAttr])]);
   const plugin = remarkFlashcards({ _loader: mockLoader });
-  plugin(tree, makeFile("/docs/lesson.md"));
+  plugin(tree, makeFile("/docs/document.md"));
 
   // Should not have called loader at all
   assert.equal(mockLoader.calls.length, 0);

@@ -1,8 +1,9 @@
 # @vsor/lib-remark-tabs
 
-One configurable tabs plugin — the collapse of the five near-identical remark
-tab plugins that lived in `ag2/libs/docusaurus` at `d764f334` (surveyed in
-`docs/extraction.md`: *never carry known duplication across a seam*).
+One configurable tabs plugin — the collapse of five near-identical remark tab
+plugins into one. Their provenance is pinned in this framework's own
+`docs/extraction.md` and cited in `index.js`; the rule it serves is *never carry
+known duplication across a seam*.
 
 ## What the five originals shared
 
@@ -44,6 +45,6 @@ content before the first marker is dropped; an empty middle section still
 yields a tab while an empty last section does not.
 
 The originals shipped no tests; equivalence was verified 2026-08-13 by running
-all five originals at `d764f334` against this plugin (matching preset/config)
-on shared input trees and deep-comparing the output ASTs with
+all five of them, at the pinned survey commit, against this plugin (matching
+preset/config) on shared input trees and deep-comparing the output ASTs with
 `assert.deepEqual` — identical node-for-node, 5/5.

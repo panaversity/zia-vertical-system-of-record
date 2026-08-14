@@ -47,6 +47,7 @@ Run it as `make surface` from the repo root. One-time prerequisite:
 | `tests/seam.spec.ts` | B12 (sentinels present / old gone, token paints in light and dark) |
 | `tests/primitives.spec.ts` | B13, the rest of the vocabulary — ExerciseCard, HighlightTip, flashcards, gallery, tabs, mermaid, ImageZoom — each against `fixtures/tiny/document-primitives.md`. Computed-style *floors* (a rule width, a padding, a hairline), never equalities: a stripped box fails, decoration stays free to change |
 | `tests/design.spec.ts` | B15 — design-system liveness AND the regression net; B16 (admonitions in both the v2 and v3 syntaxes); and the hero's CSS-only capitalization, read from Chromium's AX tree |
+| `tests/chrome.spec.ts` | B13, the chrome on every page and the landing bands under the hero — the four unread `data-vsor` hooks (`mode-toggle`, `reading-progress`, `doc-page-actions`, `search-no-results`), `LessonContent`'s two-view tabs, and SectionCards / Surfaces / Closing. Added 2026-08-14; two of these had already regressed silently (see the decision below) |
 | `tests/harness.ts` | the always-on guard that makes every visited page enforce B8 (same-origin, zero ≥ 400) and B11 (zero console.error / pageerror); plus `inMode()`, the one place that knows how a color mode is forced |
 
 Determinism: Chromium pinned via the committed `package-lock.json`, DOM-state
@@ -97,6 +98,26 @@ startup line.
   shell-owned keys, and the scaffold homepage must still import
   `@theme/Landing` (which resolves only because the shell ships
   `src/theme/Landing`).
+- **A hook no test reads is an invitation** (2026-08-14). The shell declares
+  seven `data-vsor` attributes — deliberate handles a restyle cannot move — and
+  only three were ever read (`search-button`, `search-input`, `search-results`).
+  The other four rendered in every build this suite called green, including the
+  search empty state, which no test had ever reached. Two of them had already
+  regressed: `--vsor-reading-progress` was documented as a token and declared
+  nowhere, so the progress bar painted nothing, and the doc-action tooltip had
+  neither a background nor a foreground for the same reason. Twenty-six
+  custom properties were in that state; a declaration naming an undeclared
+  property is invalid at computed-value time, which is silent in every direction
+  a test usually looks. `chrome.spec.ts` reads computed styles off those
+  elements, and the static half of the same claim is
+  `tests/test_surface_contract.py::test_a3_every_custom_property_reference_resolves`.
+- **`LessonContent` needed a fixture, not a test** (2026-08-14). Its tab nav
+  carries `role="tablist" aria-label="Content view"` and that string appeared in
+  0 of 7 built HTML files: the Summary branch renders only when a co-located
+  `.summary.md` exists, and no fixture had one.
+  `fixtures/tiny/vertical-sor.summary.md` is that fixture. It is deliberately on
+  `vertical-sor` rather than `document-primitives`, so the doc that
+  `primitives.spec.ts` searches for a single `tablist` still has exactly one.
 - **B7 list:** `tests/exclusions.json` mirrors the spec's exclusion table
   row-for-row; its `$comment` records the two rows enforced elsewhere
   (`customFields`, locale trees) so the closure rule holds.

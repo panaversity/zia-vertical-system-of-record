@@ -7,33 +7,48 @@
  * colour anywhere outside this file.
  *
  * ── How a consuming project re-brands ────────────────────────────────────────
- * A project never edits this file. It writes `site/src/css/custom.css`, which
- * docusaurus.config.ts appends AFTER this one, so any token it redeclares wins:
+ * A project never edits this file. It writes `site/src/css/custom.css` and sets
+ * ONE pair of values — Docusaurus's own `--ifm-color-primary`, light and dark:
  *
- *     :root {
- *       --vsor-accent-rgb: 124 58 237;      … your brand hue, as an R G B triple
- *       --primary: oklch(0.55 0.21 292);
- *     }
- *     html[data-theme="dark"] {
- *       --vsor-accent-dark-rgb: 167 139 250;
- *       --primary: oklch(0.72 0.17 292);
- *     }
+ *     :root                     { --ifm-color-primary: #7c3aed; }
+ *     html[data-theme="dark"]   { --ifm-color-primary: #a78bfa; }
  *
- * ── Why the brand hues are R G B triples ─────────────────────────────────────
- * The chrome needs the accent at eight opacities (hairlines, washes, focus
- * rings, glows). Storing the hue as a bare `R G B` triple and composing
- * `rgb(var(--…-rgb) / 0.15)` means a project overrides ONE value and all eight
- * tints follow. Overriding eight separate rgba() tokens by hand is the thing
- * this avoids.
+ * Everything accented on the page derives from that pair: Infima's own chrome
+ * reads it directly, `--primary` below bridges it into the shadcn palette, and
+ * the accent family in section 3 composes it into the deep shades and the eight
+ * opacities the chrome needs (hairlines, washes, focus rings, glows).
+ *
+ * ── Why the accent family is composed, not stored ────────────────────────────
+ * These tokens used to be an `R G B` channel triple carried verbatim from the
+ * upstream design system, which meant the deep shades and every tint painted
+ * upstream's own brand navy on a page whose owner had chosen a different colour
+ * — the italic in a paragraph, the rule under every H2, the table header's
+ * second gradient stop and ~40 rules of the quiz, none of which a project's
+ * primary could reach. They are `color-mix()` of `--primary` now, so there is
+ * exactly one brand value in a vsor site and it is the project's.
+ *
+ * The percentages are measured rather than chosen: fed upstream's own primary,
+ * `65%` and `76%` toward black reproduce the two deep shades it had hard-coded
+ * to within one 8-bit step (#002753 vs #002952, #003368 vs #003366), so the
+ * default look is unchanged and only its ORIGIN moved.
+ *
+ * `color-mix()` is therefore load-bearing here and carries no literal fallback
+ * (Chrome 111 / Safari 16.2 / Firefox 113, all 2023). A fallback would have to
+ * name a colour, and the only colour available to name is the one this block
+ * exists to stop shipping.
  *
  * ── The three layers below ───────────────────────────────────────────────────
- *  1. IDENTITY   — the type stack and the brand channels. What a project changes.
- *  2. SYSTEM     — the shadcn/Docusaurus palette the components are written against.
- *  3. DERIVED    — the composed tints. Follow (1); rarely overridden directly.
+ *  1. IDENTITY   — the type stack and the neutral channels.
+ *  2. SYSTEM     — the shadcn/Docusaurus palette the components are written
+ *                  against, including the one bridge: `--primary`.
+ *  3. DERIVED    — the accent family and the composed neutral tints. Follow (2);
+ *                  never overridden directly.
  *
- * Colour values are inherited from the upstream design system verbatim; the
+ * The neutral values are inherited from the upstream design system verbatim (the
  * 2026-08-14 tokenization pass changed names and indirection only, never a
- * rendered colour (246 substitutions, each re-resolved and diffed).
+ * rendered colour — 246 substitutions, each re-resolved and diffed). The ACCENT
+ * values are no longer inherited: on 2026-08-14 they were re-expressed as
+ * compositions of the project's own primary, which is what section 3 records.
  */
 
 /* ══════════════════════════════════════════════════════════════════════════
@@ -120,11 +135,27 @@
     --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, "SF Mono",
         Menlo, Consolas, "Liberation Mono", monospace;
 
-    /* Brand channels, as `R G B` triples — see the header. */
-    /* the brand accent — override this triple and every tint below follows */
-    --vsor-accent-rgb: 0 77 153;
-    /* the brand accent as it appears on dark surfaces */
-    --vsor-accent-dark-rgb: 123 164 196;
+    /* ...and BRIDGED onto Docusaurus's own two family tokens, exactly as the
+       colour palette is bridged onto --ifm-color-primary. Without this the two
+       stacks coexist and a reader meets both on one page: `.markdown` and
+       `.markdown code` (doc-pages.css) name the --ifm-* families, so a doc
+       page's prose set in the OS UI font and its code in the OS mono font
+       while the navbar, the homepage and the manifest labels set in the two
+       faces this shell vendors — measured 2026-08-14 on the built fixture,
+       where `document.fonts` reported JetBrains Mono UNLOADED on a doc page
+       carrying three fenced blocks. Vendoring a typeface and then not
+       rendering with it is the worst of both: the bytes ship and the design
+       does not arrive.
+       Declared here rather than on the rules, because this file loads before
+       the project's own custom.css — a project that wants a different face
+       redeclares --font-sans/--font-mono and both halves follow. */
+    --ifm-font-family-base: var(--font-sans);
+    --ifm-font-family-monospace: var(--font-mono);
+
+    /* Neutral channels, as `R G B` triples: the chrome needs each of these at
+       several opacities, and a bare triple composes to `rgb(… / α)` in section
+       3 so one value drives all of them. The BRAND is not among them — it is
+       `--ifm-color-primary`, composed in section 3; see the header. */
     /* negative state (an incorrect answer, a failing check) */
     --vsor-danger-rgb: 239 68 68;
     /* inset highlights and light-on-dark washes */
@@ -144,16 +175,6 @@
     /* dark component surfaces */
     --vsor-surface-dark-rgb: 17 17 17;
 
-    --vsor-accent-deep: #002952;
-    /* Accent TEXT/ICON colour. Bridged to the site's primary — the literal
-       carried from upstream was a fixed navy, which painted brand-coloured
-       chrome the project never chose. First declaration is the pre-color-mix
-       fallback; the second wins wherever color-mix is supported. */
-    --vsor-accent-text: oklch(0.50 0.14 255);
-    --vsor-accent-text: color-mix(in oklab, var(--ifm-color-primary) 92%, black);
-    --vsor-accent-text-dark: oklch(0.60 0.14 255);
-    --vsor-accent-text-dark: color-mix(in oklab, var(--ifm-color-primary) 92%, white);
-    --vsor-accent-strong: #003366;
     --vsor-danger-solid: #ef4444;
     --vsor-danger-solid-deep: #dc2626;
     --vsor-grey-666: #666;
@@ -188,6 +209,9 @@
     --vsor-surface-dark-alt: #1b1b1d;
     --vsor-surface-dark-hi: #2a2a2a;
     --vsor-surface-dark-solid: #1a1a1a;
+    /* The lightbox backdrop, dark in BOTH themes on purpose (custom.css
+       records why: PhotoSwipe's controls are white). */
+    --vsor-surface-darkest: #0a0a0a;
     --vsor-tint-danger-dark: rgba(248, 113, 113, 0.08);
     --vsor-tint-info: rgba(14, 165, 233, 0.05);
     --vsor-tint-info-dark: rgba(56, 189, 248, 0.08);
@@ -217,8 +241,7 @@
   --sidebar-active-text: var(--sidebar-primary-foreground);
   /* The active sidebar pill. Bridged to the site's primary — the literal
      carried from upstream was a fixed navy, so a rebranded site painted its
-     own primary text on an upstream-coloured pill. Fallback first. */
-  --sidebar-active-bg-subtle: oklch(0.45 0.11 255 / 0.1);
+     own primary text on an upstream-coloured pill. */
   --sidebar-active-bg-subtle: color-mix(in srgb, var(--ifm-color-primary) 10%, transparent);
 }
 
@@ -282,6 +305,17 @@
     --info: oklch(0.704 0.14 240);
     --success: oklch(0.68 0.16 142);
     --warning: oklch(0.77 0.16 77);
+    /* The fourth state colour. `--info`, `--success` and `--warning` all paint
+       an admonition stripe in doc-pages.css and `--danger` paints the fourth —
+       it was the one of the four that was never declared, so every `:::danger`
+       block rendered its stripe in the inherited text colour. It is an alias
+       rather than a fifth literal: shadcn already carries this hue as
+       `--destructive` (redeclared in the dark block below, so this follows). */
+    --danger: var(--destructive);
+    /* Text ON a destructive surface. Named by @theme inline in custom.css, so
+       `bg-destructive text-destructive-foreground` — shadcn's own pairing —
+       resolves. Neutral, not hue-baked, for the reason --primary-foreground is. */
+    --destructive-foreground: oklch(0.985 0 0);
 }
 
 html[data-theme="dark"] {
@@ -292,7 +326,6 @@ html[data-theme="dark"] {
   --sidebar-hover-bg: oklch(0.2 0 0);
   --sidebar-active-bg: var(--sidebar-primary);
   --sidebar-active-text: var(--sidebar-primary-foreground);
-  --sidebar-active-bg-subtle: oklch(0.72 0.11 255 / 0.16);
   --sidebar-active-bg-subtle: color-mix(in srgb, var(--ifm-color-primary) 16%, transparent);
 }
 
@@ -352,18 +385,40 @@ html[data-theme='dark'] {
 
 :root {
 
-    --vsor-accent-a003: rgb(var(--vsor-accent-rgb) / 0.03);
-    --vsor-accent-a005: rgb(var(--vsor-accent-rgb) / 0.05);
-    --vsor-accent-a010: rgb(var(--vsor-accent-rgb) / 0.1);
-    --vsor-accent-a015: rgb(var(--vsor-accent-rgb) / 0.15);
-    --vsor-accent-a020: rgb(var(--vsor-accent-rgb) / 0.2);
-    --vsor-accent-a030: rgb(var(--vsor-accent-rgb) / 0.3);
-    --vsor-accent-a040: rgb(var(--vsor-accent-rgb) / 0.4);
-    --vsor-accent-dark-a005: rgb(var(--vsor-accent-dark-rgb) / 0.05);
-    --vsor-accent-dark-a010: rgb(var(--vsor-accent-dark-rgb) / 0.1);
-    --vsor-accent-dark-a015: rgb(var(--vsor-accent-dark-rgb) / 0.15);
-    --vsor-accent-dark-a030: rgb(var(--vsor-accent-dark-rgb) / 0.3);
-    --vsor-accent-dark-a040: rgb(var(--vsor-accent-dark-rgb) / 0.4);
+    /* ── THE ACCENT FAMILY — every one of these is `--primary` composed ──────
+       and `--primary` is `var(--ifm-color-primary)` (section 2), so a project
+       that sets one Docusaurus token moves all of them, in both themes: these
+       are declared on the root element, which is also what `html[data-theme]`
+       selects, so the dark half re-resolves from the dark primary with no
+       second declaration.
+
+       `-deep` and `-strong` are the two darkened shades the doc chrome paints
+       with (the italic, the H2 rule, the table-header gradient, link hover);
+       `-text` / `-text-dark` are the accent as TEXT on a light / dark ground;
+       the `aNNN` tints are the same hue at N% opacity. See the file header for
+       where the two percentages come from and why there is no fallback. */
+    --vsor-accent: var(--primary);
+    --vsor-accent-deep: color-mix(in oklab, var(--primary) 65%, black);
+    --vsor-accent-strong: color-mix(in oklab, var(--primary) 76%, black);
+    --vsor-accent-text: color-mix(in oklab, var(--primary) 92%, black);
+    --vsor-accent-text-dark: color-mix(in oklab, var(--primary) 92%, white);
+
+    --vsor-accent-a003: color-mix(in srgb, var(--primary) 3%, transparent);
+    --vsor-accent-a005: color-mix(in srgb, var(--primary) 5%, transparent);
+    --vsor-accent-a008: color-mix(in srgb, var(--primary) 8%, transparent);
+    --vsor-accent-a010: color-mix(in srgb, var(--primary) 10%, transparent);
+    --vsor-accent-a015: color-mix(in srgb, var(--primary) 15%, transparent);
+    --vsor-accent-a020: color-mix(in srgb, var(--primary) 20%, transparent);
+    --vsor-accent-a030: color-mix(in srgb, var(--primary) 30%, transparent);
+    --vsor-accent-a040: color-mix(in srgb, var(--primary) 40%, transparent);
+    /* The dark-surface half. Same source; the alphas differ because a wash has
+       to work against a near-black ground rather than a white one. */
+    --vsor-accent-dark-a005: color-mix(in srgb, var(--primary) 5%, transparent);
+    --vsor-accent-dark-a010: color-mix(in srgb, var(--primary) 10%, transparent);
+    --vsor-accent-dark-a015: color-mix(in srgb, var(--primary) 15%, transparent);
+    --vsor-accent-dark-a030: color-mix(in srgb, var(--primary) 30%, transparent);
+    --vsor-accent-dark-a040: color-mix(in srgb, var(--primary) 40%, transparent);
+
     --vsor-danger-a005: rgb(var(--vsor-danger-rgb) / 0.05);
     --vsor-danger-a010: rgb(var(--vsor-danger-rgb) / 0.1);
     --vsor-danger-a020: rgb(var(--vsor-danger-rgb) / 0.2);
@@ -419,4 +474,83 @@ html[data-theme='dark'] {
     --vsor-success-a040: rgb(var(--vsor-success-rgb) / 0.4);
     --vsor-surface-dark-a050: rgb(var(--vsor-surface-dark-rgb) / 0.5);
     --vsor-surface-dark-a060: rgb(var(--vsor-surface-dark-rgb) / 0.6);
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   4. COMPONENT ALIASES — the names the component stylesheets actually use
+
+   found live 2026-08-14, and the reason this section exists: the tokenization
+   pass that produced this file left TWENTY-SIX `var(--…)` references with no
+   declaration anywhere in the shell. A custom property that is never declared
+   makes its whole declaration invalid at computed-value time, which is silent
+   in every direction — the build succeeds, no console error is logged, the
+   class is present in the stylesheet, and the rule simply paints nothing. What
+   that cost, measured on the built fixture: the reading-progress bar had no
+   colour (an invisible 4px bar), the search dialog's overlay had no scrim and
+   its dialog no shadow, the lightbox backdrop was transparent, every
+   `:::danger` admonition lost its stripe, the doc-page action bar lost its
+   shadows and its tooltip had neither background nor foreground (white text on
+   whatever was behind it), and the whole summary panel lost its tint, its
+   border, its rules and its code background.
+
+   Nothing here is a new colour. Each line binds a component's own vocabulary to
+   a token that already exists above, which is what makes the set auditable: the
+   check is "every custom property this shell reads is one it declares", and it
+   is now an assertion: tests/test_surface_contract.py::
+   test_a3_every_custom_property_reference_resolves, in the same node-free tier
+   as the token lint it belongs beside.
+
+   Where upstream had a literal, the binding reproduces its ROLE rather than its
+   value: upstream's LessonContent painted its active tab, its headings, its
+   inline code and its panel washes from `--lc-navy-deep` — its own brand — so
+   those bind to the accent family, i.e. to the project's primary.
+   ═════════════════════════════════════════════════════════════════════════ */
+
+:root {
+    /* ReadingProgress — its own stylesheet documents this token as
+       "var(--ifm-color-primary), so a site's primary override recolors the
+       bar". It was documented and not declared. */
+    --vsor-reading-progress: var(--ifm-color-primary);
+
+    /* SearchBar */
+    --vsor-overlay: var(--vsor-shadow-a050);
+    --vsor-shadow-strong: var(--vsor-shadow-a020);
+
+    /* DocPageActions */
+    --vsor-shadow-faint: var(--vsor-shadow-a005);
+    --vsor-shadow-soft: var(--vsor-shadow-a008);
+    --vsor-shadow-medium: var(--vsor-shadow-a012);
+    --vsor-tooltip-bg: var(--foreground);
+    --vsor-tooltip-fg: var(--background);
+    --vsor-tooltip-kbd-bg: var(--vsor-highlight-a015);
+    --vsor-success: var(--vsor-success-vivid);
+    --vsor-success-strong: var(--vsor-success-vivid-deep);
+    --vsor-success-tint: var(--vsor-success-vivid-a10);
+    --vsor-success-tint-strong: var(--vsor-success-vivid-a15);
+
+    /* LessonContent. `--vsor-accent` is the plain accent the panel's left rule
+       and its focus ring paint with; the rest are upstream's navy washes,
+       re-bound to the project's own hue. */
+    --vsor-ink-strong: var(--vsor-accent-text);
+    --vsor-ink-soft: var(--vsor-accent-text);
+    --vsor-text-muted: var(--vsor-grey-888);
+    --vsor-text-subtle: var(--vsor-grey-666);
+    --vsor-rule: var(--vsor-accent-a015);
+    --vsor-code-bg: var(--vsor-accent-a008);
+    --vsor-quote-bg: var(--vsor-accent-a005);
+    --vsor-panel-border: var(--vsor-accent-a015);
+    --vsor-panel-tint-start: var(--vsor-accent-a008);
+    --vsor-panel-tint-end: var(--vsor-accent-a003);
+}
+
+/* The dark half. Only the four INK tokens flip: everything else above is
+   already a token that redeclares itself under [data-theme="dark"], so binding
+   them once is binding them for both themes. Upstream's own dark rules for
+   these four went to white and to its grey ramp, and the fork dropped them from
+   the component stylesheet, so this is where they live now. */
+html[data-theme="dark"] {
+    --vsor-ink-strong: var(--vsor-white);
+    --vsor-ink-soft: var(--vsor-accent-text-dark);
+    --vsor-text-muted: var(--vsor-neutral-dark-solid);
+    --vsor-text-subtle: var(--vsor-neutral-dark-hi);
 }

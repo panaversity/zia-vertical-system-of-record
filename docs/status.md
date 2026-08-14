@@ -44,6 +44,15 @@ history (the root commit), not the tree.
   the skills crossed from a curriculum repo, and a tax-law SoR must not find lesson/chapter/learner
   language in its own kit). One recorded exception: the framework's own repo URL in the scaffolded
   AGENTS.md.
+  *Extended the same day, after a review found the scan's subject was too narrow on three counts:*
+  the curriculum word list now runs over **shipped source** (`.ts/.tsx/.js/.css` and every shipped
+  `package.json`) as well as prose — 118 lines of it were inside the wheel, one package was named
+  for it, and it printed to the owner's console on every build, none of which any tier could see;
+  the lineage rule (no upstream repository in what a package says about *itself*) now covers all
+  ten shipped packages rather than two; and the lockfile denylist now also scans the **shipped**
+  shell lockfile, which is the one a user's `npm ci` resolves and is not a subset of the workspace
+  one. `@vsor/lib-chapter-manifest-plugin` became `@vsor/lib-section-manifest-plugin`, and its
+  hardcoded three-level directory convention became "a section is the folder the document is in".
 
 **Deferred, named as choices:** levels 1–4 · five of six skills · deployment targets beyond local ·
 the customer-overlay mechanism (no schema support exists today — `corpus_id` is absent from all five

@@ -1,7 +1,7 @@
 /**
  * ============================================================================
  * DOC PAGES PREMIUM STYLING
- * Enhances chapter/doc pages to match the beautiful main page design
+ * Enhances doc pages to match the design of the homepage
  * Polar Night Theme - Consistent for Light & Dark Modes
  * ============================================================================
  */
@@ -543,8 +543,8 @@ article {
    Numbers use the built-in `list-item` counter so the HTML `start` attribute is
    honored: a section list that begins at `7.` renders 7, not 1. A custom
    counter-reset/counter-increment on the <ol> silently cancels `start`, which
-   was restarting every section's numbering at 1 (e.g. the Getting Started
-   "The Courses" list, split into separate <ol>s by its section headings). */
+   was restarting every section's numbering at 1 (measured on a document whose
+   one long list is split into separate <ol>s by its own subheadings). */
 .markdown ol>li {
   list-style: none;
 }

@@ -3,7 +3,8 @@
  *
  * Upstream mapped twenty-nine names here; most were product (gated quiz and
  * summary, content gate, AI check, PDF viewer, capstone workbook, the ecosystem
- * product pages) or course artifacts. What survives is the corpus-neutral set
+ * product pages) or artifacts of the material it was written for. What
+ * survives is the corpus-neutral set
  * named in the positive contract of `specs/sor-site/surface/spec.md`.
  *
  * The four bespoke tab families upstream shipped (OS / tool / cowork / web

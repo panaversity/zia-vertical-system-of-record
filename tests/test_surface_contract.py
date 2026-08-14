@@ -40,9 +40,17 @@ LOCKFILE = SOR_SITE / "package-lock.json"
 #   - app/src/css/tokens.css: the RUNTIME SHELL's token file. Designated
 #     2026-08-14 with the brand-parameterization pass, which moved every colour
 #     the forked app carried (246 substitutions across five stylesheets) out of
-#     the rule bodies and into this one file, and expressed the brand hues as
-#     `R G B` channel triples so a consuming project re-brands by redeclaring
-#     one token rather than eight rgba() literals.
+#     the rule bodies and into this one file.
+#     Corrected later the same day, and it is why this lint is necessary but not
+#     sufficient: that pass left the ACCENT hues as literals — upstream's own
+#     brand navy, stored as `R G B` channel triples — and because the literals
+#     were inside the designated file, A3 was green while the italic in every
+#     paragraph, the rule under every H2, the second stop of every table-header
+#     gradient and ~40 rules of the quiz painted a colour no project's
+#     --ifm-color-primary could reach. The accent family is `color-mix()` of the
+#     primary now (see the file's own header); B12's doc-page assertions in
+#     packages/sor-site/e2e/tests/seam.spec.ts are what would catch it coming
+#     back, because a lint over literals structurally cannot.
 # A third entry, packages/sor-site/theme/src/css/tokens.css, was dropped
 # 2026-08-14 when that package was deleted: the shell manifest
 # (templates/site_runtime/package.json) referenced neither it nor the mdx
@@ -128,8 +136,8 @@ ALLOWLIST_EXACT = {
     "lunr",  # app: bundled search index — replaces upstream's runtime CDN load (would fail B8)
     "unist-util-visit",  # lib: remark plugins' tree walker, upstream pin
     "yaml",  # lib/shared: flashcard/gallery deck loaders
-    "glob",  # lib: chapter-manifest + summaries corpus walks
-    "gray-matter",  # lib: chapter-manifest frontmatter parsing
+    "glob",  # lib: section-manifest + summaries corpus walks
+    "gray-matter",  # lib: section-manifest frontmatter parsing
     "satori",  # lib/plugin-og-image: SVG card renderer (build-time only)
     "sharp",  # lib/plugin-og-image: SVG→PNG (build-time only)
     # The design system (spec amendment 2026-08-13, "added 2026-08-13 with the
@@ -147,14 +155,15 @@ ALLOWLIST_EXACT = {
     "tailwind-merge",  # app: the other half of cn() — conflicting-class resolution
     "@radix-ui/react-slot",  # app: ui/button's asChild
     "@radix-ui/react-dialog",  # app: ui/sheet (the navbar's mobile menu) is built on it
-    # The fork (2026-08-14). The runtime shell is now a workspace package of its
-    # own (app/), so its direct deps face this gate for the first time. Every
-    # other name it declares was already allowlisted above; this is the one
-    # addition, and it is load-bearing rather than inherited: the collapsed tabs
-    # plugin matches on `containerDirective`/`leafDirective` nodes
-    # (lib/remark-tabs/index.js:108,121), which exist in the tree only because
-    # this parser put them there. Build-time only, no network, no product surface.
-    "remark-directive",  # app: parses the `:::` syntax @vsor/lib-remark-tabs consumes
+    # The fork (2026-08-14) added `remark-directive` here on the reasoning that
+    # the collapsed tabs plugin needs it to produce containerDirective nodes.
+    # REMOVED the same day, and deliberately not replaced: on Docusaurus 3.10 the
+    # mdx loader parses directives itself, and a SECOND directive extension in
+    # the chain silently un-handles admonitions — `:::tip` renders as the literal
+    # text `:::tip` on every page (app/docusaurus.config.ts:109 records the live
+    # measurement; B16 is the assertion). No manifest in the workspace or in the
+    # shell declares it, so allowlisting it gates nothing and reads as an
+    # instruction to add back the one dependency that breaks admonitions.
 }
 
 # Known-bad names: product deps that must never appear, even transitively.
@@ -364,11 +373,20 @@ def _scaffold_prose_files() -> list[Path]:
     # `knowledge/` is excluded for the reason the spec gives A2 generally: it is
     # a CORPUS (a gitignored local one, placed beside the shell for a hand
     # build), and the scan never reads a corpus.
+    # ...and every shipped package.json, added 2026-08-14. `description` is what
+    # `npm ls` and `npm view` print out of a project's
+    # .vsor/site-runtime/node_modules/@vsor/*, and all nine libraries shipped one
+    # naming the upstream repository (see packages/vsor/tests/test_wheel_contents.py,
+    # which owns the lineage half) — so the manifests belong in the prose tier too.
+    # package-lock.json is deliberately not here: it is a resolution artifact, and
+    # A1 is what reads it.
     corpus = SOR_SITE / "knowledge"
     files += [
         p
-        for p in sorted(SOR_SITE.rglob("*.md"))
-        if "node_modules" not in p.parts
+        for p in sorted(SOR_SITE.rglob("*"))
+        if p.is_file()
+        and (p.suffix == ".md" or p.name == "package.json")
+        and "node_modules" not in p.parts
         and corpus not in p.parents
         and all(root not in p.parents for root in _OUT_OF_SCOPE)
         and all(gen not in p.parents for gen in _GENERATED)
@@ -395,6 +413,41 @@ def test_a2_scaffold_prose_carries_no_brand_strings() -> None:
         "brand strings in the scaffolded project — a vsor project belongs to its owner and names "
         "nobody else; the one recorded exception is the framework's own repo URL "
         "(exclusions.json scaffoldMarkdown.brandCarveOuts):\n" + "\n".join(violations)
+    )
+
+
+def test_a2_shipped_source_carries_no_curriculum_vocabulary() -> None:
+    """The other half of the same settled decision, added 2026-08-14.
+
+    The scan below reads scaffold prose. The settled intent it enforces — "a
+    tax-law SoR must not find lesson/chapter/learner language in the kit it was
+    scaffolded with" — is not met by prose alone, because the kit includes the
+    runtime shell: 118 lines of this vocabulary shipped inside the wheel's
+    tarballs, a whole package was named for it, and it printed to the owner's
+    console on every `vsor build` ("[Chapter Manifest] Built manifest with 0
+    chapters"). None of it was visible to any tier: A2's source scan reads
+    .ts/.tsx/.js/.css and ran only the EXCLUSION list over them, never the
+    curriculum list; A2's prose scan reads .md/.json and cannot see a stylesheet.
+
+    Same word list, same files as the exclusion scan above, so the two cannot
+    drift. No carve-outs: everything this found was scrubbed rather than
+    excepted, including the package rename — which is why a provenance header may
+    describe the material it was copied from but must not use its words.
+    """
+    patterns = _tier_patterns("source")
+    assert patterns, "A2 source tier lost its patterns"
+    violations: list[str] = []
+    for path in _a2_files():
+        for line_no, line in enumerate(path.read_text().splitlines(), start=1):
+            match = _CURRICULUM_RE.search(line)
+            if match:
+                violations.append(
+                    f"{path.relative_to(REPO)}:{line_no} [{match.group(0)}] {line.strip()[:80]}"
+                )
+    assert not violations, (
+        "curriculum vocabulary in shipped source — this ships inside the wheel and is "
+        "unpacked into every project's .vsor/site-runtime, so it is the kit the owner of a "
+        "tax-law corpus was handed (settled lead decision 2026-08-13):\n" + "\n".join(violations)
     )
 
 
@@ -436,6 +489,54 @@ def test_a3_zero_color_literals_outside_token_files() -> None:
         f"raw color literals outside the designated token files ({names}) — every color becomes a "
         "named token there and the site consumes var(--…) (spec: token discipline, baseline zero):\n"
         + "\n".join(violations)
+    )
+
+
+# ------------------------------------- A3, second half: read but never declared
+# The lint above proves no rule names a raw colour. It cannot prove the token a
+# rule names exists — and on 2026-08-14 twenty-six of them did not. A custom
+# property with no declaration makes its whole declaration invalid at
+# computed-value time: the build succeeds, no console error is logged, the class
+# is in the stylesheet, and the rule paints nothing. Measured cost on the built
+# fixture: an invisible reading-progress bar, a search overlay with no scrim, a
+# transparent lightbox backdrop, `:::danger` with no stripe, and a doc-page
+# tooltip with neither background nor foreground. Cheap to assert, and only ever
+# assertable here — every browser-tier check reads elements that happen to be on
+# a page, and none of these were.
+#
+# Scope: the shell's own vocabulary. Names owned by somebody else are theirs to
+# declare (or not) — Infima's `--ifm-*`, Tailwind's `--tw-*`, PhotoSwipe's
+# `--pswp-*`, Docusaurus's `--docusaurus-*`. `--step` is set inline by the
+# landing page's stagger helper, which no stylesheet can see.
+_VAR_READ_RE = re.compile(r"var\(\s*(--[a-zA-Z0-9-]+)")
+_VAR_DECL_RE = re.compile(r"^\s*(--[a-zA-Z0-9-]+)\s*:", re.MULTILINE)
+_FOREIGN_PREFIXES = ("--ifm-", "--tw-", "--pswp-", "--docusaurus-")
+_SET_INLINE = {"--step"}
+
+
+def test_a3_every_custom_property_reference_resolves() -> None:
+    files = _source_files(SOR_SITE) + _source_files(TEMPLATE_SITE)
+    assert files, "A3 found no source files to scan"
+    declared: set[str] = set()
+    read: dict[str, list[str]] = {}
+    for path in files:
+        text = path.read_text()
+        declared.update(_VAR_DECL_RE.findall(text))
+        for line_no, line in enumerate(text.splitlines(), start=1):
+            for name in _VAR_READ_RE.findall(line):
+                read.setdefault(name, []).append(f"{path.relative_to(REPO)}:{line_no}")
+    dangling = sorted(
+        (name, sites)
+        for name, sites in read.items()
+        if name not in declared
+        and name not in _SET_INLINE
+        and not name.startswith(_FOREIGN_PREFIXES)
+    )
+    assert not dangling, (
+        "custom properties read but never declared — an undeclared token makes the whole "
+        "declaration invalid at computed-value time, which is silent in every direction "
+        "(green build, no console error, the rule simply paints nothing):\n"
+        + "\n".join(f"{name} <- {', '.join(sites[:3])}" for name, sites in dangling)
     )
 
 

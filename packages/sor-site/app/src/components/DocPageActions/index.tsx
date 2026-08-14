@@ -3,8 +3,8 @@
  *
  * Primary action: Copy Markdown (client-side HTML→Markdown via Turndown —
  * no API calls, offline-ready). Menu: Download Markdown, Download Section
- * (same-origin fetch of sibling pages via the chapter-manifest plugin's
- * global data), Share (Web Share API with clipboard fallback).
+ * (same-origin fetch of the folder's other documents, via the section-manifest
+ * plugin's global data), Share (Web Share API with clipboard fallback).
  *
  * Copied from ag2 apps/learn-app src/components/DocPageActions at d764f334.
  * Audited action-by-action against the surface spec's negative contract;
@@ -27,8 +27,9 @@
  *     replaced by the self-contained accessible menu below so no
  *     radix/tailwind dependency crosses the seam)
  * De-branded: the section download header cites siteConfig.title, never a
- * product name; "lesson" vocabulary is gone from UI strings (the
- * chapter-manifest plugin's data keys keep their wire names).
+ * product name, and the domain vocabulary is gone from both the UI strings
+ * and the wire contract — @vsor/lib-section-manifest-plugin renamed the data
+ * keys to the framework's own words, and this file reads them.
  */
 
 import React, { useEffect, useCallback, useRef, useState } from "react";
@@ -174,11 +175,10 @@ const LoadingIcon = () => (
 );
 
 // ============================================================================
-// TYPES — wire contract of @vsor/lib-chapter-manifest-plugin (data keys keep
-// their upstream names; only UI strings were de-domained)
+// TYPES — wire contract of @vsor/lib-section-manifest-plugin
 // ============================================================================
 
-interface ChapterLesson {
+interface SectionDocument {
   id: string;
   normalizedId: string;
   title: string;
@@ -188,15 +188,15 @@ interface ChapterLesson {
 
 interface ManifestGroup {
   title: string;
-  part: string;
-  partPath: string;
-  chapterPath: string;
-  lessons: ChapterLesson[];
+  parent: string;
+  parentPath: string;
+  sectionPath: string;
+  documents: SectionDocument[];
 }
 
-interface ChapterManifestData {
-  chapters: Record<string, ManifestGroup>;
-  docToChapter: Record<string, string>;
+interface SectionManifestData {
+  sections: Record<string, ManifestGroup>;
+  docToSection: Record<string, string>;
 }
 
 // ============================================================================
@@ -310,23 +310,23 @@ export function DocPageActions() {
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
-  // Chapter manifest from global data — plugin optional, degrade gracefully.
+  // Section manifest from global data — plugin optional, degrade gracefully.
   // (usePluginData throws when the plugin is absent; upstream wrapped it in
   // try/catch and the call order is unconditional, so the hook count is
   // stable across renders.)
-  let chapterManifest: ChapterManifestData | null = null;
+  let sectionManifest: SectionManifestData | null = null;
   try {
-    chapterManifest = usePluginData(
-      "docusaurus-chapter-manifest-plugin",
-    ) as ChapterManifestData;
+    sectionManifest = usePluginData(
+      "docusaurus-section-manifest-plugin",
+    ) as SectionManifestData;
   } catch {
     // Plugin not wired — the section download item simply does not render.
   }
 
   const docId = doc.metadata.id;
-  const chapterKey = chapterManifest?.docToChapter?.[docId];
-  const currentSection = chapterKey
-    ? chapterManifest?.chapters?.[chapterKey]
+  const sectionKey = sectionManifest?.docToSection?.[docId];
+  const currentSection = sectionKey
+    ? sectionManifest?.sections?.[sectionKey]
     : null;
 
   // Keyboard-shortcut modifier label — client-only state so SSR and the first
@@ -509,7 +509,7 @@ export function DocPageActions() {
       const baseUrl = window.location.origin;
 
       const pageResults = await fetchWithConcurrency(
-        currentSection.lessons,
+        currentSection.documents,
         async (page, index) => {
           const pageUrl = `${baseUrl}${page.slug}`;
           const markdown = await extractMarkdownFromUrl(pageUrl, page.title);
@@ -517,7 +517,7 @@ export function DocPageActions() {
         },
         (completed, currentTitle) => {
           setDownloadProgress(
-            `${currentTitle} (${completed}/${currentSection.lessons.length})`,
+            `${currentTitle} (${completed}/${currentSection.documents.length})`,
           );
         },
       );
@@ -530,7 +530,7 @@ export function DocPageActions() {
           .replace(/[^a-z0-9\s-]/g, "")
           .replace(/\s+/g, "-");
 
-      const toc = currentSection.lessons
+      const toc = currentSection.documents
         .map(
           (page, i) => `${i + 1}. [${page.title}](#${toAnchor(page.title)})`,
         )
@@ -538,10 +538,12 @@ export function DocPageActions() {
 
       // De-branded: attribution comes from the instance's site title.
       const sections: string[] = [
-        `# ${currentSection.part}: ${currentSection.title}`,
+        currentSection.parent
+          ? `# ${currentSection.parent}: ${currentSection.title}`
+          : `# ${currentSection.title}`,
         "",
         `> Downloaded from ${siteConfig.title} on ${new Date().toLocaleDateString()}`,
-        `> Pages: ${currentSection.lessons.length}`,
+        `> Pages: ${currentSection.documents.length}`,
         "",
         "## Table of Contents",
         "",
@@ -551,7 +553,7 @@ export function DocPageActions() {
         "",
       ];
 
-      currentSection.lessons.forEach((page, index) => {
+      currentSection.documents.forEach((page, index) => {
         let markdown =
           pageResults.get(index) ||
           `# ${page.title}\n\n*Content could not be extracted*`;
@@ -561,7 +563,7 @@ export function DocPageActions() {
       });
 
       sections.push(
-        `Source: ${window.location.origin}/docs/${currentSection.partPath}/${currentSection.chapterPath}`,
+        `Source: ${window.location.origin}/docs/${currentSection.sectionPath}`,
       );
 
       const fileName = currentSection.title.replace(/[^a-zA-Z0-9-_ ]/g, "");
@@ -691,7 +693,7 @@ export function DocPageActions() {
                   </span>
                   {!sectionDownloading && !sectionDownloaded && (
                     <span className={styles.menuItemMeta}>
-                      ({currentSection.lessons.length} pages)
+                      ({currentSection.documents.length} pages)
                     </span>
                   )}
                 </span>

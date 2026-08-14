@@ -4,8 +4,10 @@
  * Reads all .summary.md files at build time and makes them available
  * to React components via global data (useGlobalData hook).
  *
- * This enables the DocItem/Content wrapper to show AI Summary tabs
- * for lessons that have corresponding .summary.md files.
+ * This is what lets the DocItem/Content wrapper offer a summary view on a
+ * document that has a co-located .summary.md beside it.
+ *
+ * Copied from ag2 libs/docusaurus/summaries-plugin at d764f334, de-branded.
  *
  * Usage:
  * - Add to plugins array in docusaurus.config.ts
@@ -54,7 +56,7 @@ module.exports = function summariesPlugin(context, options) {
           if (content) {
             // Get the doc path relative to docsDir (without .summary.md)
             const relativePath = path.relative(docsDir, summaryPath);
-            // Convert lesson.summary.md -> lesson (the doc ID pattern)
+            // Convert <doc>.summary.md -> <doc> (the doc ID pattern)
             const rawDocPath = relativePath.replace(/\.summary\.md$/, "");
             // Normalize to match Docusaurus doc ID (strips numeric prefixes)
             const docId = normalizeToDocId(rawDocPath);
@@ -85,9 +87,16 @@ module.exports = function summariesPlugin(context, options) {
         summaries: content || {},
       });
 
-      console.log(
-        `[Summaries Plugin] Loaded ${Object.keys(content || {}).length} summaries`,
-      );
+      // Silent on success (2026-08-14). This used to print a count on every
+      // build, unconditionally — a plugin announcing itself on the owner's
+      // console, and announcing "0" on every corpus that has no summaries. The
+      // other four notices in this file are already behind
+      // VERBOSE_DOCUSAURUS_PLUGINS; this one now is too, by simply not existing.
+      if (verbose) {
+        console.log(
+          `[Summaries Plugin] Loaded ${Object.keys(content || {}).length} summaries`,
+        );
+      }
     },
   };
 };

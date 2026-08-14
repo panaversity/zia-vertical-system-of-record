@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "license": "Apache-2.0",
-  "description": "Docusaurus plugin generating Open Graph card images with bundled self-hosted fonts — copied from ag2 libs/docusaurus/plugin-og-image at d764f334; card text and palette are options, no product defaults.",
+  "description": "Docusaurus plugin: generates Open Graph card images at build time with bundled self-hosted fonts; card text and palette are options, never defaults.",
   "main": "index.js",
   "engines": {
     "node": ">=20"

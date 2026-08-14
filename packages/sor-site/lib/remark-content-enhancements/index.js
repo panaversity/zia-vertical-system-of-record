@@ -32,13 +32,13 @@
  * Supported frontmatter:
  * ```yaml
  * ---
- * slides: "slides/chapter-14.pdf"
+ * slides: "slides/part-14.pdf"
  * # OR
  * slides:
- *   source: "slides/chapter-14.pdf"
+ *   source: "slides/part-14.pdf"
  *   placement: "before-what-you-learn"
  *   height: 700
- *   title: "Chapter Slides"
+ *   title: "Slides"
  * ---
  * ```
  */

@@ -17,7 +17,7 @@
     "@radix-ui/react-dialog": "1.1.23",
     "@radix-ui/react-slot": "1.3.3",
     "@tailwindcss/postcss": "4.3.3",
-    "@vsor/lib-chapter-manifest-plugin": "file:./lib-chapter-manifest-plugin.tgz",
+    "@vsor/lib-section-manifest-plugin": "file:./lib-section-manifest-plugin.tgz",
     "@vsor/lib-plugin-structured-data": "file:./lib-plugin-structured-data.tgz",
     "@vsor/lib-remark-content-enhancements": "file:./lib-remark-content-enhancements.tgz",
     "@vsor/lib-remark-flashcards": "file:./lib-remark-flashcards.tgz",

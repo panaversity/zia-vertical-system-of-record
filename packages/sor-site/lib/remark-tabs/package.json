@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "license": "Apache-2.0",
-  "description": "One configurable remark tabs plugin — the collapse of ag2's five near-identical tab plugins (os/channel/deploy/tool/cowork) at d764f334; vocabulary is config, transform is written once.",
+  "description": "Remark plugin: one configurable tabs transform — the directive vocabulary is config, the transform is written once.",
   "main": "index.js",
   "exports": {
     ".": "./index.js",

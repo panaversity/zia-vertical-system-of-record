@@ -5,6 +5,9 @@
  * during the MDX build. Co-located .gallery.yaml files are loaded
  * and passed as the `gallery` prop.
  *
+ * Copied from ag2 libs/docusaurus/remark-gallery at d764f334; the loader
+ * moved to @vsor/lib-shared, nothing else changed.
+ *
  * Usage in docusaurus.config.ts:
  *
  * remarkPlugins: [

@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "license": "Apache-2.0",
-  "description": "Composable remark plugin for frontmatter-driven content enhancements (slides) — copied from ag2 libs/docusaurus/remark-content-enhancements at d764f334, i18n-stripped, practice/simulation branch removed.",
+  "description": "Remark plugin: applies frontmatter-driven content transforms (slides) to a document's tree.",
   "main": "index.js",
   "engines": {
     "node": ">=20"

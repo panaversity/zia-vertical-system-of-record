@@ -11,7 +11,8 @@
  * - the Organization (name, url, logo, sameAs) is plugin OPTIONS — branding is
  *   instance config, never a framework default; with no options the site's own
  *   title/url stand in;
- * - the upstream Course schema is gone (product content, not machinery);
+ * - the schema.org type upstream emitted for a taught product is gone
+ *   (product content, not machinery);
  * - the secondary-locale tree walk is gone (i18n is deferred wholesale
  *   post-v0; the default locale builds alone).
  *

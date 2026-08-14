@@ -22,7 +22,7 @@
     "@mdx-js/react": "^3.0.0",
     "@radix-ui/react-dialog": "^1.1.15",
     "@radix-ui/react-slot": "^1.2.4",
-    "@vsor/lib-chapter-manifest-plugin": "0.1.0",
+    "@vsor/lib-section-manifest-plugin": "0.1.0",
     "@vsor/lib-plugin-structured-data": "0.1.0",
     "@vsor/lib-remark-content-enhancements": "0.1.0",
     "@vsor/lib-remark-flashcards": "0.1.0",

@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "license": "Apache-2.0",
-  "description": "Shared loaders and helpers for the sor-site content pipeline (copied from ag2 libs/docusaurus/shared at d764f334, de-branded).",
+  "description": "Shared loaders and helpers for the sor-site content pipeline: site config, doc-id normalization, deck and gallery loaders.",
   "main": "index.js",
   "exports": {
     ".": "./index.js",

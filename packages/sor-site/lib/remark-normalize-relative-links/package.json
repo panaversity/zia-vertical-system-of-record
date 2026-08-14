@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "license": "Apache-2.0",
-  "description": "Remark plugin that resolves bare relative doc links against the on-disk tree, honouring numbered prefixes (copied from ag2 libs/docusaurus/remark-normalize-relative-links at d764f334).",
+  "description": "Remark plugin: resolves bare relative document links against the on-disk corpus, honouring numbered folder prefixes.",
   "main": "index.js",
   "engines": {
     "node": ">=20"

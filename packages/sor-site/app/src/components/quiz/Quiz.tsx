@@ -24,7 +24,7 @@ export interface QuizQuestion {
   options: [string, string, string, string];
   correctOption: 0 | 1 | 2 | 3;
   explanation?: string;
-  source?: string; // e.g., "Lesson 1: Understanding Mutability"
+  source?: string; // e.g., "Handbook §3: Filing deadlines"
 }
 
 export interface QuizProps {

@@ -60,6 +60,21 @@ export const DEFAULT_SURFACES: LandingSurface[] = [
 
 const DEFAULT_CTA_LABEL = "Read the knowledge base";
 
+/**
+ * The eyebrow — the small mono label above the name.
+ *
+ * Upstream's hero opened with a kicker and ours opened with nothing, because
+ * `eyebrow` was a prop the scaffold never passed. That is half of why the band
+ * measured empty (Hero.tsx records the other half), and it is the cheapest half
+ * to fix honestly: the label states what the reader is looking at, which is the
+ * one subject a framework may write prose about — never a claim about somebody's
+ * corpus, never a count it would have to invent.
+ *
+ * It is a default, not a fixture: `eyebrow={false}` removes it and any string
+ * replaces it, exactly like the section, surfaces and closing copy beside it.
+ */
+export const DEFAULT_EYEBROW = "System of record";
+
 export default function Landing(props: LandingProps): React.ReactElement {
   const { siteConfig } = useDocusaurusContext();
   const corpus = useCorpus();
@@ -98,7 +113,9 @@ export default function Landing(props: LandingProps): React.ReactElement {
         <Hero
           title={title}
           tagline={tagline}
-          eyebrow={props.eyebrow}
+          eyebrow={
+            props.eyebrow === false ? undefined : (props.eyebrow ?? DEFAULT_EYEBROW)
+          }
           cta={cta}
           secondaryCta={props.secondaryCta}
           corpus={corpus}

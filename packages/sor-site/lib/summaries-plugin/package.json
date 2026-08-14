@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "license": "Apache-2.0",
-  "description": "Docusaurus plugin exposing co-located .summary.md files via global data (copied from ag2 libs/docusaurus/summaries-plugin at d764f334).",
+  "description": "Docusaurus plugin: exposes co-located .summary.md files via global data so a doc page can offer a summary view.",
   "main": "index.js",
   "engines": {
     "node": ">=20"

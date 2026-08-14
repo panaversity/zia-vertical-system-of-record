@@ -54,13 +54,13 @@ export function parseStudentContent(
       });
     }
 
-    // Find the end of the student content
+    // Find the end of the marked span
     const afterStart = earliestIdx + earliestField.start_marker.length;
     const endMarker = earliestField.end_marker ?? earliestField.start_marker;
     const endIdx = remaining.indexOf(endMarker, afterStart);
 
     if (endIdx === -1) {
-      // No closing marker: treat rest as student content
+      // No closing marker: treat the rest as the marked span
       segments.push({
         text: remaining.slice(afterStart),
         isStudentContent: true,
