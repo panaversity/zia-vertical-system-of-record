@@ -11,11 +11,17 @@ invariants, and how it is built and tested. Loaded every session, so it holds on
 
 ## What this is, in one line
 
-A CLI (`vsor` — PyPI package and binary share the name) that compiles a folder of governed markdown into two surfaces —
-a static website for people and an MCP server for AI assistants — with cited answers and honest
-abstention. **The workspace and gate exist; `init`, `dev` and `build` are implemented** — every
-unimplemented verb (today: `serve`) says so honestly with exit code 2 and points at its spec. It is not an agent framework; it is the knowledge layer agent
+A CLI (`vsor` — PyPI package and binary share the name) that compiles a folder of governed markdown
+into two surfaces — a static website for people and an MCP server for AI assistants — with cited
+answers and honest abstention. It is not an agent framework; it is the knowledge layer agent
 frameworks read from (that layer is `eve`'s — we are upstream of it).
+
+**Which verbs exist today is not recorded here.** This file describes what vsor *is*; what is built
+this week lives in [`docs/status.md`](docs/status.md), and what shipped in
+[`CHANGELOG.md`](CHANGELOG.md). One rule holds it: a verb that is not implemented says so on stderr
+and exits 2, so the CLI itself is always the current answer — no document has to be kept in step
+with it. *(Corrected 2026-08-14: this paragraph used to name the implemented verbs, which made the
+always-loaded file wrong at every release and duplicated the one document whose job that is.)*
 
 Two non-negotiable properties:
 
@@ -104,12 +110,19 @@ evidence, recorded here with a revision note.
     the right question ("why docker if Neon?") and the answer split user path from framework path.*
 11. **The user's project is content and config only — machinery invisible** (decided 2026-08-13).
     `init` writes markdown, `instance.md`, skills, `AGENTS.md` — no `pyproject`, no `node_modules`,
-    no copied source. **Customization is a verb, not a default:** `vsor eject <component>`
-    materializes framework source into `lib/` on demand (first target: `site`; also `docker` for a
-    deploy-anywhere Dockerfile; `all` for the kernel), the runtime prefers `lib/` over the installed
-    package, and `build.lock.json` records `ejected: [...]` so a build from modified source is
-    visibly not a stock build. The scaffolded AGENTS.md tells coding agents the command exists — the
-    shadcn source-access experience, agent-self-served instead of pre-copied.
+    no copied source. **Customization is a verb, not a default:** the design is that
+    `vsor eject <component>` *will* materialize framework source on demand (first target: `site`;
+    also `docker` for a deploy-anywhere Dockerfile; `all` for the kernel), with the runtime
+    preferring the ejected copy and `build.lock.json` recording it, so a build from modified source
+    is visibly not a stock build — the shadcn source-access experience, agent-self-served instead of
+    pre-copied.
+    *Corrected 2026-08-14: this decision was written in the present tense and every clause of it was
+    false — there is no `eject` verb, no `lib/` preference in the runtime, and the scaffolded
+    AGENTS.md names no such command. The lock's field is `non_stock`, not `ejected`, and it exists
+    precisely so the record needs no migration when the verb lands. What a project customizes TODAY
+    is `themeConfig`, the design tokens in `site/src/css/custom.css`, `site/src/pages/` and
+    `site/sidebars.ts`; the shell owns `src/theme/`, so swizzling is not a seam yet either. The
+    rule this violated is our own — never the present tense about behaviour that does not run.*
     *Revision 2026-08-13, from the customization-surface audit (evidence: both codebases +
     the book's own method):* **the line between "present source" and "installed machinery" is
     drawn per layer, and it is the authored-vs-machinery line:*
