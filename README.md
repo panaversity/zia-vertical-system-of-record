@@ -2,8 +2,8 @@
 
 **Answers you can trace. Refusals you can trust.**
 
-Point an AI assistant at your own body of professional knowledge and get answers that name the
-document they came from — and an honest *"that isn't in here"* when the question falls outside it.
+Point an AI assistant at your own files and get answers that name the file they came from — and a
+plain *"that isn't in here"* when the question falls outside them.
 
 ```bash
 vsor init my-sor      # a project in your own repo: markdown, config, git initialized
@@ -12,59 +12,56 @@ vsor dev              # the live site on 127.0.0.1:3000, reloading as you write
 vsor build            # → build/, ready to upload anywhere
 ```
 
-## What you get, out of the box
+## What you get
 
-Four markdown files in `knowledge/` produce this — no theme to pick, no components to wire, no
-build config to write. Both screenshots are the fixture corpus this repository tests against, not
-a mockup.
+Write markdown. Run one command. You get a site like this — no theme to pick, no components to
+wire, no build config. Both pictures are a real build of a real corpus, not a mockup:
 
-![The generated homepage: a hero built from the project's own name and tagline, and a panel
-counting the documents in the corpus](docs/images/home.jpg)
+![The generated homepage: the project's own name and tagline, and a panel counting the documents
+and sections found in the folder](docs/images/home.jpg)
 
-![A generated document page: sidebar, breadcrumbs, reading time, copy-as-markdown, an
-in-page table of contents, and an admonition](docs/images/doc-page.jpg)
+![A generated document page: sidebar built from the folder tree, breadcrumbs, reading time,
+copy-as-markdown, and an in-page table of contents](docs/images/doc-page.jpg)
 
-Your corpus is just a folder. Sub-folders become sections; frontmatter sets titles and order:
+Your side of it is a folder. Sub-folders become sections; a line of frontmatter sets the title:
 
 ```
 knowledge/
-  one-source-two-surfaces.md
-  system-of-record.md
-  vertical-sor.md
-  document-primitives.md      ← <Quiz />, flashcards and callouts, if a document wants them
+  about.md
+  thesis.md
+  ecosystem/
+    the-ecosystem-concept.md
 instance.md                   ← what this deployment is
 site/docusaurus.config.ts     ← title, navbar, colours — the parts that are yours
 ```
 
-## The problem this exists for
+## Why not just use a chatbot
 
-A general-purpose assistant answers everything in the same confident voice: your firm's rules and
-a stranger's, this year's threshold and last year's, the part it checked and the part it invented.
-If you are accountable for the answer, that is not a quirk to work around. It is the reason you
+A general-purpose assistant answers everything in the same confident voice: your rules and a
+stranger's, this year's number and last year's, the part it checked and the part it made up. If
+you are the one who has to stand behind the answer, that is not a rough edge. It is the reason you
 cannot use it.
 
-The fix is not a better model. It is a **system of record** — one governed source that both your
-people and your machines read, where every answer can be traced back to a document, and where the
-correct response to an uncovered question is to say so.
+What fixes it is not a smarter model. It is having **one source everyone reads** — your people
+through a website, your AI through a connector — where every answer points back to the document it
+came from, and where "we don't cover that" is a real answer instead of an invented one.
 
-## What vsor does
+## The two things vsor builds
 
-You write markdown in `knowledge/`. One command compiles it into two surfaces that never disagree,
-because they are built from the same source:
+Both come from the same folder, so they can never disagree:
 
-- **A website your people read** — search, dark mode, quizzes and flashcards, self-hosted fonts,
-  and **no external requests at all**. It works behind a firewall.
-- **An MCP server your AI answers from** — every answer names its document and the numbered
-  version it came from; a question the corpus does not cover is declined, not guessed.
+- **A website your team reads.** Search, dark mode, quizzes and flashcards, self-hosted fonts, and
+  **no calls to anyone else's server**. It works behind a firewall.
+- **A connector your AI answers from** (MCP — the standard assistants like Claude use to reach
+  outside tools). Every answer names its document; a question your files do not cover is declined.
 
-Every build also writes `build.lock.json`: a committed record of exactly which documents were
-built, from which commit, with which tool versions. When someone asks why the assistant said what
-it said, that file is how you find out.
+Every build also writes `build.lock.json` — a record of exactly which documents went in, from
+which commit, with which versions. When someone asks *why did it say that*, that file is how you
+find out.
 
-It is not an agent framework. It is the knowledge layer such frameworks read *from* — for people
-who own knowledge they are accountable for, and for the engineers and agents who build on it.
-Your project stays markdown and one config file; the machinery is installed rather than copied,
-so it upgrades underneath you.
+It is not an agent framework. It is the layer such frameworks read *from*. Your project stays
+markdown and one config file; the machinery is installed rather than copied in, so it upgrades
+underneath you without touching your work.
 
 ## Status
 

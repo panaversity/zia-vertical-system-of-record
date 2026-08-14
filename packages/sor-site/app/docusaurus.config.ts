@@ -123,7 +123,13 @@ const remarkPlugins = [
   [remarkTabs, tabPresets.osTabs],
   require("@vsor/lib-remark-flashcards"),
   require("@vsor/lib-remark-gallery"),
-  [require("@vsor/lib-remark-content-enhancements"), { enableSlides: true }],
+  // enableSlides is OFF: the transformer turns a `slides:` frontmatter key into a
+  // <SlidesViewer>, and that component is upstream product code the negative contract
+  // excludes — it is not in this shell. Left on, any corpus carrying `slides:` in its
+  // frontmatter failed the build with "Expected component `SlidesViewer` to be defined",
+  // naming a component the owner never wrote and cannot provide (found live 2026-08-15
+  // against the corpus this shell was forked from, which carries the key on real pages).
+  [require("@vsor/lib-remark-content-enhancements"), { enableSlides: false }],
 ];
 
 const beforeDefaultRemarkPlugins = [
