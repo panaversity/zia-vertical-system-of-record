@@ -25,7 +25,9 @@ set -u
 
 REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 
-export VSOR_DEV_VERSION="${VSOR_DEV_VERSION:-0.1.0}"
+# Same rule as the Makefile: read the package's version rather than restating it, because vsor
+# prefers the installed distribution over this knob and a stale literal fails as a lock mismatch.
+export VSOR_DEV_VERSION="${VSOR_DEV_VERSION:-$(sed -n 's/^version = "\(.*\)"/\1/p' "$REPO/packages/vsor/pyproject.toml" | head -1)}"
 
 SCRATCH="$(mktemp -d)"
 

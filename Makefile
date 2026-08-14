@@ -9,7 +9,11 @@
 # importlib.metadata answers with it, so this stamp is a belt-and-braces default rather
 # than the only thing standing between the suite and `error: unstamped` — it still matters
 # for the pre-release of the NEXT version, and for any run against an uninstalled tree.
-export VSOR_DEV_VERSION ?= 0.1.0
+# Derived from the package, never written twice: vsor prefers the INSTALLED version over this
+# knob, so a literal here silently disagrees with reality the moment the version is bumped
+# (found live at 0.1.0 -> 0.1.1: four unit tests and the build acceptance failed on the stale
+# default). The knob still matters when the workspace carries the 0.0.0 placeholder.
+export VSOR_DEV_VERSION ?= $(shell sed -n 's/^version = "\(.*\)"/\1/p' packages/vsor/pyproject.toml | head -1)
 
 .PHONY: lock lint fmt typecheck test boundary acceptance build-acceptance deploy-acceptance gate surface wheel
 

@@ -20,6 +20,7 @@ tests diff against the templates rather than restating them.
 
 import importlib.metadata
 import os
+import re
 import shutil
 import stat
 import subprocess
@@ -30,7 +31,21 @@ from pathlib import Path
 import pytest
 from vsor.scaffold import run_init
 
-DEV_VERSION = "0.1.0"
+
+def _installed_version() -> str | None:
+    """The distribution version when it is a real x.y.z, else None."""
+    try:
+        version = importlib.metadata.version("vsor")
+    except importlib.metadata.PackageNotFoundError:
+        return None
+    return version if re.fullmatch(r"\d+\.\d+\.\d+", version) and version != "0.0.0" else None
+
+# The version these tests assert against. It is DERIVED, never written down: `_resolve_version`
+# prefers the installed distribution over VSOR_DEV_VERSION, so once the workspace is installed at a
+# real version the env knob is ignored — and a hardcoded literal here turns every release bump into
+# four spurious failures (found live at the 0.1.0 -> 0.1.1 bump). The fallback keeps the suite
+# runnable where the distribution is the 0.0.0 placeholder, which is what the knob is for.
+DEV_VERSION = _installed_version() or "0.1.0"
 
 # The spec's file table, exactly — LC_ALL=C sort order (specs/vsor/init acceptance).
 # The .agents/skills/** set is the agent kit of AGENTS.md decision 5's revision: add-sources
@@ -342,7 +357,10 @@ def test_instance_md_roundtrip(sandbox: Path, capsys: pytest.CaptureFixture[str]
     body = text[end + len("\n---\n") :]
     assert "format: 1" in frontmatter
     assert "name: demo" in frontmatter
-    assert 'requires: ">=0.1.0,<0.2"' in frontmatter  # exact floor from 0.1.0
+    # The exact floor, derived from whatever version ran: X.Y.Z pins >=X.Y.Z,<X.(Y+1).
+    major, minor, _patch = DEV_VERSION.split(".")
+    expected_pin = f'requires: ">={DEV_VERSION},<{major}.{int(minor) + 1}"'
+    assert expected_pin in frontmatter
     for reserved in ("retrieval", "budgets", "governance"):
         assert reserved not in frontmatter  # reserved keys documented, never scaffolded
     assert "corpus" in body  # the starter prompt is real, not a placeholder

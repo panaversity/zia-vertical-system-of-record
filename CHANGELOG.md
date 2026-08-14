@@ -1,9 +1,10 @@
 # Changelog
 
-## Unreleased
+## 0.1.1 — 2026-08-14
 
 Everything since the 0.1.0 tag. The theme of it is **publishability**: 0.1.0 could be built and
-run, and this is the work of making it something a stranger can be handed.
+run, and this is the work of making it something a stranger can be handed. It is 0.1.1 rather than
+a patch on 0.1.0 because the scaffold's file list is a contract and it changed (28 files to 29).
 
 ### Breaking
 
