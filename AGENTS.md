@@ -145,16 +145,30 @@ my-sor/                        ← created by `vsor init my-sor`; yours, your li
 ├── instance.md                  frontmatter = machine config; body = the MCP server's prompt
 ├── knowledge/
 │   └── example.md               ONE real example document — never empty directories
-├── .agents/skills/add-sources/  the one v0 skill: PDFs · folders · URLs → governed markdown
+├── .agents/skills/<name>/SKILL.md   the agent kit (decision 5's revision) — 13 skills:
+│                                add-sources · docx · pptx · fetch-library-docs ·
+│                                knowledge-extraction-method · technical-clarity ·
+│                                content-refiner · canonical-format-checker ·
+│                                summary-generator · quiz-generator · generate-flashcards ·
+│                                skill-creator · find-skills
+├── .claude/
+│   ├── settings.json            the vsor verbs pre-permitted; no hooks, nothing phones out
+│   └── rules/                   provenance · abstention · review · repository-map
 ├── site/                        a REAL, thin Docusaurus shell — the seams agents know natively:
-│   ├── docusaurus.config.ts       live themeConfig (title, navbar, footer, logo — all wired)
-│   ├── custom.css                 the design tokens, including --ifm-color-primary
-│   └── index.tsx                  the homepage
+│   ├── docusaurus.config.ts       live themeConfig (title, navbar items, footer, prism — wired)
+│   └── src/
+│       ├── css/custom.css         the design tokens, including --ifm-color-primary
+│       └── pages/index.tsx        the homepage
 ├── AGENTS.md                    how an agent works in the scaffolded project
+├── CLAUDE.md                    one line: `@AGENTS.md`
 ├── .env                         the two things the user supplies: DATABASE_URL + embedding key
 ├── .gitignore                   ignores .vsor/, build/ — and .env (a bare .env leaks on deploy)
 └── (a git repository — init runs `git init` unless one exists)
 ```
+
+**Byte-exact, in two places, neither of them here:** `tests/acceptance/init.sh` diffs the real
+output against the full 27-line file list, and `packages/vsor/tests/test_init.py`'s
+`EXPECTED_FILES` pins the same set. This tree is the map; those two are the contract.
 
 **Ownership destinations — one rule (settled 2026-08-13):** anything you take ownership of lands
 where its *home system* already puts it, never in an invented location. Swizzled site components →
@@ -237,7 +251,7 @@ scaffolded projects.
 | Boundary | `tests/test_boundaries.py` | reads source, parses with `ast`, never imports | ✅ |
 | Composition smoke | `tests/test_*_smoke.py` | real composition root; fake pool that *raises if touched* | ✅ |
 | Scaffold | one job | runs `vsor init` and builds the output | ✅ |
-| Surface | `make surface` (Playwright over the built fixture site, B5–B14 of `specs/sor-site/surface`) | Node + pinned Chromium; static server on 127.0.0.1; deterministic by construction — DOM-state waits only, no screenshots | own job (needs Node) |
+| Surface | `make surface` (Playwright over the built fixture site, B5–B15 of `specs/sor-site/surface` — B15 is the design-system tier: the utilities compute, the shadcn sheet is the mobile menu, lucide is inline SVG, a CSS-module primitive keeps its own box, code is legible in light mode) | Node + pinned Chromium; static server on 127.0.0.1; deterministic by construction — DOM-state waits only, no screenshots | own job (needs Node) |
 | Database | `skipif` on an env pair | disposable local Postgres | opt-in |
 | Eval | console scripts, not pytest | live provider | release gate |
 

@@ -358,6 +358,30 @@
     min-height: 40px;
     justify-content: center;
   }
+
+  /* found live (2026-08-14, 375px viewport, built page): the tooltip is centred
+     on its button with translateX(-50%) and this toolbar sits in the reading
+     column's right gutter, so the tooltip hung ~5px past the viewport edge and
+     the whole PAGE scrolled sideways — `visibility: hidden` hides a box, it does
+     not remove it from layout. Anchoring to the toolbar's right edge on narrow
+     viewports is upstream's own fix; it was lost when these global rules were
+     scoped into this module. */
+  .tooltip {
+    left: auto;
+    right: 0;
+    transform: translateY(4px);
+  }
+
+  .tooltipWrapper:hover .tooltip,
+  .tooltipWrapper:focus-within .tooltip {
+    transform: translateY(0);
+  }
+
+  .tooltip::before {
+    left: auto;
+    right: 12px;
+    transform: none;
+  }
 }
 
 /* ============================================================================

@@ -186,7 +186,7 @@ interface ChapterLesson {
   order: number;
 }
 
-interface Chapter {
+interface ManifestGroup {
   title: string;
   part: string;
   partPath: string;
@@ -195,7 +195,7 @@ interface Chapter {
 }
 
 interface ChapterManifestData {
-  chapters: Record<string, Chapter>;
+  chapters: Record<string, ManifestGroup>;
   docToChapter: Record<string, string>;
 }
 

@@ -3,7 +3,7 @@
 What is true today, what is next, what blocks it. Changes weekly — which is why it is not in
 `AGENTS.md`.
 
-*Last updated: 2026-08-13*
+*Last updated: 2026-08-14*
 
 ---
 
@@ -29,8 +29,21 @@ history (the root commit), not the tree.
 
 - Governance **level 0 only** — no `governance/` directory, which removes `sor-governance` from v0
   entirely.
-- **One skill: `add-sources`** — the one the five-minute claim rests on.
-- Naming stays Agent-Factory-flavoured; genericization comes later.
+- **A real agent kit, not one skill** (AGENTS.md decision 5's revision, owner 2026-08-13): the
+  scaffold writes `.claude/settings.json` (the vsor verbs pre-permitted, no hooks), four
+  `.claude/rules/` (provenance · abstention · review · repository-map) and **13 skills** —
+  `add-sources` (the one the five-minute claim rests on) plus the corpus-generic set copied from
+  upstream and de-branded: source conversion (`docx`, `pptx`, `fetch-library-docs`), knowledge work
+  (`knowledge-extraction-method`, `technical-clarity`, `content-refiner`,
+  `canonical-format-checker`), the shipped primitives (`summary-generator`, `quiz-generator`,
+  `generate-flashcards`), and the meta pair (`skill-creator`, `find-skills`). The exact 27-file
+  output is pinned byte-for-byte by `tests/acceptance/init.sh` and `test_init.py`.
+- **De-branding is done and CI-enforced, not deferred.** Zero upstream brand strings in shipped
+  source, in built bundles, or in the scaffold's prose — the last of those became a test on
+  2026-08-14 (`test_surface_contract.py`'s markdown tier, which also bars curriculum vocabulary:
+  the skills crossed from a curriculum repo, and a tax-law SoR must not find lesson/chapter/learner
+  language in its own kit). One recorded exception: the framework's own repo URL in the scaffolded
+  AGENTS.md.
 
 **Deferred, named as choices:** levels 1–4 · five of six skills · deployment targets beyond local ·
 the customer-overlay mechanism (no schema support exists today — `corpus_id` is absent from all five
@@ -153,23 +166,74 @@ theme upgrade literally changes look, never contract.
 **`sor-site` landed 2026-08-13 — the extraction is real.** `packages/sor-site/` (npm workspace,
 lockfile committed): `@vsor/sor-site-mdx` (Quiz, flashcards, gallery, ExerciseCard, HighlightTip,
 ImageZoom + `@theme/MDXComponents` mapping — works on stock preset-classic), `@vsor/sor-site-theme`
-(LessonContent, DocPageActions audited to four corpus-neutral actions, ReadingProgress, SearchBar,
-ModeToggle; the token file; wrap-only swizzles), and ten `@vsor/lib-*` content-pipeline packages
+(the design system — Tailwind v4 + shadcn/ui primitives + an OKLCH token layer bridged onto the
+`--ifm-*` variables + lucide — and the chrome it paints: **full swizzles** of Navbar, Footer and
+Landing, plus LessonContent, DocPageActions audited to four corpus-neutral actions, ReadingProgress,
+SearchBar and ModeToggle. Amended 2026-08-14: the first pass shipped bespoke CSS and the owner
+rejected it as "simple Docusaurus, not specialized"; the design system now crosses whole, which is
+also what makes B12 seam liveness load-bearing rather than theoretical), and ten `@vsor/lib-*` content-pipeline packages
 with the five tab plugins collapsed into one `remark-tabs` before crossing the seam — all copied
 from `ag2` at the pinned survey SHA under the owner's copy authorization, stripped per the surface
 spec's exclusion contract, de-branded (CI-scanned). Phase A runs inside `make gate` (allowlist +
 denylist backstop, exclusion boundary scan from the one committed `exclusions.json`, token lint at
-baseline zero, prop baseline); the browser tier is `make surface` — 20 Playwright checks (B5–B14)
-against BOTH stock and themed builds. The live walk caught what suites alone would have shipped:
+baseline zero, prop baseline); the browser tier is `make surface` — 32 Playwright checks (B5–B14, plus the
+design-system tier B15 added 2026-08-14) against BOTH stock and themed builds. The live walk caught what suites alone would have shipped:
 React #418 hydration on every themed doc page for Mac readers (Node ≥21's global `navigator` made
 the SSR guard dead), the build host's OS baked into shipped HTML, clipboard junk in
 Copy-as-Markdown — all fixed with red-state evidence and found-live comments. Named follow-up:
 per-primitive render assertions (flashcards, gallery, ExerciseCard, HighlightTip, ImageZoom) land
 with the fixture docs that exercise them; search title-ranking niggle recorded beside the code.
 
+**The design-system pass, 2026-08-14 — what the browser found that CI could not.** Bringing
+Tailwind across whole introduced a failure the entire B-suite stayed green through: Docusaurus's
+postcss-preset-env polyfills `@layer` into `:not(#\#)` specificity hacks, which raised Tailwind's
+**preflight** to (0,2,0) — above every single-class CSS-module rule in the corpus's own primitives.
+Measured on the identical class: quiz options 773x54 with a 1px border and 12px/16px padding on
+stock, 800x28 with neither on themed; the search dialog jammed against the top edge of the window;
+Docusaurus's own `clean-btn` stripped. The design system was silently un-styling the primitives it
+was brought across to dress. Fixed by not shipping preflight (theme + utilities only) and naming
+the three things it was doing for this package on the components that need them; the browserslist
+"fix" was measured and **rejected** — with real layers the utilities lose to Infima and the hero's
+call to action renders a teal label on a teal button. Also found live and fixed: code blocks were
+pale-on-pale in light mode (the theme forces a light code surface, Docusaurus's default Prism theme
+is dark — the scaffold now sets `prism`), `--info`/`--warning` were never in the token layer so
+three of five admonition kinds were indistinguishable, the breadcrumb's designed "/" never rendered
+behind Infima's chevron, the mobile sheet's search control was a bare unlabelled magnifier, the
+search box was the one piece of chrome off the token set, and a new site's footer was a 214px band
+of nothing. B15 is the net: it now asserts a CSS-module primitive keeps its own box in both builds,
+and that fenced code clears 4.5:1 in light mode — the two assertions that would have caught this.
+
 **CI is red for a non-code reason:** GitHub Actions reports "account payments have failed or your
 spending limit needs to be increased" — jobs never start. Owner action; local `make gate` and
 `make surface` are the same checks and are green.
+
+**The AF design system landed whole (2026-08-14).** Tailwind v4 + shadcn/ui + OKLCH tokens +
+lucide crossed the seam intact rather than being re-implemented — the owner rejected the first
+stripped build as "simple Docusaurus, not specialized", and the root cause was pass 1 substituting
+bespoke CSS for a design system. Also across: the chrome (navbar with its mobile sheet, footer,
+layout, root), the doc-page and sidebar polish, and the landing-page pattern as a content-driven
+primitive. The theme is **on by default**; stock preset-classic is a tested fallback (B14), and a
+new **B15** tier proves the design system is live in the themed build and provably absent from the
+stock one — 32 browser checks now, up from 20. Two live scars are recorded in the code: Tailwind's
+preflight, boosted above CSS modules by Docusaurus's `@layer` polyfill, was silently un-styling the
+very primitives the theme exists to dress; and an unset `prism` key renders every fenced block at
+~1.3:1 in light mode.
+
+**Proved on real content (2026-08-14).** `vsor init` → 48 real Agent Factory documents →
+`vsor build` → a served site: 117 corpus files, a real `build.lock.json`, quizzes and flashcards
+from the source corpus, zero external requests. Two findings the ten-file fixture could never
+surface: (1) the scaffold shipped no `sidebars.ts`, so the autogenerated sidebar was named
+`defaultSidebar` while every `create-docusaurus` site names it `tutorialSidebar` — **any corpus
+imported from an existing Docusaurus site failed the build**; fixed in the scaffold. (2) Upstream's
+own corpus is entangled with its product components (`<ProjectCard>` ×65, `<AICheck>` ×31,
+`<SimPlayer>` ×8), so 33 of its 81 docs cannot build on a vsor site by design — the 48 knowledge
+documents use only the shipped vocabulary. Also observed: relative paths that escape `knowledge/`
+resolve inside the runtime shell, so corpus images belong beside their documents or in
+`site/static/` referenced absolutely.
+
+**Named gaps, not silently carried:** flashcards, gallery, ExerciseCard, HighlightTip and ImageZoom
+still have no render assertion anywhere; no fixture contains an admonition; a one-word project name
+puts the whole hero title in the brand colour.
 
 Implementation discipline is now a skill — `.agents/skills/implement-spec/SKILL.md` (breakdown per
 aspect, red-first, aggressive review, live/browser verification, detail pass, truth sweep);

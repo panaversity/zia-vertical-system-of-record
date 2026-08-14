@@ -31,6 +31,7 @@ of this table and grows with it — "exactly" is enforced by diff, never by coun
 | `instance.md` | valid per `specs/vsor/instance-format`; frontmatter = the required trio only (`format`, `name`, `vsor.requires` — reserved keys stay documented there, never scaffolded); body = a short real starter prompt naming the corpus, the abstention rule, and citations |
 | `knowledge/example.md` | ONE real document. Frontmatter contract, held here until a knowledge-format spec supersedes it: `title:` required, `description:` optional; the origin-artifact block is reserved for `add-sources` |
 | `site/docusaurus.config.ts` | targets `@docusaurus/preset-classic`, resolved by the framework-managed Node runtime (this spec depends on the Node-spike outcome); title = `<name>`, navbar = title only, footer = `© <year> <name>` — the owner's, never vsor's. All live seams |
+| `site/sidebars.ts` | generates the sidebar from the `knowledge/` tree and names it `tutorialSidebar` — the name `create-docusaurus` gives every site, so documents imported from an existing Docusaurus project (which carry `displayed_sidebar: tutorialSidebar`) build unedited *(added 2026-08-14, found live: the first real corpus failed the build without it)* |
 | `site/src/css/custom.css` | design tokens, **including `--ifm-color-primary`** (Docusaurus-native path) |
 | `site/src/pages/index.tsx` | the homepage (Docusaurus-native path) |
 | `.agents/skills/**` | the **agent kit** *(amended 2026-08-13, AGENTS.md decision 5's revision)*: `add-sources/SKILL.md` (content authority: `templates/` alone, until `specs/vsor/add-sources` is ratified) plus the corpus-generic skills carried from upstream — source conversion, knowledge work, the shipped content primitives, and the meta skills. Each is a directory with `SKILL.md`; the exact set is enumerated in `templates/` and pinned by the scaffold test, so "exactly" below still means byte-checkable |
@@ -129,6 +130,23 @@ uvx --from packages/vsor vsor init demo > out.txt
 grep -q 'AGENTS.md' out.txt && grep -q 'vsor dev' out.txt            # the pinned handoff
 diff <(find demo -path demo/.git -prune -o -type f -print | LC_ALL=C sort) - <<'EOF'
 demo/.agents/skills/add-sources/SKILL.md
+demo/.agents/skills/canonical-format-checker/SKILL.md
+demo/.agents/skills/content-refiner/SKILL.md
+demo/.agents/skills/docx/SKILL.md
+demo/.agents/skills/fetch-library-docs/SKILL.md
+demo/.agents/skills/find-skills/SKILL.md
+demo/.agents/skills/generate-flashcards/SKILL.md
+demo/.agents/skills/knowledge-extraction-method/SKILL.md
+demo/.agents/skills/pptx/SKILL.md
+demo/.agents/skills/quiz-generator/SKILL.md
+demo/.agents/skills/skill-creator/SKILL.md
+demo/.agents/skills/summary-generator/SKILL.md
+demo/.agents/skills/technical-clarity/SKILL.md
+demo/.claude/rules/abstention.md
+demo/.claude/rules/provenance.md
+demo/.claude/rules/repository-map.md
+demo/.claude/rules/review.md
+demo/.claude/settings.json
 demo/.env
 demo/.gitignore
 demo/AGENTS.md
@@ -136,6 +154,7 @@ demo/CLAUDE.md
 demo/instance.md
 demo/knowledge/example.md
 demo/site/docusaurus.config.ts
+demo/site/sidebars.ts
 demo/site/src/css/custom.css
 demo/site/src/pages/index.tsx
 EOF

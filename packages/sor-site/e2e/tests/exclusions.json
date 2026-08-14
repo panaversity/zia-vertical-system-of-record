@@ -9,6 +9,18 @@
     "pattern": "panaversity|agent[\\s_-]?factory|\\bzia\\b",
     "flags": "i"
   },
+  "scaffoldMarkdown": {
+    "$comment": "The MARKDOWN tier, added 2026-08-14 (tests/test_surface_contract.py). The .ts/.tsx/.js/.css tiers above never read a word of prose, yet 12 SKILL.md files and 4 rules crossed into the scaffold from an ~80-skill CURRICULUM repo — the one place where brand and lesson vocabulary is most likely to survive, and the only thing holding the line was review. Scans packages/vsor/src/vsor/templates/scaffold/**/*.{md,json} with the brand pattern above plus the curriculum pattern here. The spec's A2 clause already recorded the one carve-out below as an exception; this is the scan it was an exception to.",
+    "curriculumPattern": "\\blessons?\\b|\\bchapters?\\b|\\blearners?\\b|\\bstudents?\\b|\\bcurricul(um|a)\\b|\\bsyllabus\\b|\\bclassroom\\b|\\bcoursework\\b|(?<!of )\\bcourses?\\b",
+    "curriculumWhy": "The words a tax-law or medical SoR must never find in its own scaffold. `teach`/`teaching` are deliberately absent: they are ordinary English here ('an unmaintained skill teaching a moving target'), and a pattern that cries wolf gets deleted. 'of course' is excluded by lookbehind for the same reason — technical-clarity's minimiser list names it as a word to avoid, which is content, not branding.",
+    "brandCarveOuts": [
+      {
+        "file": "AGENTS.md",
+        "contains": "github.com/panaversity/zia-vertical-system-of-record-framework",
+        "why": "the framework's own repository URL — a factual pointer, verified against `git remote -v`, not corpus branding. Named as an exception in specs/sor-site/surface/spec.md's A2 clause. The line is exempted, not the file."
+      }
+    ]
+  },
   "rows": [
     {
       "row": "Auth & gating",
@@ -126,6 +138,32 @@
         "\\bSegmentEditOverlay\\b",
         "\\bPDFViewer\\b",
         "\\bTailwindTestComponent\\b"
+      ]
+    },
+    {
+      "row": "Tab-plugin companions",
+      "$comment": "Added 2026-08-14, closing the list against the spec table (it had 10 of the 12 rows since birth). The five duplicate tab plugins collapsed into lib/remark-tabs BEFORE crossing; the app components they wrapped did not cross at all. The names had survived in remark-tabs' own doc comments as examples of what a consuming site would write — scrubbed in the same change, which is why this row is green rather than carved out.",
+      "patterns": [
+        "\\bCoworkTabs\\b",
+        "\\bToolTabs\\b",
+        "\\bWebAgentTabs\\b",
+        "\\bOSTabs\\b"
+      ]
+    },
+    {
+      "row": "Misc app chrome",
+      "$comment": "Added 2026-08-14 with the row above. LocaleDropdown and RomanUrdu are filed under 'Translated content' below, where the spec table also places the i18n half of this row.",
+      "patterns": [
+        "\\bDocEnhancements\\b",
+        "\\bSidebarToggle\\b",
+        "\\bTranslationBanner\\b",
+        "\\bTranslationEditor\\b",
+        "\\bUrduBidiIsolator\\b",
+        {
+          "pattern": "\\btranslation/",
+          "tiers": ["source"],
+          "why": "the excluded upstream directory, as a path segment; the bundle tier would match any minified string containing 'translation/' from a dependency's own i18n plumbing"
+        }
       ]
     },
     {

@@ -19,12 +19,12 @@
  * buttons (tutor & AI), the voice-reading dock, the completion button and
  * submission dialog (gamification), the practice-terminal overlay and its
  * context (practice & simulation), the feedback shipped-banner, the
- * account-completeness banner, translation/i18n banners and overlays (i18n
+ * account-completeness banner, the i18n banners and overlays (i18n
  * deferred wholesale), auth login redirects, and the zen-mode/reading-time
  * chrome (styled by upstream product CSS that is not carried).
  */
 
-import React from "react";
+import React, { useEffect, useState } from "react";
 import Content from "@theme-init/DocItem/Content";
 import { useDoc } from "@docusaurus/plugin-content-docs/client";
 import { usePluginData } from "@docusaurus/useGlobalData";
@@ -36,6 +36,57 @@ import styles from "./styles.module.css";
 
 interface SummariesPluginData {
   summaries: Record<string, string>;
+}
+
+/**
+ * Reading time — measured from the rendered document, never from frontmatter,
+ * so it cannot go stale and a corpus author never maintains it.
+ *
+ * 200 wpm is the conventional silent-reading rate for expository prose. It is a
+ * convention, not a measurement of this corpus; it is stated here rather than
+ * buried so a domain with different reading speed knows exactly what to change.
+ */
+const WORDS_PER_MINUTE = 200;
+
+const ClockIcon = () => (
+  <svg
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    aria-hidden="true"
+  >
+    <circle cx="12" cy="12" r="10" />
+    <polyline points="12 6 12 12 16 14" />
+  </svg>
+);
+
+/**
+ * Client-only: rendered as null on the server and on the first client render,
+ * then filled in from the DOM. Counting words during SSR would need the raw MDX
+ * (which this wrapper never sees) and any mismatch is a hydration error, which
+ * the acceptance suite fails on (B11, zero console errors).
+ */
+function ReadingTime({ docId }: { docId: string }): React.ReactElement | null {
+  const [minutes, setMinutes] = useState<number | null>(null);
+
+  useEffect(() => {
+    const body =
+      document.querySelector<HTMLElement>("article .theme-doc-markdown") ??
+      document.querySelector<HTMLElement>("article");
+    const words = (body?.innerText ?? "").trim().split(/\s+/).filter(Boolean).length;
+    setMinutes(words > 0 ? Math.max(1, Math.round(words / WORDS_PER_MINUTE)) : null);
+  }, [docId]);
+
+  if (minutes === null) return null;
+  return (
+    <span className="vsor-reading-time">
+      <ClockIcon />
+      {minutes} min read
+    </span>
+  );
 }
 
 export default function ContentWrapper(props: any): React.ReactElement {
@@ -63,6 +114,9 @@ export default function ContentWrapper(props: any): React.ReactElement {
     <>
       <ReadingProgress />
       <div className={styles.contentHeader}>
+        <div className={styles.contentHeaderLeft}>
+          <ReadingTime docId={doc.metadata.id} />
+        </div>
         <DocPageActions />
       </div>
       <LessonContent summaryElement={summaryElement}>

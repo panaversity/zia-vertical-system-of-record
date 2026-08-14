@@ -3,14 +3,15 @@
  * at d764f334, verbatim (directive names, values, labels, defaults, groupIds).
  *
  * Only the three vocabularies that emit stock Docusaurus <Tabs> ship as
- * presets. The two component-mode originals (remark-tool-tabs and
- * remark-cowork-tabs) hardcoded wrapper components (ToolTabs / CoworkTabs)
- * that do not cross the seam — a consuming site that has such components
- * reproduces them with component mode:
+ * presets. The two component-mode originals hardcoded wrapper components that
+ * do not cross the seam (they are named in the surface spec's negative
+ * contract, and deliberately not repeated here — the boundary scan reads this
+ * file) — a consuming site that has such components reproduces them with
+ * component mode:
  *
  *   remarkTabs({
  *     directive: "tool-tabs",
- *     component: "ToolTabs",
+ *     component: "MyToolTabs",
  *     tabs: {
  *       "tool-a": { tag: "ToolAContent" },
  *       "tool-b": { tag: "ToolBContent" },

@@ -27,7 +27,7 @@ export interface Manifest {
   instanceName: string;
   year: string;
   siteUrl: string;
-  homeDocRoute: string;
+  docRoute: string;
   oldValues: {
     navTitle: string;
     footerCopyright: string;

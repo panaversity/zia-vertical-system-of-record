@@ -12,15 +12,15 @@
  * Frontmatter schema:
  * ---
  * slides:
- *   source: "slides/chapter-14.pdf" | "https://cdn.example.com/slide.pdf"
+ *   source: "slides/filing-deadlines.pdf" | "https://cdn.example.com/slide.pdf"
  *   placement: "before-what-you-learn" | "after-intro"
  *   height: 700
- *   title: "Chapter 14 Slides"
+ *   title: "Filing deadlines — deck"
  * ---
  *
  * OR simple string format:
  * ---
- * slides: "slides/chapter-14.pdf"
+ * slides: "slides/filing-deadlines.pdf"
  * ---
  */
 
@@ -153,7 +153,7 @@ function findInjectionPoint(tree, placement) {
  * Create the slides-viewer JSX node for injection
  */
 function createViewerNode(slides, component) {
-  const { source, height = 700, title = "Chapter Slides" } = slides;
+  const { source, height = 700, title = "Slides" } = slides;
   const normalizedSource = normalizePath(source);
 
   return {
@@ -212,14 +212,14 @@ function transform(tree, file, slidesMetadata, config = {}) {
       source: slidesMetadata,
       placement: "before-what-you-learn",
       height: 700,
-      title: "Chapter Slides",
+      title: "Slides",
     };
   } else {
     slides = {
       source: slidesMetadata.source,
       placement: slidesMetadata.placement || "before-what-you-learn",
       height: slidesMetadata.height || config.defaultHeight || 700,
-      title: slidesMetadata.title || "Chapter Slides",
+      title: slidesMetadata.title || "Slides",
     };
   }
 

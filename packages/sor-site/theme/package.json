@@ -3,14 +3,25 @@
   "version": "0.1.0",
   "private": true,
   "license": "Apache-2.0",
-  "description": "Docusaurus theme layer for VSoR sites: LessonContent doc-page primitive, DocPageActions (corpus-neutral actions only), ReadingProgress, local-index SearchBar, ModeToggle, and the designated design-token file. Copied from ag2 apps/learn-app at d764f334, stripped per specs/sor-site/surface/spec.md negative contract, de-branded.",
+  "description": "Docusaurus theme layer for VSoR sites — the design system and the chrome it paints: Tailwind v4 over an OKLCH token layer bridged onto the --ifm-* variables (src/css), the shadcn/ui primitives the chrome imports (src/ui), Navbar, Footer, Landing, LessonContent, DocPageActions, ReadingProgress, local-index SearchBar and ModeToggle. Copied from ag2 apps/learn-app at d764f334, stripped per specs/sor-site/surface/spec.md negative contract, de-branded. The tailwind/postcss/autoprefixer deps are runtime, not dev: this package configures the consuming site's postcss pipeline itself so a vsor project needs no postcss config of its own.",
   "main": "src/index.js",
   "engines": {
     "node": ">=20"
   },
   "dependencies": {
+    "@radix-ui/react-dialog": "^1.1.23",
+    "@radix-ui/react-slot": "^1.3.3",
+    "@tailwindcss/postcss": "^4.3.3",
+    "autoprefixer": "^10.5.4",
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
+    "lucide-react": "^0.554.0",
     "lunr": "^2.3.9",
+    "postcss": "^8.5.26",
     "react-markdown": "^9.0.1",
+    "tailwind-merge": "^3.6.0",
+    "tailwindcss": "^4.3.3",
+    "tailwindcss-animate": "^1.0.7",
     "turndown": "^7.2.0"
   },
   "peerDependencies": {

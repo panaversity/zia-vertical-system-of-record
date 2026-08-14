@@ -137,7 +137,7 @@ export default function ConversationCard({
       {expanded && (
         <div className={styles.convCardBody}>
           <div className={styles.convSection}>
-            <div className={styles.convSectionLabel}>Student Prompt</div>
+            <div className={styles.convSectionLabel}>Prompt</div>
             <div className={styles.convSectionContent}>
               {parseStudentContent(
                 conversation.student_input,
@@ -146,7 +146,7 @@ export default function ConversationCard({
                 seg.isStudentContent ? (
                   <span key={i} className={styles.studentHighlight}>
                     <span className={styles.studentHighlightLabel}>
-                      {seg.label ?? "Student’s input"}
+                      {seg.label ?? "Input"}
                     </span>
                     {seg.text}
                   </span>

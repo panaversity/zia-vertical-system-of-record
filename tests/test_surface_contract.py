@@ -107,6 +107,20 @@ ALLOWLIST_EXACT = {
     "gray-matter",  # lib: chapter-manifest frontmatter parsing
     "satori",  # lib/plugin-og-image: SVG card renderer (build-time only)
     "sharp",  # lib/plugin-og-image: SVG→PNG (build-time only)
+    # The design system (spec amendment 2026-08-13, "added 2026-08-13 with the
+    # design system") — landed 2026-08-14. The spec names each of these; the
+    # radix primitives are listed individually, never as a wildcard, and the set
+    # is exactly what the kept chrome imports (theme/src/ui holds button + sheet).
+    "tailwindcss",  # theme: the design system's engine — v4, no config file
+    "@tailwindcss/postcss",  # theme: added to the site's pipeline by configurePostCss
+    "postcss",  # theme: peer of the two above; pinned so the shell resolves one copy
+    "autoprefixer",  # theme: last plugin in the same pipeline
+    "tailwindcss-animate",  # theme: the enter/exit utilities the sheet uses (no framer-motion)
+    "lucide-react",  # theme: the icon set the chrome renders (navbar, footer, landing)
+    "class-variance-authority",  # theme: shadcn variant tables (button, sheet)
+    "tailwind-merge",  # theme: the other half of cn() — conflicting-class resolution
+    "@radix-ui/react-slot",  # theme: ui/button's asChild
+    "@radix-ui/react-dialog",  # theme: ui/sheet (the navbar's mobile menu) is built on it
 }
 
 # Known-bad names: product deps that must never appear, even transitively.
@@ -118,6 +132,16 @@ DENYLIST = (
     "@xterm",
     "ts-fsrs",
     "recharts",
+    # The four the design-system amendment holds out at v0 ("`framer-motion`,
+    # `cmdk`, `next-themes` and `sonner` stay out at v0"). The allowlist above
+    # already catches them as direct deps; the spec pairs every allowlist with
+    # this backstop, and only the backstop sees a transitive arrival — e.g. a
+    # future radix primitive that pulls framer-motion in. Added 2026-08-14;
+    # verified zero occurrences in the lockfile at the time.
+    "framer-motion",
+    "cmdk",
+    "next-themes",
+    "sonner",
 )
 
 
@@ -268,6 +292,68 @@ def test_a2_no_brand_strings_in_shipped_source() -> None:
     assert not violations, (
         "brand strings in shipped source (de-brand is part of the negative contract):\n"
         + "\n".join(violations)
+    )
+
+
+# ------------------------------------------------- A2, markdown tier (scaffold)
+# The scans above read .ts/.tsx/.js/.css and never a word of prose — which was
+# fine while the scaffold held one hand-written SKILL.md, and stopped being fine
+# on 2026-08-14, when 12 more SKILL.md files and 4 .claude/rules crossed from an
+# ~80-skill CURRICULUM repo. Prose is exactly where a brand name or a
+# lesson/chapter vocabulary survives a copy, and nothing in CI could see it.
+# Patterns live in the same committed exclusions.json as every other tier.
+
+SCAFFOLD = REPO / "packages" / "vsor" / "src" / "vsor" / "templates" / "scaffold"
+_SCAFFOLD_MD = _EXCLUSIONS_DATA["scaffoldMarkdown"]
+_CURRICULUM_RE = re.compile(_SCAFFOLD_MD["curriculumPattern"], re.IGNORECASE)
+_BRAND_CARVE_OUTS = _SCAFFOLD_MD["brandCarveOuts"]
+
+
+def _scaffold_prose_files() -> list[Path]:
+    return [
+        p
+        for p in sorted(SCAFFOLD.rglob("*"))
+        if p.is_file() and p.suffix in {".md", ".json"}
+    ]
+
+
+def _brand_carved_out(path: Path, line: str) -> bool:
+    """True when this exact line is a recorded exception for this exact file."""
+    return any(
+        path.name == entry["file"] and entry["contains"] in line for entry in _BRAND_CARVE_OUTS
+    )
+
+
+def test_a2_scaffold_prose_carries_no_brand_strings() -> None:
+    files = _scaffold_prose_files()
+    assert files, f"no scaffold prose found under {SCAFFOLD.relative_to(REPO)} — did it move?"
+    violations: list[str] = []
+    for path in files:
+        for line_no, line in enumerate(path.read_text().splitlines(), start=1):
+            if _BRAND_RE.search(line) and not _brand_carved_out(path, line):
+                violations.append(f"{path.relative_to(REPO)}:{line_no} {line.strip()[:80]}")
+    assert not violations, (
+        "brand strings in the scaffolded project — a vsor project belongs to its owner and names "
+        "nobody else; the one recorded exception is the framework's own repo URL "
+        "(exclusions.json scaffoldMarkdown.brandCarveOuts):\n" + "\n".join(violations)
+    )
+
+
+def test_a2_scaffold_prose_carries_no_curriculum_vocabulary() -> None:
+    """The skills crossed from a curriculum repo; a tax-law SoR must not find
+    lesson/chapter/learner language in the kit it was scaffolded with."""
+    violations: list[str] = []
+    for path in _scaffold_prose_files():
+        for line_no, line in enumerate(path.read_text().splitlines(), start=1):
+            match = _CURRICULUM_RE.search(line)
+            if match:
+                violations.append(
+                    f"{path.relative_to(REPO)}:{line_no} [{match.group(0)}] {line.strip()[:80]}"
+                )
+    assert not violations, (
+        "curriculum vocabulary in the scaffolded project (settled lead decision 2026-08-13: the "
+        "corpus-generic skills cross de-branded AND de-curriculum'd — a governed corpus is "
+        "documents, not lessons):\n" + "\n".join(violations)
     )
 
 

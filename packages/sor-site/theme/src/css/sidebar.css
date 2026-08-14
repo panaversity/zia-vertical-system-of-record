@@ -1,0 +1,455 @@
+/**
+ * @vsor/sor-site-theme — the doc sidebar.
+ *
+ * Copied from ag2 apps/learn-app src/css/sidebar.css at d764f334 and reworked
+ * on the way across. This is chrome the surface spec keeps by name ("the doc-page
+ * polish (doc-pages.css, sidebar.css)"), because a stock Infima sidebar is the
+ * single loudest tell that a site is a docs template rather than a product.
+ *
+ * The design: sentence case (never all-caps), a quiet indent rail instead of a
+ * divider per row, a subtle primary-tinted pill for "you are here", generous
+ * touch targets, and one small caret. Nothing here is decoration for its own
+ * sake — each rule answers "where am I / what is near me" at a glance.
+ *
+ * TOKEN DISCIPLINE (surface spec): zero raw color literals. Every colour is a
+ * var() over the design tokens in tokens.css. The `--vsor-sidebar-*` properties
+ * below are *derivations*, not definitions: each one resolves to a design token
+ * (or a color-mix over one), so recolouring the sidebar means editing tokens.css
+ * and nothing else.
+ *
+ * Tokens consumed: --sidebar, --sidebar-foreground, --sidebar-primary,
+ * --sidebar-border, --sidebar-accent, --ifm-navbar-height.
+ *
+ * Dropped on copy (never carry what the negative contract excludes):
+ *   - the collapse toggle button and its collapsed-body layout (§14 upstream):
+ *     the component that drives it does not cross the seam, and the two rules
+ *     that hid Docusaurus's own drawer and collapse button with it (section 8
+ *     records why each is dead here)
+ *   - the whole Urdu / RTL / locale block (§14–16 upstream): i18n is deferred
+ *     wholesale post-v0, machinery and content both
+ *   - the hard-coded dark palette: the tokens are theme-aware, so a second
+ *     colour table would be a second thing to drift
+ *   - the depth-3 automatic item numbering: an AF curriculum default. A tax-law
+ *     or clinical corpus does not want its documents silently numbered, so the
+ *     capability survives only as the opt-in below.
+ */
+
+/* ============================================================================
+   0. DERIVED PROPERTIES
+   ============================================================================ */
+
+/* Layout constants stay UNLAYERED with !important: Docusaurus sets
+   --doc-sidebar-width from its own unlayered rule, and an unlayered declaration
+   beats a layered one, so a layered default here would silently lose. */
+:root {
+  /* Infima's own default is 300px; 272px is the width at which a three-level
+     corpus tree stops wrapping its leaf titles at the type scale below. */
+  --doc-sidebar-width: 272px !important;
+}
+
+/* Colour derivations go in the token layer, same as tokens.css, so a consuming
+   site can retint the sidebar from its own (unlayered) custom.css with a plain
+   declaration — no !important, no specificity fight. Every value resolves to a
+   design token; nothing here is a colour of its own. */
+@layer vsor-tokens {
+  :root {
+    --vsor-sidebar-text: var(--sidebar-foreground);
+    /* Leaf items sit one step back from category headers without going
+       grey-on-grey: blended toward the sidebar surface rather than faded to an
+       alpha, so the text keeps full opacity over any background. */
+    --vsor-sidebar-text-muted: color-mix(
+      in oklab,
+      var(--sidebar-foreground) 74%,
+      var(--sidebar)
+    );
+    --vsor-sidebar-hover-bg: var(--sidebar-accent);
+    --vsor-sidebar-active-text: var(--sidebar-primary);
+    /* A whisper of the primary — enough to answer "where am I" at a glance
+       without a loud filled block. */
+    --vsor-sidebar-active-bg: color-mix(
+      in oklab,
+      var(--sidebar-primary) 12%,
+      transparent
+    );
+  }
+}
+
+/* ============================================================================
+   1. SIDEBAR CONTAINER
+   ============================================================================ */
+
+/* Docusaurus pads the sidebar container by the navbar height via a hashed CSS
+   module class (sidebar_XXXX); the sticky viewport below handles that offset
+   instead, so the padding is redundant and shows as a gap. */
+.theme-doc-sidebar-container,
+aside[class*="sidebar"],
+div[class*="sidebar_"] {
+  padding-top: 0 !important;
+}
+
+.theme-doc-sidebar-container {
+  background: transparent !important;
+  border-right: 1px solid var(--sidebar-border) !important;
+}
+
+/* Sticky below the navbar, scrolls independently of the article. */
+@media (min-width: 997px) {
+  .theme-doc-sidebar-container [class*="sidebarViewport"] {
+    position: sticky !important;
+    top: var(--ifm-navbar-height) !important;
+    height: calc(100vh - var(--ifm-navbar-height)) !important;
+    max-height: calc(100vh - var(--ifm-navbar-height)) !important;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+    padding-right: 0.75rem !important;
+  }
+}
+
+.sidebar {
+  padding: 1rem 0.75rem !important;
+  overflow-x: hidden !important;
+}
+
+/* ============================================================================
+   2. MENU STRUCTURE
+   ============================================================================ */
+
+.menu {
+  margin-top: 0.25rem !important;
+  padding: 0 !important;
+  padding-top: 1rem !important;
+  overflow-x: hidden !important;
+}
+
+.menu__list {
+  padding-left: 0;
+  margin: 0;
+  list-style: none;
+  overflow-x: hidden !important;
+}
+
+.menu__list-item {
+  margin-bottom: 0.25rem;
+}
+
+/* ============================================================================
+   3. CATEGORY HEADERS — sentence case, never all-caps
+   ----------------------------------------------------------------------------
+   found live (2026-08-13, computed styles on a built page): Docusaurus gives a
+   collapsible category BOTH classes — `menu__link menu__link--sublist`. Upstream
+   styles the two families with one class each and puts the leaf family second,
+   so at equal specificity the leaf rule wins and every COLLAPSED category
+   renders at the leaf's weight and muted colour; only expanded categories (a
+   three-class selector) escape. The result is the opposite of this file's stated
+   "clear visual hierarchy". Fixed here by qualifying each family so they can
+   never collide: categories match `.menu__link.menu__link--sublist`, leaves
+   match `.menu__link:not(.menu__link--sublist)`.
+   ============================================================================ */
+
+.menu__link.menu__link--sublist {
+  display: flex !important;
+  align-items: center !important;
+  padding: 0.5rem 1rem !important;
+  font-size: 0.8125rem !important;
+  font-weight: 500 !important;
+  text-transform: none !important;
+  letter-spacing: normal !important;
+  color: var(--vsor-sidebar-text) !important;
+  background: transparent !important;
+  border-radius: 6px !important;
+  transition:
+    background 0.15s ease,
+    color 0.15s ease !important;
+}
+
+.menu__link.menu__link--sublist:hover {
+  background: var(--vsor-sidebar-hover-bg) !important;
+  color: var(--vsor-sidebar-text) !important;
+  text-decoration: none !important;
+}
+
+/* Infima's leading indicator dot goes; the trailing disclosure caret stays.
+   found live (2026-08-13, rendered sidebar DOM): upstream also reset ::after
+   here, with the comment "Docusaurus already provides one" — but in Docusaurus
+   3.10 the caret for a collapsible category IS that ::after, on
+   .menu__link--sublist-caret. Resetting it removes the only affordance saying a
+   row expands. Upstream's rule was a leftover from a custom chevron it no longer
+   draws; carrying it across would have shipped their scar as our bug. */
+.menu__link--sublist::before {
+  display: none !important;
+}
+
+/* Quieter and further from the scrollbar than Infima's default. Covers both
+   shapes Docusaurus uses: the ::after caret on a category link, and the
+   separate .menu__caret toggle it renders when a category has its own page. */
+.menu__link--sublist-caret::after,
+.menu__caret::before {
+  opacity: 0.55 !important;
+  transform: scale(0.85) !important;
+}
+
+.menu__caret {
+  margin-right: 0.5rem !important;
+}
+
+/* An expanded category reads as the current branch — by weight, not by colour;
+   the accent belongs to the open document alone (section 6).
+   found live (2026-08-13, rendered sidebar DOM): upstream's selector is
+   `.menu__list-item:not(--collapsed) > .menu__link--sublist`, and in Docusaurus
+   3.10 the category link is NOT a child of the <li> — a
+   `div.menu__list-item-collapsible` sits between them, so the rule matched
+   nothing and every category rendered identically whether open or shut. Both
+   shapes are covered below; the direct-child form keeps older DOMs working. */
+.menu__list-item:not(.menu__list-item--collapsed)
+  > .menu__list-item-collapsible
+  > .menu__link.menu__link--sublist,
+.menu__list-item:not(.menu__list-item--collapsed)
+  > .menu__link.menu__link--sublist {
+  color: var(--vsor-sidebar-text) !important;
+  font-weight: 600 !important;
+}
+
+/* ============================================================================
+   4. NESTED CONTENT — the indent rail
+   ============================================================================ */
+
+.menu__list .menu__list {
+  border-left: 2px solid var(--sidebar-border) !important;
+  margin: 0.5rem 0 0.75rem 0.75rem !important;
+  padding-left: 0.75rem !important;
+}
+
+/* ============================================================================
+   5. LEAF LINKS — one type scale at every depth
+   ----------------------------------------------------------------------------
+   Deliberately depth-blind: Infima does not restyle nested links, so upstream's
+   per-depth repeats of this rule were redundant, and they carried a specificity
+   (three and four classes) that beat the active state at depth. One rule.
+   ============================================================================ */
+
+.menu__link:not(.menu__link--sublist) {
+  display: flex !important;
+  align-items: center !important;
+  padding: 0.5rem 1rem !important;
+  font-size: 0.8125rem !important;
+  font-weight: 400 !important;
+  line-height: 1.5 !important;
+  color: var(--vsor-sidebar-text-muted) !important;
+  border-radius: 6px !important;
+  transition: all 0.15s ease !important;
+  text-decoration: none !important;
+}
+
+.menu__link::before {
+  display: none !important;
+}
+
+/* Faint surface on hover so items feel interactive, not inert text. */
+.menu__link:not(.menu__link--sublist):hover {
+  background: var(--vsor-sidebar-hover-bg) !important;
+  color: var(--vsor-sidebar-active-text) !important;
+  text-decoration: none !important;
+}
+
+/* ============================================================================
+   6. ACTIVE STATE — the subtle pill
+   ============================================================================ */
+
+/* The authoritative winner over Infima's default active background at every
+   nesting depth. Infima ships a filled block that fights the pill; these
+   selectors out-specify it rather than relying on !important alone (both sides
+   carry !important, so specificity decides) — and out-specify the leaf rule
+   above, which is why they are stated as a block rather than one bare class.
+   found live (2026-08-13): every selector must exclude sublists. Docusaurus
+   marks the ANCESTOR category of the current page `menu__link--active` too, so
+   without the :not() the accent lands on the open category as well as the open
+   document and "you are here" points at two rows. An expanded category is
+   marked by weight alone (section 3). */
+/* The bare pair carries the mobile case: inside the navbar's sheet, Docusaurus
+   renders DocSidebar WITHOUT the .theme-doc-sidebar-container wrapper (that
+   wrapper belongs to the desktop doc layout), so every container-qualified
+   selector below misses and the current document would render as an ordinary
+   leaf. Two classes matches the leaf rule exactly and wins on source order. */
+.menu__link--active:not(.menu__link--sublist),
+.menu__link--active:not(.menu__link--sublist):hover,
+.theme-doc-sidebar-container .menu__link--active:not(.menu__link--sublist),
+.theme-doc-sidebar-container
+  .menu__link--active:not(.menu__link--sublist):hover,
+.theme-doc-sidebar-container
+  .menu__link--active:not(.menu__link--sublist):focus,
+.theme-doc-sidebar-container
+  .menu__list-item--collapsed
+  > .menu__link--active:not(.menu__link--sublist),
+.theme-doc-sidebar-container
+  .menu__list
+  .menu__link--active:not(.menu__link--sublist),
+.theme-doc-sidebar-container
+  .menu__list
+  .menu__list
+  .menu__link--active:not(.menu__link--sublist),
+.theme-doc-sidebar-container
+  .menu__list
+  .menu__list
+  .menu__list
+  .menu__link--active:not(.menu__link--sublist),
+nav[class*="sidebar"] .menu__link--active:not(.menu__link--sublist),
+aside[class*="sidebar"] .menu__link--active:not(.menu__link--sublist) {
+  background: var(--vsor-sidebar-active-bg) !important;
+  background-color: var(--vsor-sidebar-active-bg) !important;
+  color: var(--vsor-sidebar-active-text) !important;
+  font-weight: 600 !important;
+}
+
+/* Category rows are structure, not destination: no fill of their own. */
+.theme-doc-sidebar-container .menu__link--sublist-caret,
+.theme-doc-sidebar-container .menu__link--sublist-caret:hover,
+.menu__list-item-collapsible,
+.menu__list-item-collapsible--active,
+.menu__list-item-collapsible:hover,
+.menu__list-item-collapsible--active:hover {
+  background: transparent !important;
+  background-color: transparent !important;
+}
+
+/* ============================================================================
+   7. SCROLLBAR
+   ============================================================================ */
+
+.theme-doc-sidebar-container::-webkit-scrollbar {
+  width: 6px;
+}
+
+.theme-doc-sidebar-container::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.theme-doc-sidebar-container::-webkit-scrollbar-thumb {
+  background: var(--sidebar-border);
+  border-radius: 3px;
+}
+
+.theme-doc-sidebar-container::-webkit-scrollbar-thumb:hover {
+  background: var(--vsor-sidebar-text-muted);
+}
+
+.theme-doc-sidebar-container {
+  scrollbar-width: thin;
+  scrollbar-color: var(--sidebar-border) transparent;
+}
+
+/* ============================================================================
+   8. TOUCH TARGETS
+   ----------------------------------------------------------------------------
+   Below 997px the doc tree moves into the navbar's mobile sheet; the same
+   .menu__* classes render there, so these rules follow it. Written at the same
+   specificity as the desktop rules they override, or they silently lose.
+
+   Not here, deliberately (both verified absent from the built markup):
+     - the .navbar-sidebar drawer and its backdrop. This theme's Navbar replaces
+       Docusaurus's mobile drawer with its own sheet, which brings its own
+       surface and overlay; upstream's drawer rules would be dead CSS in every
+       build, and dead CSS in a package whose claim is that nothing hides in it
+       is a defect, not ballast.
+     - the rule hiding [class*=collapseSidebarButton]. Docusaurus renders that
+       button only when a site sets docs.sidebar.hideable — i.e. only when the
+       owner asked for it. Upstream hid it because it shipped its own toggle
+       instead; we ship none, so hiding it would delete a feature the owner
+       deliberately turned on.
+   ============================================================================ */
+
+@media (max-width: 996px) {
+  .menu__link:not(.menu__link--sublist),
+  .menu__link.menu__link--sublist {
+    padding: 0.875rem 1rem !important;
+  }
+}
+
+/* ============================================================================
+   9. FOCUS STATES
+   ============================================================================ */
+
+.menu__link:focus-visible,
+.menu__link--sublist:focus-visible {
+  outline: 2px solid var(--vsor-sidebar-active-text) !important;
+  outline-offset: 2px !important;
+}
+
+/* ============================================================================
+   10. OPT-IN ITEM NUMBERING
+   ----------------------------------------------------------------------------
+   Upstream numbered every leaf at depth 3 automatically, which is a curriculum
+   assumption: a corpus of statutes or protocols does not want its documents
+   silently renumbered by where they happen to sit in the tree. So numbering is
+   opt-in per category, via `className: "sidebar-numbered"` in a _category_.json,
+   and opts out per document via `sidebar_class_name: sidebar-unnumbered`.
+
+   One counter runs continuously across every nesting depth beneath the marked
+   category, so nested sub-categories share a single 1..N sequence. Only leaf
+   items have a direct-child <a class="menu__link"> — category rows wrap theirs
+   in .menu__list-item-collapsible — so the selectors skip categories for free.
+   ============================================================================ */
+
+.menu__list-item.sidebar-numbered > .menu__list {
+  counter-reset: vsor-sidebar-item;
+}
+
+.menu__list-item.sidebar-numbered .menu__list .menu__list-item > a.menu__link {
+  counter-increment: vsor-sidebar-item;
+}
+
+.menu__list-item.sidebar-numbered
+  .menu__list
+  .menu__list-item
+  > a.menu__link::before {
+  content: counter(vsor-sidebar-item) ". " !important;
+  display: inline !important;
+  font-variant-numeric: tabular-nums;
+  opacity: 0.5;
+  margin-right: 0.125rem;
+}
+
+/* The opt-out must out-specify the rule above (four class selectors there), so
+   it stacks five. Both sides carry !important; specificity is what decides. */
+.menu__list-item.sidebar-numbered
+  .menu__list
+  .menu__list-item.sidebar-unnumbered
+  > a.menu__link::before,
+.menu__list-item.sidebar-unnumbered > a.menu__link::before {
+  content: none !important;
+}
+
+/* ============================================================================
+   11. SECTION SPACING — grouping by whitespace, not by rules
+   ============================================================================ */
+
+/* Top-level items breathe on whitespace. A 1px divider between every row turns
+   a twenty-item nav into a spreadsheet; the carets and the active pill carry
+   the structure instead. */
+.theme-doc-sidebar-menu > .menu__list-item {
+  margin-bottom: 0.125rem !important;
+}
+
+.theme-doc-sidebar-menu > .menu__list-item:not(:first-child) {
+  border-top: none !important;
+  padding-top: 0 !important;
+  margin-top: 0 !important;
+}
+
+/* An open category gets a touch more air so its subtree reads as one block. */
+.theme-doc-sidebar-menu
+  > .menu__list-item:not(.menu__list-item--collapsed):has(> .menu__list) {
+  margin-top: 0.375rem !important;
+  margin-bottom: 0.375rem !important;
+}
+
+/* ============================================================================
+   12. REDUCED MOTION
+   ============================================================================ */
+
+/* Two classes, to match the rules that set these transitions. */
+@media (prefers-reduced-motion: reduce) {
+  .menu__link:not(.menu__link--sublist),
+  .menu__link.menu__link--sublist {
+    transition: none !important;
+  }
+}

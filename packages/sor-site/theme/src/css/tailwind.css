@@ -1,0 +1,195 @@
+/**
+ * @vsor/sor-site-theme — the Tailwind v4 entry.
+ *
+ * This file is the design system's engine room; `tokens.css` is its palette.
+ * It carries NO colour literals (spec A3 keeps those in tokens.css alone) —
+ * only the mapping from Tailwind's utility namespaces onto the tokens, so
+ * `bg-background`, `text-muted-foreground`, `border-border` and the rest of
+ * the shadcn vocabulary resolve to var(--…) at paint time.
+ *
+ * Why the whole stack crosses instead of bespoke CSS (spec amendment
+ * 2026-08-13): shadcn/ui is the most agent-legible UI system in existence.
+ * An agent asked to restyle a vsor site already knows these class names and
+ * these token names from its training data — which serves the agent-first
+ * rule far better than anything hand-rolled.
+ *
+ * ── Source detection: why every path is declared, none inferred ───────────
+ *
+ * Tailwind decides which classes to emit by SCANNING FILES, and its automatic
+ * detection is a heuristic with two documented exclusions — `node_modules`
+ * and anything .gitignore'd — plus one undocumented dependency: its root is
+ * `process.cwd()` (the postcss plugin's documented default for `base`). A
+ * vsor site trips all three:
+ *   - in a real `vsor build` this package IS installed under
+ *     `.vsor/site-runtime/node_modules/@vsor/sor-site-theme/`, and the whole
+ *     `.vsor/` tree is gitignored in the user's project;
+ *   - in the e2e harness the fixture site lives under
+ *     `packages/sor-site/e2e/.scratch/`, ignored by packages/sor-site's own
+ *     .gitignore;
+ *   - `vsor build` invokes docusaurus with cwd = the SHELL root (not the site
+ *     dir), so the heuristic's root is a directory holding ~1,400 installed
+ *     packages and no authored source of its own.
+ * So `source(none)` turns the heuristic off and the `@source` directives
+ * below turn scanning back on explicitly — an explicitly registered path is
+ * scanned regardless of gitignore or node_modules, which is Tailwind's own
+ * documented way to scan a dependency. Two sets, for two reasons:
+ *   - THIS package's own components: declared here, relative to this file,
+ *     so they travel with the package whatever its install layout;
+ *   - the consuming site's `site/src` and `knowledge/`: only the build knows
+ *     where those are, so the theme's plugin entry (src/index.js) writes them
+ *     into a generated entry file that imports this one.
+ *
+ * measured 2026-08-14 (docusaurus 3.10.2, tailwind 4.3.3, themed fixture,
+ * theme installed under node_modules — both builds real): with the @source
+ * lines the built stylesheet is 202,049 bytes and contains exactly the
+ * utilities the site and this package use; with them removed and automatic
+ * detection on it is 219,336 bytes — the heuristic reached files nobody asked
+ * it to read. It did find the right ones too, that run — which is the point:
+ * a heuristic that happens to work today, on one layout, off a cwd another
+ * program chooses, is not a foundation for the site's entire appearance.
+ * Declared sources make the class set a property of this package instead.
+ */
+
+/* ── Why this is the split import and NOT `@import "tailwindcss"` ──────────
+ *
+ * found live 2026-08-14 (docusaurus 3.10.2, tailwind 4.3.3, themed fixture,
+ * real Chromium): the whole import pulls in `tailwindcss/preflight.css`, and
+ * in THIS pipeline preflight is not a reset — it is a wrecking ball.
+ *
+ * Docusaurus runs postcss-preset-env, which for the default browserslist
+ * POLYFILLS cascade layers by rewriting every layered rule with `:not(#\#)`
+ * specificity hacks (the same mechanism tokens.css records). Preflight's two
+ * broadest rules came out as
+ *
+ *   :not(#\#):not(#\#), … ::backdrop, …::after, …::before
+ *     { border: 0 solid; box-sizing: border-box; margin: 0; padding: 0 }
+ *   button, input, select, optgroup, textarea:not(#\#):not(#\#)
+ *     { font: inherit; color: inherit; background-color: transparent; … }
+ *
+ * at specificity (0,2,0) — which BEATS every single-class CSS-module rule
+ * (0,1,0). Measured on the identical class `optionButton_*`: stock 773x54 with
+ * a 1px top border and 12px/16px padding; themed 800x28, border 0, padding 0.
+ * The same for the search trigger (font-size 16px instead of 0.875rem, border
+ * gone), the search modal's `padding: 10vh 1rem 1rem` (dialog jammed against
+ * the top edge of the window), and Docusaurus's own `clean-btn`. In other
+ * words the design system was silently un-styling every primitive it was
+ * brought across to dress. Proven causally without a rebuild by deleting those
+ * two rules through the CSSOM in the live page: the quiz recovered to
+ * 750x54 / 1px / 12px 16px and the chrome measured byte-identical.
+ *
+ * Upstream ships preflight and is fine, because upstream's browserslist keeps
+ * real `@layer` — where preflight sits in `base` and loses to every unlayered
+ * rule. Do NOT reach for that fix here: declaring a modern browserslist was
+ * measured too, and with real layers Tailwind's utilities lose to Infima's
+ * unlayered rules — the hero CTA rendered a teal label on a teal button, the
+ * h1 dropped to weight 700, the card headings to 16px. Between "utilities
+ * outrank Infima, preflight excluded" and "layers are real, utilities lose",
+ * the first is the one that looks like the design.
+ *
+ * So: theme + utilities, no `base`. Everything preflight was doing FOR this
+ * package is now named on the component that needs it (ui/button's own
+ * background/border/font reset, ui/sheet's border colour, the Landing links'
+ * colour and underline) — which is the honest form anyway: this package styles
+ * its own chrome and resets nothing that belongs to somebody else.
+ *
+ * The empty `base` layer stays declared: it keeps the layer ORDER stable, so
+ * `@layer base` below (and anything a site adds) still ranks under utilities.
+ */
+@layer theme, base, components, utilities;
+@import "tailwindcss/theme.css" layer(theme) source(none);
+@import "tailwindcss/utilities.css" layer(utilities) source(none);
+@plugin "tailwindcss-animate";
+
+/* This package's own source. Relative to this file, so it holds in the
+ * workspace layout AND under node_modules. */
+@source "../theme";
+@source "../ui";
+@source "../lib";
+
+/* Docusaurus's color mode is an attribute on <html>, not Tailwind's default
+ * `.dark` class — so `dark:` variants must be taught where to look. */
+@custom-variant dark (&:is([data-theme="dark"] *));
+
+@theme inline {
+  /* Docusaurus collapses the doc sidebar at 997px, and a chrome component that
+   * must switch at the same moment needs that number by name rather than by
+   * magic constant. Nothing uses `docs:` yet — the navbar currently switches at
+   * Tailwind's `md` (768px), so between 768px and 997px the desktop bar is
+   * showing while Docusaurus still considers the layout mobile. Upstream's
+   * navbar used `docs:` for exactly that reason. Unused tokens emit nothing. */
+  --breakpoint-docs: 997px;
+
+  /* Same name on both sides, deliberately (shadcn's own convention): with
+   * `inline`, utilities emit `font-family: var(--font-sans)` and resolve
+   * against tokens.css. Tailwind still emits its own `--font-sans:
+   * var(--font-sans)` into :root, which reads like a cycle — observed in the
+   * built css 2026-08-14. It is inert: tokens.css declares the real value
+   * unlayered, which outranks Tailwind's layered one, and the computed
+   * font-family on <body> is the token stack. Renaming the token would end the
+   * illusion at the cost of the name every shadcn user already knows. */
+  --font-sans: var(--font-sans);
+  --font-mono: var(--font-mono);
+
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+
+  --color-success: var(--success);
+
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+
+  /* The radius scale derives from one token, so `--radius: 0px` gives the
+   * square, technical look upstream enforced with a global
+   * `border-radius: 0 !important` hammer — and a site that wants soft
+   * corners changes one value instead of fighting an !important. max()
+   * keeps every step legal at radius 0 (upstream's bare calc() went
+   * negative, which is *why* it needed the hammer). */
+  --radius-sm: max(0px, calc(var(--radius) - 4px));
+  --radius-md: max(0px, calc(var(--radius) - 2px));
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --radius-2xl: calc(var(--radius) + 8px);
+  --radius-3xl: calc(var(--radius) + 12px);
+}
+
+/* shadcn's one global — `* { border-color: var(--border) }` — is NOT here, and
+ * that is deliberate. In this pipeline it is boosted to (0,2,0) like everything
+ * else in a layer, so it would repaint the borders of every CSS-module-styled
+ * primitive: the quiz's correct/incorrect option outlines, the gallery's
+ * success/danger left rules, the flashcard panels — all of which name their own
+ * colour at (0,1,0) and would lose. (Counted 2026-08-14: 39 such rules across
+ * the mdx and theme packages.) The one component that relied on the default —
+ * ui/sheet's side borders — names `border-border` itself instead. Anything new
+ * that writes a bare `border` utility must name its colour too; a bare `border`
+ * paints currentColor in Tailwind v4, which is visible immediately. */

@@ -7,17 +7,31 @@
  * Produces:
  *   <out>/site/          copy of packages/vsor/src/vsor/templates/scaffold/site,
  *                        placeholders stamped (__VSOR_NAME__ -> "fixture",
- *                        __VSOR_YEAR__ -> "2026"), themes wired per variant
+ *                        __VSOR_YEAR__ -> "2026"); themed variant appends
+ *                        @vsor/sor-site-theme to the scaffold's own themes line
  *   <out>/knowledge/     copy of fixtures/tiny (the docs plugin reads ../knowledge)
  *   <out>/manifest.json  what was stamped/patched — the tests' single source for
  *                        sentinel values and old values (nothing hardcoded twice)
  *
- * Variants (settled lead decisions, 2026-08-13):
- *   stock  = stock @docusaurus/preset-classic + the mdx vocabulary package
- *   themed = stock + @vsor/sor-site-theme layered on top
- *   Both wire @easyops-cn/docusaurus-search-local (hashed: false): it is the site
- *   shell's search (allowlisted, local index), B13 requires a SearchBar in both
- *   configs, and the themed SearchBar shadows it while reading its index file.
+ * Variants (settled lead decisions, 2026-08-13; amended 2026-08-14 when the full
+ * theme became the scaffold default — specs/sor-site/surface, "the scaffold ships
+ * the full theme on by default"):
+ *   themed = the scaffold VERBATIM — config and homepage both. It is now the
+ *            default configuration, so this harness injects nothing and certifies
+ *            the exact site `vsor build` emits (one enforcement, literally).
+ *            search-local's defaults are the wired options: hashed defaults to
+ *            false (the themed SearchBar reads /search-index.json at a stable
+ *            path) and indexBlog defaults to true but is inert — the scaffold
+ *            sets blog: false, so no blog route ever reaches the indexer.
+ *   stock  = the documented fallback: @vsor/sor-site-theme removed from themes,
+ *            and the homepage replaced, because the scaffold's homepage renders
+ *            the theme's <Landing /> and @theme/Landing does not exist without
+ *            the theme. The replacement is exactly what the scaffold config's
+ *            comment tells an owner to write when they delete that line — so
+ *            that advice is tested rather than asserted.
+ *   The counted replaces are the drift detector: if the scaffold and this
+ *   harness disagree on the themes block or the homepage, the assembly fails
+ *   loudly instead of silently testing a different config.
  *
  * --sentinel (Acceptance B12): after normal stamping, replace exactly three seams —
  *   themeConfig.navbar.title, footer copyright, and --ifm-color-primary (light AND
@@ -121,32 +135,61 @@ function main() {
   const configPath = path.join(siteDir, "docusaurus.config.ts");
   let config = fs.readFileSync(configPath, "utf8");
 
-  // 2 — wire themes for the variant, inserted before the presets block.
-  if (config.includes("themes:"))
-    fail("scaffold config already declares themes: — assemble.mjs would double-wire; reconcile first");
-  const searchLocal =
-    `    [\n      "@easyops-cn/docusaurus-search-local",\n      // hashed: false — the themed SearchBar reads /search-index.json at a stable path.\n      { hashed: false, indexBlog: false },\n    ],\n`;
-  const themeLines =
-    args.variant === "stock"
-      ? `  themes: [\n    "@vsor/sor-site-mdx",\n${searchLocal}  ],\n\n`
-      : `  themes: [\n    "@vsor/sor-site-mdx",\n${searchLocal}    // listed after search-local so its SearchBar shadows the stock one\n    "@vsor/sor-site-theme",\n  ],\n\n`;
+  // 2 — the scaffold declares all three themes itself (specs/vsor/build: the
+  // visible, deletable seam). The counted replace doubles as drift detection:
+  // themed re-asserts the exact block (replaced with itself), stock collapses it
+  // to the two preset-classic-compatible entries. A scaffold change that touches
+  // the block fails the assembly loudly instead of silently testing nothing.
+  const scaffoldThemesBlock =
+    `  themes: [\n    "@vsor/sor-site-mdx",\n    "@easyops-cn/docusaurus-search-local",\n    // last, so its search box shadows the search plugin's own\n    "@vsor/sor-site-theme",\n  ],`;
+  const stockThemesLine =
+    '  themes: ["@vsor/sor-site-mdx", "@easyops-cn/docusaurus-search-local"],';
   config = replaceCounted(
     config,
-    "  presets: [",
-    `${themeLines}  presets: [`,
+    scaffoldThemesBlock,
+    args.variant === "stock" ? stockThemesLine : scaffoldThemesBlock,
     1,
-    "docusaurus.config.ts",
+    "docusaurus.config.ts (the scaffold's themes seam)",
   );
 
-  // 3 — the scaffold homepage links to /docs/example (it ships with
-  // knowledge/example.md). This harness substitutes fixtures/tiny as the corpus,
-  // so retarget that one link to a fixture doc; Docusaurus's own broken-link
-  // check (onBrokenLinks: throw) stays armed for everything else.
+  // 3 — the homepage. Themed keeps the scaffold's verbatim: it renders the
+  // theme's <Landing />, whose call to action is derived from the corpus itself
+  // (the docs plugin's mainDocId), so there is nothing here to retarget at the
+  // fixture. Stock cannot render it — @theme/Landing exists only while the theme
+  // is in `themes` — so it gets the preset-classic page the scaffold config's
+  // comment tells an owner to write when they remove that line. The counted
+  // replace still guards the seam: if the scaffold homepage stops importing
+  // @theme/Landing, this assembly fails loudly.
   const homePath = path.join(siteDir, "src", "pages", "index.tsx");
-  fs.writeFileSync(
-    homePath,
-    replaceCounted(fs.readFileSync(homePath, "utf8"), "/docs/example", "/docs/karahi", 1, "src/pages/index.tsx"),
-  );
+  const home = fs.readFileSync(homePath, "utf8");
+  replaceCounted(home, 'import Landing from "@theme/Landing";', "", 1, "src/pages/index.tsx");
+  if (args.variant === "stock") {
+    fs.writeFileSync(
+      homePath,
+      [
+        "// Generated by e2e/scripts/assemble.mjs for the STOCK variant: the scaffold",
+        "// homepage renders @theme/Landing, which needs @vsor/sor-site-theme. This is",
+        "// the preset-classic page the scaffold config's comment prescribes instead.",
+        'import Link from "@docusaurus/Link";',
+        'import Layout from "@theme/Layout";',
+        'import type { ReactNode } from "react";',
+        "",
+        "export default function Home(): ReactNode {",
+        "  return (",
+        "    <Layout>",
+        '      <main style={{ textAlign: "center", padding: "6rem 1rem" }}>',
+        `        <h1>${INSTANCE_NAME}</h1>`,
+        '        <Link className="button button--primary button--lg" to="/docs/karahi">',
+        "          Read the knowledge base",
+        "        </Link>",
+        "      </main>",
+        "    </Layout>",
+        "  );",
+        "}",
+        "",
+      ].join("\n"),
+    );
+  }
 
   const cssPath = path.join(siteDir, "src", "css", "custom.css");
   let css = fs.readFileSync(cssPath, "utf8");
@@ -163,7 +206,12 @@ function main() {
     instanceName: INSTANCE_NAME,
     year: YEAR,
     siteUrl: (config.match(/\burl:\s*"([^"]+)"/) ?? fail("no url: \"...\" in docusaurus.config.ts"))[1],
-    homeDocRoute: "/docs/karahi",
+    // A doc route both variants can visit: it has a sidebar (B12 paints
+    // .menu__link--active on it) and it is the one fixture doc carrying the
+    // quiz and the unique search phrase. NOT "where the homepage links" — the
+    // themed homepage derives its call to action from the corpus's mainDocId,
+    // so B11 reads that href off the page instead of assuming it.
+    docRoute: "/docs/karahi",
     oldValues: {
       navTitle: INSTANCE_NAME,
       footerCopyright: `© ${YEAR} ${INSTANCE_NAME}`,
@@ -175,10 +223,13 @@ function main() {
 
   // 4 — sentinel build (B12): exactly three seams change, nothing else.
   if (args.sentinel) {
+    // Scoped to the navbar block on purpose: `title:` also appears at the top
+    // level of the config (siteConfig.title, which B9 asserts on), and the two
+    // seams must move independently.
     config = replaceCounted(
       config,
-      `navbar: { title: "${INSTANCE_NAME}" }`,
-      `navbar: { title: "${SENTINELS.navTitle}" }`,
+      `navbar: {\n      title: "${INSTANCE_NAME}",`,
+      `navbar: {\n      title: "${SENTINELS.navTitle}",`,
       1,
       "docusaurus.config.ts (navbar.title)",
     );

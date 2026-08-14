@@ -59,6 +59,23 @@ grep -q 'vsor dev' out.txt || fail "handoff: success stdout does not mention 'vs
 diff <(find demo -path demo/.git -prune -o -type f -print | LC_ALL=C sort) - <<'EOF' \
   || fail "scaffold tree differs from the contract's exact file list"
 demo/.agents/skills/add-sources/SKILL.md
+demo/.agents/skills/canonical-format-checker/SKILL.md
+demo/.agents/skills/content-refiner/SKILL.md
+demo/.agents/skills/docx/SKILL.md
+demo/.agents/skills/fetch-library-docs/SKILL.md
+demo/.agents/skills/find-skills/SKILL.md
+demo/.agents/skills/generate-flashcards/SKILL.md
+demo/.agents/skills/knowledge-extraction-method/SKILL.md
+demo/.agents/skills/pptx/SKILL.md
+demo/.agents/skills/quiz-generator/SKILL.md
+demo/.agents/skills/skill-creator/SKILL.md
+demo/.agents/skills/summary-generator/SKILL.md
+demo/.agents/skills/technical-clarity/SKILL.md
+demo/.claude/rules/abstention.md
+demo/.claude/rules/provenance.md
+demo/.claude/rules/repository-map.md
+demo/.claude/rules/review.md
+demo/.claude/settings.json
 demo/.env
 demo/.gitignore
 demo/AGENTS.md
@@ -66,6 +83,7 @@ demo/CLAUDE.md
 demo/instance.md
 demo/knowledge/example.md
 demo/site/docusaurus.config.ts
+demo/site/sidebars.ts
 demo/site/src/css/custom.css
 demo/site/src/pages/index.tsx
 EOF

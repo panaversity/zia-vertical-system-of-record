@@ -3,12 +3,79 @@
  *
  * Token discipline (specs/sor-site/surface/spec.md): this is the only file in
  * the package allowed to contain raw color literals (hex/oklch/rgb/hsl).
- * Every other stylesheet consumes var(--ifm-*) or var(--vsor-*) defined here.
+ * Every other stylesheet and every component consumes var(--…) defined here.
  * The token file is the documentation — there is no separate design-system doc.
  *
- * Sources: values extracted from ag2 apps/learn-app at d764f334
- * (LessonContent/styles.module.css "Polar Night" palette; doc-pages.css
- * action styles; custom.css action blues), de-branded.
+ * Sources: the OKLCH token layer of ag2 apps/learn-app at d764f334
+ * (src/css/custom.css `:root` + `html[data-theme='dark']`), de-branded, plus
+ * the component tokens the kept primitives already consumed (LessonContent,
+ * DocPageActions, SearchBar), rebased onto the OKLCH set so one palette
+ * governs everything instead of two.
+ *
+ * THREE PARTS, in this order — the order, and each selector, is the design:
+ *
+ *   1. `:where(:root)` / `:where([data-theme="dark"])` — the token DEFAULTS,
+ *      at specificity ZERO on purpose. This file loads AFTER the consuming
+ *      site's `site/src/css/custom.css`, so at equal specificity the theme
+ *      would win and the owner's own token file would silently do nothing
+ *      (the found-live note below is that exact defect, caught once already).
+ *      :where() drops the theme's defaults below any plain `:root` rule.
+ *      Read the second found-live note before trusting that in the BUILT
+ *      css: today's pipeline re-adds specificity to every rule in this file,
+ *      so the override that is actually load-bearing — and actually tested,
+ *      by B12 — is --ifm-color-primary, which this file never declares.
+ *   2. The `--ifm-*` BRIDGE — deliberately NOT wrapped in :where(), because
+ *      Infima ships its own `:root` and `html[data-theme='dark']` defaults
+ *      and a zero-specificity rule would lose to them. Source order (theme
+ *      after Infima) is what makes the bridge win. This is the spec's
+ *      "editing one token recolors both the theme and Docusaurus chrome"
+ *      clause, made literal.
+ *   3. The primary seam runs the OTHER way: `--primary` reads
+ *      var(--ifm-color-primary), which the consuming site owns. One brand
+ *      colour, set in one place, paints Infima chrome AND every shadcn
+ *      component.
+ *
+ * found live 2026-08-14 (docusaurus 3.10.2, themed fixture build): part 1 was
+ * first written as `@layer vsor-tokens { … }`, which is the modern way to say
+ * "defaults the site may override". Docusaurus's postcss pipeline runs
+ * postcss-preset-env, which — for the default browserslist — POLYFILLS cascade
+ * layers by rewriting them into specificity hacks. The built CSS carried
+ * `:root:not(#\#)` (specificity 0,2,0), which *beats* the site's plain `:root`
+ * and inverts exactly the ownership the layer was there to protect. Written as
+ * :where() the source now says the right thing, but be precise about what the
+ * build does with it: because this stylesheet contains @layer at all (Tailwind
+ * emits it), the polyfill boosts EVERY rule in it, `:where(:root)` included, to
+ * `:where(:root):not(#\#)…` — so in today's built css the theme's shadcn-token
+ * defaults still outrank a site's plain `:root`. That is a bounded consequence,
+ * not a broken seam: the seam the scaffold documents and B12 tests is
+ * --ifm-color-primary, which this file only ever READS. Making token-level
+ * overrides work from the site too is one line — `features: {'cascade-layers':
+ * false}` on preset-env in src/index.js's configurePostCss, or a modern
+ * browserslist in the shell — but it also changes how Tailwind's utilities rank
+ * against Infima's unlayered rules, i.e. it changes how the site LOOKS. That is
+ * a decision to take deliberately, with the page open, not as a side effect.
+ * Two lessons, recorded rather than re-learned: read the BUILT css, and never
+ * trust an at-rule's semantics inside a pipeline you do not own.
+ *
+ * found live 2026-08-14 — THE MEASUREMENT, so nobody has to take it twice. A
+ * fourth fixture was built identical to the themed one plus a modern
+ * `browserslist` in site/package.json. The polyfill vanished as predicted
+ * (`:not(#\#)` count 0, real `@layer` preserved) and the CSS-module primitives
+ * recovered — but with real layers Tailwind's utilities sit in @layer utilities
+ * and LOSE to Infima's unlayered rules: the hero call to action computed
+ * background AND text both from the primary token (a teal label on a teal
+ * button, unreadable), the hero h1 dropped from weight 900 to Infima's 700, the
+ * section-card headings from 20px to 16px, and card links went Infima link-teal.
+ * So: do NOT declare a browserslist, and do NOT set preset-env's
+ * `cascade-layers: false`, as the remedy for a preflight problem — the remedy
+ * is not shipping preflight (see src/css/tailwind.css). An explicit browserslist
+ * may still be worth having later for output size, but only together with an
+ * audit of every utility-vs-Infima collision it un-decides.
+ *
+ * found live 2026-08-14, same build: `color-mix(in oklab, var(--foreground) 6%,
+ * transparent)` — used for the panel tints — came out of that same polyfill as
+ * a bare `var(--foreground)`, i.e. a 100%-opaque wash where a 6% one was meant.
+ * Tints are literal rgba here for that reason, one per theme.
  *
  * found live (2026-08-13, B12 sentinel run): this file must NOT declare the
  * --ifm-color-primary shade set. It originally carried upstream's action-blue
@@ -21,83 +88,223 @@
  * the fallback. The theme only *consumes* var(--ifm-color-primary).
  */
 
-:root {
-  /* ------------------------------------------------------------------ *
-   * Ink — text emphasis carried from the upstream "Polar Night" palette.
-   * ------------------------------------------------------------------ */
-  --vsor-ink-strong: #001f3f; /* headings, active tab, strong text */
-  --vsor-ink-soft: #001f3f; /* inline code text, active-tab indicator */
-  --vsor-text-muted: #888888; /* inactive tabs, secondary labels */
-  --vsor-text-subtle: #666666; /* blockquote text, disclaimers */
+:where(:root) {
+  /* ---------------------------------------------------------------- *
+   * Type. Self-hosting is out (binary assets in a wheel) and Google
+   * Fonts is out (the no-external-requests contract), so the stack is
+   * the platform's own UI face: SF on Apple, Segoe on Windows, Roboto
+   * on Android/ChromeOS. Zero requests, zero layout shift, and the
+   * shape of the type is still the neutral grotesque the design system
+   * was drawn against. A site that wants Inter vendors the files in
+   * its own repo and overrides --font-sans in its custom.css.
+   * ---------------------------------------------------------------- */
+  --font-sans: system-ui, -apple-system, "Segoe UI", Roboto,
+    "Helvetica Neue", Arial, "Noto Sans", sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas,
+    "Liberation Mono", monospace;
 
-  /* ------------------------------------------------------------------ *
-   * Accent — the deep-navy accent of the doc-page primitive.
-   * ------------------------------------------------------------------ */
-  --vsor-accent: #001f3f;
-  --vsor-panel-tint-start: rgba(0, 31, 63, 0.08); /* summary panel gradient */
-  --vsor-panel-tint-end: rgba(0, 31, 63, 0.03);
-  --vsor-panel-border: rgba(0, 31, 63, 0.12);
-  --vsor-rule: rgba(0, 31, 63, 0.15); /* heading/hairline rules */
-  --vsor-code-bg: rgba(0, 31, 63, 0.08);
-  --vsor-quote-bg: rgba(0, 31, 63, 0.04);
+  /* ---------------------------------------------------------------- *
+   * The shadcn/ui OKLCH surface set. Names are shadcn's, exactly — an
+   * agent asked to restyle this site already knows every one of them.
+   * ---------------------------------------------------------------- */
+  --background: oklch(1 0 0);
+  --foreground: oklch(0.145 0 0);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.145 0 0);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.145 0 0);
+  --secondary: oklch(0.967 0.001 286.375);
+  --secondary-foreground: oklch(0.21 0.006 285.885);
+  --muted: oklch(0.97 0 0);
+  --muted-foreground: oklch(0.556 0 0);
+  --accent: oklch(0.97 0 0);
+  --accent-foreground: oklch(0.205 0 0);
+  --destructive: oklch(0.58 0.22 27);
+  --destructive-foreground: oklch(0.985 0 0);
+  --border: oklch(0.922 0 0);
+  --input: oklch(0.922 0 0);
+  --ring: oklch(0.708 0 0);
+  --success: oklch(0.723 0.219 149.579);
+  --success-strong: oklch(0.65 0.219 149.579);
 
-  /* ------------------------------------------------------------------ *
-   * Success states (copy-success green, upstream doc-pages.css).
-   * ------------------------------------------------------------------ */
-  --vsor-success: oklch(0.723 0.219 149.579);
-  --vsor-success-strong: oklch(0.65 0.219 149.579);
+  /* Two accents shadcn's surface set does not carry, and Docusaurus needs:
+     it ships FIVE admonition kinds (note/tip/info/warning/danger) against
+     three available accents. Values are upstream's (learn-app custom.css at
+     d764f334). Landed 2026-08-14 after a live read: docs.css had always
+     requested --info/--warning and always fallen through to --primary and
+     --destructive, so `info` painted in the brand colour — the same teal as
+     every link on the page — and `warning` was byte-identical to `danger`,
+     stripe and tint both. Three of five kinds were not distinguishable. */
+  --info: oklch(0.704 0.14 240);
+  --warning: oklch(0.77 0.16 77);
+
+  /* The brand seam, read from the site's own token file (see header). */
+  --primary: var(--ifm-color-primary);
+  --primary-foreground: oklch(0.985 0 0);
+
+  /* Sidebar surfaces — shadcn's sidebar token family, kept because the
+   * doc sidebar is chrome the theme paints. */
+  --sidebar: oklch(0.985 0 0);
+  --sidebar-foreground: oklch(0.145 0 0);
+  --sidebar-primary: var(--ifm-color-primary);
+  --sidebar-primary-foreground: oklch(0.985 0 0);
+  --sidebar-accent: oklch(0.97 0 0);
+  --sidebar-accent-foreground: oklch(0.205 0 0);
+  --sidebar-border: oklch(0.922 0 0);
+  --sidebar-ring: oklch(0.708 0 0);
+
+  /* ---------------------------------------------------------------- *
+   * Geometry. Upstream's design system is square ("Sharp, Technical,
+   * Content-First") and enforced it with a `* { border-radius: 0
+   * !important }` hammer. We get the same result from the token
+   * instead: --radius drives the Tailwind radius scale AND Infima's
+   * --ifm-global-radius below, so a site that wants soft corners sets
+   * one value and everything follows. max() keeps the derived steps
+   * legal at radius 0 (upstream's calc() went negative, which is what
+   * forced the !important hammer).
+   * ---------------------------------------------------------------- */
+  --radius: 0px;
+
+  /* ---------------------------------------------------------------- *
+   * Component tokens — consumed by the kept primitives. Rebased onto
+   * the set above so there is one palette, not two.
+   * ---------------------------------------------------------------- */
+  --vsor-ink-strong: var(--foreground);
+  --vsor-ink-soft: var(--foreground);
+  --vsor-text-muted: var(--muted-foreground);
+  --vsor-text-subtle: var(--muted-foreground);
+
+  --vsor-accent: var(--foreground);
+  --vsor-panel-tint-start: rgba(0, 0, 0, 0.06);
+  --vsor-panel-tint-end: rgba(0, 0, 0, 0.02);
+  --vsor-panel-border: var(--border);
+  --vsor-rule: var(--border);
+  --vsor-code-bg: var(--muted);
+  --vsor-quote-bg: rgba(0, 0, 0, 0.04);
+
+  --vsor-success: var(--success);
+  --vsor-success-strong: var(--success-strong);
   --vsor-success-tint: oklch(0.723 0.219 149.579 / 0.1);
   --vsor-success-tint-strong: oklch(0.723 0.219 149.579 / 0.15);
 
-  /* ------------------------------------------------------------------ *
-   * Shadows and overlays.
-   * ------------------------------------------------------------------ */
+  /* Shadows and overlays stay literal: they are neutral blacks, not
+   * palette members, and they deepen rather than recolour in dark. */
   --vsor-shadow-faint: rgba(0, 0, 0, 0.04);
   --vsor-shadow-soft: rgba(0, 0, 0, 0.08);
   --vsor-shadow-medium: rgba(0, 0, 0, 0.12);
   --vsor-shadow-strong: rgba(0, 0, 0, 0.15);
   --vsor-overlay: rgba(0, 0, 0, 0.5); /* search modal backdrop */
 
-  /* ------------------------------------------------------------------ *
-   * Tooltip (inverted surface, upstream doc-pages.css).
-   * ------------------------------------------------------------------ */
-  --vsor-tooltip-bg: oklch(0.145 0 0);
-  --vsor-tooltip-fg: #ffffff;
+  /* Tooltip is the inverted surface — literally the palette, flipped. */
+  --vsor-tooltip-bg: var(--foreground);
+  --vsor-tooltip-fg: var(--background);
   --vsor-tooltip-kbd-bg: rgba(255, 255, 255, 0.15);
 
-  /* ------------------------------------------------------------------ *
-   * Component hooks. The reading-progress bar derives from the primary
-   * token so a site's --ifm-color-primary override recolors it (B12's
-   * "effective, not merely defined" has a painted element to point at).
-   * ------------------------------------------------------------------ */
+  /* The reading-progress bar derives from the primary token so a site's
+   * --ifm-color-primary override recolors it (B12's "effective, not
+   * merely defined" has a painted element to point at). */
   --vsor-reading-progress: var(--ifm-color-primary);
 }
 
-[data-theme="dark"] {
-  /* Ink — upstream dark mode swaps navy for white/grays. */
-  --vsor-ink-strong: #ffffff;
-  --vsor-ink-soft: #dddddd;
-  --vsor-text-muted: #aaaaaa;
-  --vsor-text-subtle: #aaaaaa;
+:where([data-theme="dark"]) {
+  --background: oklch(0.145 0 0);
+  --foreground: oklch(0.985 0 0);
+  --card: oklch(0.18 0 0);
+  --card-foreground: oklch(0.985 0 0);
+  --popover: oklch(0.18 0 0);
+  --popover-foreground: oklch(0.985 0 0);
+  --secondary: oklch(0.2 0.006 286);
+  --secondary-foreground: oklch(0.985 0 0);
+  --muted: oklch(0.2 0 0);
+  --muted-foreground: oklch(0.708 0 0);
+  --accent: oklch(0.25 0 0);
+  --accent-foreground: oklch(0.985 0 0);
+  --destructive: oklch(0.704 0.191 22.216);
+  --destructive-foreground: oklch(0.985 0 0);
+  --border: oklch(1 0 0 / 12%);
+  --input: oklch(1 0 0 / 15%);
+  --ring: oklch(0.556 0 0);
+  --success: oklch(0.75 0.19 149.579);
+  --success-strong: oklch(0.68 0.19 149.579);
+  --info: oklch(0.65 0.14 240);
+  --warning: oklch(0.75 0.16 77);
 
-  /* Accent — upstream dark mode uses the light gray as accent. */
-  --vsor-accent: #aaaaaa;
-  --vsor-panel-tint-start: rgba(170, 170, 170, 0.06);
-  --vsor-panel-tint-end: rgba(170, 170, 170, 0.02);
-  --vsor-panel-border: rgba(170, 170, 170, 0.15);
-  --vsor-rule: rgba(170, 170, 170, 0.12);
-  --vsor-code-bg: rgba(170, 170, 170, 0.12);
-  --vsor-quote-bg: rgba(170, 170, 170, 0.06);
+  --sidebar: oklch(0.18 0 0);
+  --sidebar-foreground: oklch(0.985 0 0);
+  --sidebar-accent: oklch(0.25 0 0);
+  --sidebar-accent-foreground: oklch(0.985 0 0);
+  --sidebar-border: oklch(1 0 0 / 12%);
+  --sidebar-ring: oklch(0.556 0 0);
 
-  /* Shadows deepen in dark mode (upstream doc-pages.css dark section). */
+  /* Tints invert: a wash of ink on paper becomes a wash of light on ink. */
+  --vsor-panel-tint-start: rgba(255, 255, 255, 0.06);
+  --vsor-panel-tint-end: rgba(255, 255, 255, 0.02);
+  --vsor-quote-bg: rgba(255, 255, 255, 0.04);
+  --vsor-success-tint: oklch(0.75 0.19 149.579 / 0.12);
+  --vsor-success-tint-strong: oklch(0.75 0.19 149.579 / 0.18);
+
   --vsor-shadow-faint: rgba(0, 0, 0, 0.2);
   --vsor-shadow-soft: rgba(0, 0, 0, 0.3);
   --vsor-shadow-medium: rgba(0, 0, 0, 0.35);
   --vsor-shadow-strong: rgba(0, 0, 0, 0.4);
   --vsor-overlay: rgba(0, 0, 0, 0.65);
+  --vsor-tooltip-kbd-bg: rgba(0, 0, 0, 0.25);
+}
 
-  /* Tooltip inverts back to light-on-dark-page. */
-  --vsor-tooltip-bg: oklch(0.95 0 0);
-  --vsor-tooltip-fg: oklch(0.15 0 0);
-  --vsor-tooltip-kbd-bg: rgba(0, 0, 0, 0.2);
+/* ------------------------------------------------------------------ *
+ * The bridge. Full specificity on purpose (see header, part 2): Infima
+ * declares its own defaults for every one of these, so the bridge wins by
+ * matching that specificity and loading later. Everything below is a
+ * var() read, never a literal: change a token above and both the shadcn
+ * components and the Docusaurus chrome move together.
+ *
+ * NOT bridged, deliberately: --ifm-color-primary and its seven shades
+ * (the consuming site owns them — see the found-live note) and
+ * --ifm-menu-color-active / --ifm-link-color, which Infima already
+ * derives from the primary.
+ *
+ * The selector list is load-bearing, not decoration: Infima redefines a
+ * dozen of these under `html[data-theme='dark']` (specificity 0,1,1), and
+ * specificity beats source order — a lone `:root` bridge (0,1,0) would win
+ * in light and silently lose in dark, which is precisely the half-painted
+ * failure B12 asserts against under BOTH themes. Each compound selector
+ * carries its own specificity when it matches, so this one rule wins in
+ * both. (Caught by reasoning at write time, then confirmed live: the built
+ * dark page reads --ifm-background-color: var(--background).)
+ * ------------------------------------------------------------------ */
+:root,
+html[data-theme="dark"] {
+  --ifm-font-family-base: var(--font-sans);
+  --ifm-font-family-monospace: var(--font-mono);
+  --ifm-global-radius: var(--radius);
+
+  --ifm-background-color: var(--background);
+  --ifm-background-surface-color: var(--card);
+  --ifm-font-color-base: var(--foreground);
+  --ifm-heading-color: var(--foreground);
+  --ifm-color-content: var(--foreground);
+  --ifm-color-content-secondary: var(--muted-foreground);
+
+  --ifm-navbar-background-color: var(--background);
+  --ifm-navbar-link-color: var(--foreground);
+  --ifm-navbar-search-input-background-color: var(--muted);
+  --ifm-navbar-search-input-color: var(--foreground);
+  --ifm-navbar-search-input-placeholder-color: var(--muted-foreground);
+
+  --ifm-footer-background-color: var(--card);
+  --ifm-footer-color: var(--foreground);
+  --ifm-footer-link-color: var(--muted-foreground);
+  --ifm-footer-title-color: var(--foreground);
+
+  --ifm-menu-color: var(--muted-foreground);
+  --ifm-toc-border-color: var(--border);
+  --ifm-toc-link-color: var(--muted-foreground);
+  --ifm-hr-border-color: var(--border);
+  --ifm-table-border-color: var(--border);
+  --ifm-table-stripe-background: var(--muted);
+  --ifm-card-background-color: var(--card);
+  --ifm-dropdown-background-color: var(--popover);
+  --ifm-code-background: var(--muted);
+  --ifm-blockquote-color: var(--muted-foreground);
+  --ifm-blockquote-border-color: var(--border);
 }

@@ -137,7 +137,7 @@ test("component mode reproduces remark-tool-tabs output shape", () => {
 
   remarkTabs({
     directive: "tool-tabs",
-    component: "ToolTabs",
+    component: "MyToolTabs",
     tabs: {
       "tool-a": { tag: "ToolAContent" },
       "tool-b": { tag: "ToolBContent" },
@@ -146,7 +146,7 @@ test("component mode reproduces remark-tool-tabs output shape", () => {
 
   const wrapper = t.children[0];
   assert.equal(wrapper.type, "mdxJsxFlowElement");
-  assert.equal(wrapper.name, "ToolTabs");
+  assert.equal(wrapper.name, "MyToolTabs");
   assert.deepEqual(wrapper.attributes, []);
 
   assert.equal(wrapper.children.length, 2);

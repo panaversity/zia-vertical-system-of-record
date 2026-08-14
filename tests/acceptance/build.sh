@@ -180,6 +180,26 @@ curl -fsS "$SERVED_URL/" | grep -q 'sitedemo' \
 curl -fsS "$SERVED_URL/docs/example/" | grep -q 'Start here' \
   || fail "served example doc does not render its title"
 
+# --- the design system reached the INSTALLED layout ---------------------------------
+#
+# The only tier that can prove this. `make surface` builds its fixture inside the
+# packages/sor-site npm workspace, where @vsor/sor-site-theme is a SYMLINK — a
+# layout no user ever has, and the one where the two known traps do not bite:
+# Tailwind v4 does not scan node_modules (so a broken `@source` in the theme's
+# css entry emits nothing), and Docusaurus's own JS rule skips node_modules (so
+# a broken configureWebpack cannot compile the theme's .tsx at all). Here the
+# theme is really installed under .vsor/site-runtime/node_modules/, so a
+# regression in either shows up as an unstyled site — exactly the failure the
+# owner rejected — while gate, build-acceptance and surface all stayed green.
+# Two markers, both absent from a stock build: Tailwind's own custom properties,
+# and the 997px responsive variant the navbar compiles for its mobile switch.
+STYLES="$(cat build/assets/css/styles.*.css 2>/dev/null)"
+test -n "$STYLES" || fail "no built stylesheet at build/assets/css/styles.*.css"
+grep -q -- '--tw-' <<<"$STYLES" \
+  || fail "the built CSS carries no --tw- properties: Tailwind emitted nothing. Tailwind v4 does not scan node_modules — check the @source globs in the theme's src/css/tailwind.css against the INSTALLED layout"
+grep -q 'min-width:997px' <<<"$STYLES" \
+  || fail "the built CSS carries no 997px media query: the navbar's min-[997px] variants did not compile, so the theme's own source was not scanned (same @source trap)"
+
 # --- second build with package networking disabled: reuse, identical build_id -------
 # No install may run, so a dead registry + offline npm + offline uv turn any
 # attempted fetch into a hard failure instead of a silent pass (init's precedent).
@@ -288,9 +308,14 @@ from pathlib import Path
 
 p = Path("site/docusaurus.config.ts")
 text = p.read_text(encoding="utf-8")
-needle = '  title: "sitedemo",'
-assert text.count(needle) == 1, f"expected exactly one top-level title line, found {text.count(needle)}"
-p.write_text(text.replace(needle, '  title: "cfgproof-77",'), encoding="utf-8")
+# Whole-line match, not substring: the navbar's own `title:` is indented deeper
+# and a substring count found it too the moment the scaffold gained navbar items
+# (2026-08-14). The top-level title is the one seam this edit is proving.
+lines = text.splitlines(keepends=True)
+hits = [i for i, line in enumerate(lines) if line.rstrip("\r\n") == '  title: "sitedemo",']
+assert len(hits) == 1, f"expected exactly one top-level title line, found {len(hits)}"
+lines[hits[0]] = '  title: "cfgproof-77",\n'
+p.write_text("".join(lines), encoding="utf-8")
 PY
 VSOR build >build5.out 2>&1
 rc=$?

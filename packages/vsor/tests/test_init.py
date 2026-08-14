@@ -33,8 +33,29 @@ from vsor.scaffold import run_init
 DEV_VERSION = "0.1.0"
 
 # The spec's file table, exactly — LC_ALL=C sort order (specs/vsor/init acceptance).
+# The .agents/skills/** set is the agent kit of AGENTS.md decision 5's revision: add-sources
+# plus the corpus-generic skills carried from upstream, de-branded on the way across. Each is
+# exactly one SKILL.md — supporting scripts/references stayed behind, so the scaffold a user
+# owns is content and config only.
 EXPECTED_FILES = [
     ".agents/skills/add-sources/SKILL.md",
+    ".agents/skills/canonical-format-checker/SKILL.md",
+    ".agents/skills/content-refiner/SKILL.md",
+    ".agents/skills/docx/SKILL.md",
+    ".agents/skills/fetch-library-docs/SKILL.md",
+    ".agents/skills/find-skills/SKILL.md",
+    ".agents/skills/generate-flashcards/SKILL.md",
+    ".agents/skills/knowledge-extraction-method/SKILL.md",
+    ".agents/skills/pptx/SKILL.md",
+    ".agents/skills/quiz-generator/SKILL.md",
+    ".agents/skills/skill-creator/SKILL.md",
+    ".agents/skills/summary-generator/SKILL.md",
+    ".agents/skills/technical-clarity/SKILL.md",
+    ".claude/rules/abstention.md",
+    ".claude/rules/provenance.md",
+    ".claude/rules/repository-map.md",
+    ".claude/rules/review.md",
+    ".claude/settings.json",
     ".env",
     ".gitignore",
     "AGENTS.md",
@@ -42,6 +63,7 @@ EXPECTED_FILES = [
     "instance.md",
     "knowledge/example.md",
     "site/docusaurus.config.ts",
+    "site/sidebars.ts",
     "site/src/css/custom.css",
     "site/src/pages/index.tsx",
 ]
@@ -304,12 +326,40 @@ def test_instance_md_roundtrip(sandbox: Path, capsys: pytest.CaptureFixture[str]
 
 
 def test_scaffold_config_declares_themes_seam(sandbox: Path, capsys: pytest.CaptureFixture[str]) -> None:
-    """specs/vsor/build: the scaffold's docusaurus.config.ts declares the vocabulary and
-    search themes as one visible, deletable line — assemble.mjs (e2e) and the site shell
-    both depend on this exact spelling, so it is pinned here."""
+    """specs/vsor/build: the scaffold's docusaurus.config.ts declares its themes as a
+    visible, deletable block — assemble.mjs (e2e) and the site shell both depend on this
+    exact spelling, so it is pinned here.
+
+    Amended 2026-08-14 with specs/sor-site/surface's "the scaffold ships the full theme on
+    by default": the block gained @vsor/sor-site-theme, listed last so its search box
+    shadows the search plugin's own.
+    """
     assert run_init(["demo"]) == 0
     config = (sandbox / "demo" / "site" / "docusaurus.config.ts").read_text(encoding="utf-8")
-    assert 'themes: ["@vsor/sor-site-mdx", "@easyops-cn/docusaurus-search-local"],' in config
+    assert (
+        '  themes: [\n'
+        '    "@vsor/sor-site-mdx",\n'
+        '    "@easyops-cn/docusaurus-search-local",\n'
+        "    // last, so its search box shadows the search plugin's own\n"
+        '    "@vsor/sor-site-theme",\n'
+        "  ],"
+    ) in config
+
+
+def test_scaffold_homepage_renders_the_theme_landing(
+    sandbox: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """specs/sor-site/surface: the landing page pattern crosses as a content-driven
+    primitive, so the scaffolded homepage is a call to it and nothing else — no copy to
+    maintain, no link to retarget. The config's tagline is the hero's second line, so it
+    must be stamped with the instance name like every other placeholder."""
+    assert run_init(["demo"]) == 0
+    home = (sandbox / "demo" / "site" / "src" / "pages" / "index.tsx").read_text(encoding="utf-8")
+    assert 'import Landing from "@theme/Landing";' in home
+    assert "<Landing />" in home
+    config = (sandbox / "demo" / "site" / "docusaurus.config.ts").read_text(encoding="utf-8")
+    assert 'tagline: "The system of record for demo"' in config
+    assert "__VSOR_" not in config
 
 
 def test_scaffold_agents_md_verb_honesty(sandbox: Path, capsys: pytest.CaptureFixture[str]) -> None:

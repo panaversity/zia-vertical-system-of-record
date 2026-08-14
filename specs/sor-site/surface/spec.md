@@ -59,8 +59,9 @@ backstops): `packages/sor-site` direct runtime deps must appear in a committed a
 `tailwind-merge`, and the `@radix-ui/react-*` primitives that the kept shadcn components require
 (each named individually, never a wildcard)**. Growth edits the allowlist in the same reviewed
 commit — this amendment *is* that mechanism working, not an exception to it. `framer-motion`,
-`cmdk`, `next-themes` and `sonner` stay out at v0 (`tailwindcss-animate` plus CSS covers the kept
-chrome); a kept component that provably needs one is reported, not quietly added. Backstop
+`cmdk`, `next-themes` and `sonner` stay out at v0 — `tailwindcss-animate` plus CSS covers the kept
+chrome, and a kept component that provably needs one is reported, not quietly added. As of
+2026-08-14 all four sit on the lockfile denylist too, so transitive arrival is caught. Backstop
 unchanged: a lockfile-wide scan for the known-bad names (`better-auth`, `@openai/chatkit-react`,
 `@chatscope/*`, `@monaco-editor/react`, `@xterm/*`, `ts-fsrs`, `recharts`) catches them even
 transitively.
@@ -99,6 +100,19 @@ transitively.
   `tokens.css`); every other rule consumes `var(--…)`. Docusaurus's `--ifm-*` variables are *bridged*
   onto those tokens, so an owner editing one token recolors both the theme and Docusaurus chrome —
   the defect upstream has, fixed on the way across rather than imported. Baseline zero, CI-enforced.
+- **Whole, minus preflight** *(amended 2026-08-14, found live).* Tailwind's own `preflight.css` is
+  deliberately not imported. Docusaurus's `postcss-preset-env` polyfills `@layer` into specificity
+  hacks, which raises preflight above every single-class CSS-module rule: measured, the quiz options
+  lost their 1px border and 12px/16px padding, the search dialog lost its offset, and Docusaurus's
+  own `clean-btn` lost its padding — the design system un-styling the very primitives it was brought
+  across to dress. The theme therefore resets nothing that belongs to somebody else; what preflight
+  did for the kept chrome is stated on the components that need it. A modern `browserslist` (or
+  `cascade-layers: false`) is **not** the remedy and is recorded as rejected with its measurement:
+  with real layers the utilities lose to Infima's unlayered rules and the hero renders a teal label
+  on a teal button. B15 is the enforcement.
+- **The scaffold's `themeConfig` sets `prism` explicitly** — Docusaurus's default (palenight) is a
+  *dark* theme while the doc CSS paints the code surface from `--muted`, so an unset `prism` key
+  renders every fenced block at ~1.3:1 in light mode (measured).
 - **The scaffold ships the full theme on by default** *(amended 2026-08-13; was "slice 1 ships on
   stock preset-classic, this package arrives as an upgrade")*. Stock preset-classic remains a
   supported fallback and both configurations stay under the same B-suite (B14), so the guarantee
@@ -114,10 +128,18 @@ Two phases, per the init spec's pattern: each lands in the same change as the th
 A1  every direct runtime dep of packages/sor-site is in the committed allowlist;
     the lockfile contains no denylisted name (transitives included)
 A2  boundary test: parse the package's shipped source (src/, theme/, css) and the
-    templates/ site shell — .ts/.tsx/.js/.css only, never markdown, specs, or any
-    corpus — and assert zero matches of the committed exclusion list, which equals
-    the table above row-for-row; word-boundary, case-sensitive; ReadingProgress
-    carved out of any progress pattern. The one committed list lives at
+    templates/ site shell (.ts/.tsx/.js/.css), PLUS — added 2026-08-14 — the
+    scaffolded project's own prose: templates/scaffold/**/*.{md,json}, scanned
+    with the same brand pattern and a curriculum word list (lesson|chapter|
+    learner|student|curriculum|syllabus|classroom|coursework|course). Never a
+    corpus, never specs/. The scaffold's 13 SKILL.md files and four rules crossed
+    from an ~80-skill curriculum repo; prose is where that vocabulary survives a
+    copy, and no other tier can see it. Assert zero matches of the committed
+    exclusion list, which equals the table above row-for-row; word-boundary,
+    case-sensitive; ReadingProgress carved out of any progress pattern. The
+    framework's own home URL in the scaffolded AGENTS.md stays the one recorded
+    brand exception — a structured entry exempting the line, not the file. The
+    one committed list lives at
     packages/sor-site/e2e/tests/exclusions.json, consumed by this tier and B7;
     per-tier carve-outs are recorded inline there with their evidence. The
     framework's own home URL in scaffolded markdown is a recorded brand
@@ -176,6 +198,19 @@ B13  primitives: the quiz renders end-to-end — click one option and its
      follow-up, landing with the fixture docs that exercise them)
 B14  the identical B-suite passes against the stock preset-classic
      configuration and the themed configuration
+B15  design-system liveness, both projects (added 2026-08-14). Themed: a probe
+     carrying only `flex items-center gap-2 text-sm` computes flex/center/8px/
+     14px; the mobile trigger is hidden at 1440px and opens a Radix sheet
+     carrying the corpus tree at 375px; lucide renders as inline SVG. Stock:
+     the same probe computes `display: block` and the built CSS contains no
+     `--tw-` property — the documented fallback leaves no Tailwind behind.
+     BOTH: a CSS-module-styled primitive keeps its own box (the quiz option's
+     1px border and 0.75rem/1rem padding survive, stock as the control), and a
+     fenced code block clears 4.5:1 in light mode. Computed styles only — a
+     class present in a stylesheet proves nothing about whether it reaches the
+     element. Both halves are load-bearing: every one of B5–B14 stayed green
+     through a build where Tailwind emitted nothing, AND through a build where
+     Tailwind's preflight had stripped every primitive's border and padding.
 ```
 
 **Checklist — implement-time, not CI** (How-we-build #5; findings recorded beside the code):

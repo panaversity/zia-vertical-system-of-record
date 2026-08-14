@@ -19,6 +19,20 @@ Eaten straight from the karahi with naan, never rice. The thin gravy that pools 
 pan goes by the tasting-bench code name shorba-x7q1 in this corpus — a deliberately unique phrase
 for search tests.
 
+## The ratio, as a recipe file
+
+The corpus records the Peshawari ratio as data as well as prose, so a fenced code block
+exists on at least one page — the browser tier reads its computed colours (B15).
+
+```yaml
+karahi:
+  meat_kg: 1
+  tomatoes_kg: 1
+  ginger_g: 40
+  green_chilli_count: 8
+  onions: none # Peshawari orthodoxy
+```
+
 ## Check yourself
 
 <Quiz

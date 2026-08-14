@@ -1,6 +1,17 @@
 /**
- * These tokens are yours. Change --ifm-color-primary and the whole site
- * follows — Docusaurus derives nothing; every shade below is a live value.
+ * The token seam — the shortest path to making this site look like yours.
+ *
+ * There are two colours below and everything else follows them. --ifm-color-primary
+ * is Docusaurus's own primary token, and the theme's design tokens are defined in
+ * terms of it: change this one value and the navbar links, the sidebar highlight,
+ * the homepage's call to action and every accented rule move together. The seven
+ * shades are Docusaurus's; it derives nothing at runtime, so each is a live value.
+ * Generate a set from your brand colour with https://docusaurus.io/docs/styling-layout
+ * (the "color generator" there) and paste it over both blocks.
+ *
+ * Raw colours belong here and in the theme's tokens.css — nowhere else. That is a
+ * test, not a convention: everything else in the site and the theme reads var(--…),
+ * so this file stays the one place a rebrand touches.
  */
 
 :root {

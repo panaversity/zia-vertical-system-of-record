@@ -52,6 +52,14 @@ Tests prove clauses; only *running the thing* proves the product. Before done:
   title is right, the css token actually applies, **dark and light both**, zero console errors,
   zero failed/external network requests, click the nav, run a search. The upstream flat-layout bug
   *shipped* because nobody loaded the page — that class of failure is yours to prevent.
+- **Never certify a cached environment.** `uvx --from dist/vsor-0.0.0-py3-none-any.whl` reuses an
+  environment keyed on that path and version — and the repo's `dist/` path is stable and the
+  version is a permanent `0.0.0` placeholder, so a hand-run walk can install *last run's* wheel and
+  certify code that no longer exists. It happened on 2026-08-14: a walk installed a 24KB theme
+  tarball while the staged one was 66KB, and reported a stylesheet with zero Tailwind properties.
+  So: **copy the wheel to a fresh temp path for every walk** (or `uv cache clean vsor` first) —
+  which is exactly what `tests/acceptance/build.sh` already does and says why. If a live result
+  contradicts the code you just wrote, suspect this before suspecting the code.
 - **Record what the live run taught** beside the code (`found live: …` comments) — upstream's
   convention, and the reason its scars don't repeat.
 

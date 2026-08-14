@@ -31,7 +31,7 @@ export default function ComparisonView({ strong, weak }: ComparisonViewProps) {
               seg.isStudentContent ? (
                 <span key={i} className={styles.studentHighlight}>
                   <span className={styles.studentHighlightLabel}>
-                    {seg.label ?? "Student’s input"}
+                    {seg.label ?? "Input"}
                   </span>
                   {seg.text}
                 </span>
@@ -59,7 +59,7 @@ export default function ComparisonView({ strong, weak }: ComparisonViewProps) {
               seg.isStudentContent ? (
                 <span key={i} className={styles.studentHighlight}>
                   <span className={styles.studentHighlightLabel}>
-                    {seg.label ?? "Student’s input"}
+                    {seg.label ?? "Input"}
                   </span>
                   {seg.text}
                 </span>

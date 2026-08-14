@@ -138,3 +138,43 @@ def test_check_node_19_is_still_too_old() -> None:
 @pytest.mark.parametrize("version", ["20.0.0", "22.12.0", "24.4.1"])
 def test_check_node_20_plus_passes(version: str) -> None:
     site_runtime.check_node(version)  # must not raise
+
+
+# ------------------------------------------------------------------ the shell's version mirror
+
+
+def test_shell_pins_mirror_the_proven_lockfile() -> None:
+    """The shell template's exact pins equal the versions `make surface` proved.
+
+    The shell (templates/site_runtime/package.json) is what every USER's site is
+    built from; packages/sor-site/package-lock.json is what the e2e harness
+    resolves against, because the fixture site lives inside that npm workspace.
+    The two were mirrored by hand and nothing compared them — one `npm install`
+    that bumped the workspace would have diverged every user's build from the
+    only set ever exercised in a browser, silently. (Added 2026-08-14; all 17
+    non-`file:` pins matched at the time, so this test is a ratchet, not a fix.)
+    """
+    repo = Path(__file__).resolve().parents[3]
+    shell = json.loads(
+        (repo / "packages/vsor/src/vsor/templates/site_runtime/package.json").read_text()
+    )
+    lock = json.loads((repo / "packages/sor-site/package-lock.json").read_text())
+    resolved = {
+        path[len("node_modules/") :]: entry.get("version")
+        for path, entry in lock["packages"].items()
+        if path.startswith("node_modules/")
+    }
+
+    mismatches: list[str] = []
+    for name, pin in sorted(shell["dependencies"].items()):
+        if pin.startswith("file:"):
+            continue  # the two tarballs `make wheel` stages — no lockfile row exists
+        actual = resolved.get(name)
+        if actual != pin:
+            mismatches.append(f"{name}: shell pins {pin}, sor-site lockfile resolves {actual}")
+    assert not mismatches, (
+        "the site-runtime shell no longer mirrors packages/sor-site/package-lock.json — a user's "
+        "build would run versions the surface suite never exercised. Re-pin the shell (or re-run "
+        "`npm install` in packages/sor-site and re-run `make surface`) in the same change:\n"
+        + "\n".join(mismatches)
+    )

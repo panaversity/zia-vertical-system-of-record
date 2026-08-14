@@ -30,7 +30,7 @@
  *
  *    remarkTabs({
  *      directive: "tool-tabs",
- *      component: "ToolTabs",
+ *      component: "MyToolTabs",
  *      tabs: {
  *        "tool-a": { tag: "ToolAContent" },
  *        "tool-b": { tag: "ToolBContent" },

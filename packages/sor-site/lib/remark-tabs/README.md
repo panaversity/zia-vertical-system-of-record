@@ -15,8 +15,8 @@ They differed **only** in configuration hardcoded around it:
 | `remark-os-tabs` | `os-tabs` | `<Tabs groupId="operating-systems">` | windows*, windows-wsl, macos, linux |
 | `remark-channel-tabs` | `channel-tabs` | `<Tabs groupId="messaging-channels">` | whatsapp*, telegram, discord |
 | `remark-deploy-tabs` | `deploy-tabs` | `<Tabs groupId="deployment-path">` | managed*, vps-native, vps-docker |
-| `remark-tool-tabs` | `tool-tabs` | `<ToolTabs>` + per-tab wrapper tags | claude-code, opencode |
-| `remark-cowork-tabs` | `cowork-tabs` | `<CoworkTabs>` + per-tab wrapper tags | cowork, openwork |
+| `remark-tool-tabs` | `tool-tabs` | a wrapper component + per-tab wrapper tags | claude-code, opencode |
+| `remark-cowork-tabs` | `cowork-tabs` | a wrapper component + per-tab wrapper tags | cowork, openwork |
 
 (* = carried the boolean `default` attribute.)
 
@@ -34,9 +34,9 @@ The shared transform is written once; everything that differed is config:
 Register once per tab set (after `remark-directive`), exactly as the five
 originals were registered side by side. `presets.js` ships the three
 Docusaurus-mode vocabularies verbatim (`osTabs`, `channelTabs`, `deployTabs`).
-The two component-mode originals hardcoded wrapper components (`ToolTabs`,
-`CoworkTabs`) that do not cross the seam, so they ship as a documented config
-shape, not as presets.
+The two component-mode originals hardcoded wrapper components that do not cross
+the seam (named in the surface spec's negative contract, not repeated here), so
+they ship as a documented config shape, not as presets.
 
 Behaviour quirks preserved verbatim (and pinned in `__tests__/`): document
 order wins over config order; unknown leaf directives become tab content;

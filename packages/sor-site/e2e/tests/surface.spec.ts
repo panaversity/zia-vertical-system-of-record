@@ -30,8 +30,39 @@ test("B11: the main pages load clean (guard asserts zero console.error/pageerror
   // every page; this test walks the surface so "across all visited pages"
   // includes home, a doc page, and a client-side navigation between them.
   await page.goto("/");
-  await page.getByRole("link", { name: "Read the knowledge base" }).click();
-  await expect(page.locator("h1")).toHaveText("Karahi");
+  // The themed homepage derives its call to action from the corpus itself (the
+  // docs plugin's mainDocId), so the destination is the corpus's own main
+  // document, not a route this harness picks — the old hardcoded "Karahi" would
+  // now assert the fixture's shape rather than the site's behaviour. Derive it
+  // instead, and keep the check strong: the client-side navigation must land on
+  // exactly the advertised href AND render the same document a cold load of
+  // that href renders. That catches a broken CTA, a routing mismatch, and a
+  // hydration-only doc page, none of which a bare "some h1 is visible" would.
+  const ctaName = "Read the knowledge base";
+  const href = await page.getByRole("link", { name: ctaName }).getAttribute("href");
+  expect(href, "the call to action carries a corpus route").toMatch(/^\/docs\//);
+
+  // Cold-load the advertised destination first and learn what it renders, so
+  // the routed assertion below has something exact to compare against without
+  // hardcoding a fixture title.
+  await page.goto(href!);
+  const coldTitle = (await page.locator("h1").innerText()).trim();
+  expect(coldTitle, "the destination renders a title on a cold load").not.toBe("");
+
+  // Now the walk: home -> click -> the SPA must arrive at the same document.
+  //
+  // found live 2026-08-14: this assertion must be the auto-retrying `expect`
+  // form, never a one-shot innerText() after `toHaveURL`. Client-side routing
+  // updates the URL *before* the new route renders, so a bare read here returns
+  // the landing page's hero h1 and the test fails against its own race rather
+  // than against the site. Written this way it waits for the render, which is
+  // also the thing worth asserting.
+  await page.goto("/");
+  await page.getByRole("link", { name: ctaName }).click();
+  await expect(page).toHaveURL(new RegExp(`${href}/?$`));
+  await expect(page.locator("h1"), "the click routes to the document it advertises").toHaveText(
+    coldTitle,
+  );
   await page.goto("/docs/biryani/");
   await expect(page.locator("h1")).toBeVisible();
 });

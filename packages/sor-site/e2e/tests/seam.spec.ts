@@ -54,7 +54,7 @@ test("B12 static: sentinels present in built output, old values gone", ({}, test
 test("B12 live: navbar/footer sentinels render; token paints in light and dark", async ({ page }, testInfo) => {
   const env = envFor(testInfo.project.name);
   const { sentinels, oldValues } = env.sentinelManifest;
-  const docUrl = `${env.sentinelUrl}${env.sentinelManifest.homeDocRoute}/`;
+  const docUrl = `${env.sentinelUrl}${env.sentinelManifest.docRoute}/`;
 
   await page.goto(docUrl);
   await expect(page.locator(".navbar__title")).toHaveText(sentinels.navTitle);
@@ -74,4 +74,39 @@ test("B12 live: navbar/footer sentinels render; token paints in light and dark",
   await page.reload();
   await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
   await expect(painted, "computed color derives from the dark token").toHaveCSS("color", sentinels.primaryDark.rgb);
+});
+
+/**
+ * B12, second painted element — added 2026-08-14 with the design system.
+ *
+ * The sidebar item above is painted by Infima, from --ifm-menu-color-active.
+ * That proves the Docusaurus half of the token bridge and nothing else. The
+ * design system introduced a second, longer chain in the other direction:
+ * --primary reads var(--ifm-color-primary) (tokens.css), Tailwind maps
+ * --color-primary onto it (tailwind.css), and `bg-primary` on the hero's call
+ * to action paints with it. Nothing asserted that chain, so the shadcn half of
+ * the seam could have gone dead — every colour on the page still moving, one
+ * FILL silently stuck — and B12 would have stayed green.
+ *
+ * Symmetric by construction rather than by branch: both variants' homepages
+ * carry a link with this label (the themed one from @theme/Landing's derived
+ * call to action, the stock one from the preset-classic page the scaffold's own
+ * comment prescribes), and both paint its background from --ifm-color-primary —
+ * through shadcn tokens on one side and Infima's button variables on the other.
+ * A fill, not a text colour: the two failure modes are different.
+ */
+test("B12 live: the primary token paints a filled surface, both themes", async ({ page }, testInfo) => {
+  const env = envFor(testInfo.project.name);
+  const { sentinels } = env.sentinelManifest;
+
+  await page.goto(`${env.sentinelUrl}/`);
+  const cta = page.getByRole("link", { name: "Read the knowledge base" }).first();
+  await expect(cta, "the homepage's call to action").toBeVisible();
+  await expect(page.locator("html")).toHaveAttribute("data-theme", "light");
+  await expect(cta, "filled from the light token").toHaveCSS("background-color", sentinels.primaryLight.rgb);
+
+  await page.evaluate(() => localStorage.setItem("theme", "dark"));
+  await page.reload();
+  await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
+  await expect(cta, "filled from the dark token").toHaveCSS("background-color", sentinels.primaryDark.rgb);
 });
