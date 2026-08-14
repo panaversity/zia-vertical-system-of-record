@@ -78,10 +78,10 @@ transitively.
   **extracted from `learn-app`, never re-implemented as a lookalike** *(owner decision 2026-08-13:
   copy authorization for `ag2/apps/learn-app` granted in the owner's words — "copy and then
   rework"; this supersedes the review's fresh-author proposal — the real components cross the seam,
-  stripped per the negative contract above)*. The theme upgrade only restyles it. So "changes look,
-  never contract" is literal: a corpus using `<Quiz />` builds under both stock and themed
-  configurations, and the identical acceptance suite passes against both. The upgrade may change
-  any pixel the suite does not pin; it may not change an assertion.
+  stripped per the negative contract above)*. *(amended 2026-08-14: with the fork there is no
+  separate "upgrade" and no stock configuration to build against — the vocabulary ships inside the
+  shell. What survives of the old guarantee is that the primitives keep their own CSS-module boxes
+  under the design system, which B15 measures directly.)*
 - **Primitive contracts are pinned.** `<Quiz />` normatively: exactly four `options`,
   `correctOption` index, optional `explanation`/`source`. Exported prop types are diffed against a
   frozen baseline in package CI; changing a baseline requires touching this spec.
@@ -113,10 +113,15 @@ transitively.
 - **The scaffold's `themeConfig` sets `prism` explicitly** — Docusaurus's default (palenight) is a
   *dark* theme while the doc CSS paints the code surface from `--muted`, so an unset `prism` key
   renders every fenced block at ~1.3:1 in light mode (measured).
-- **The scaffold ships the full theme on by default** *(amended 2026-08-13; was "slice 1 ships on
-  stock preset-classic, this package arrives as an upgrade")*. Stock preset-classic remains a
-  supported fallback and both configurations stay under the same B-suite (B14), so the guarantee
-  "the theme changes look, never contract" is still enforced — only the default flipped.
+- **There is one configuration, and it is the design system** *(amended 2026-08-14, superseding
+  both the 2026-08-13 "on by default" wording and the original "stock preset-classic with the theme
+  as an upgrade")*. Once the shell became a fork of the whole app, `themes` joined the shell-owned
+  keys a project's config cannot set, so **no vsor project can opt out** and the stock fallback
+  stopped existing. The guarantee it used to carry — "the theme changes look, never contract" — is
+  now carried by B15's control probe instead: an unscanned utility class must compute to nothing,
+  proving the design system reaches elements through the pipeline and not by accident. Reinstating
+  a real fallback would need an opt-out seam in the shell and a second Playwright project; that is
+  a design decision, not a wording one, and it is not in 0.1.0.
 
 ## Acceptance
 
@@ -196,21 +201,30 @@ B13  primitives: the quiz renders end-to-end — click one option and its
      that doc, click it, the page renders (amended 2026-08-13 with Phase B's
      build-target clause: remaining primitives' render assertions are named
      follow-up, landing with the fixture docs that exercise them)
-B14  the identical B-suite passes against the stock preset-classic
-     configuration and the themed configuration
-B15  design-system liveness, both projects (added 2026-08-14). Themed: a probe
-     carrying only `flex items-center gap-2 text-sm` computes flex/center/8px/
-     14px; the mobile trigger is hidden at 1440px and opens a Radix sheet
-     carrying the corpus tree at 375px; lucide renders as inline SVG. Stock:
-     the same probe computes `display: block` and the built CSS contains no
-     `--tw-` property — the documented fallback leaves no Tailwind behind.
-     BOTH: a CSS-module-styled primitive keeps its own box (the quiz option's
-     1px border and 0.75rem/1rem padding survive, stock as the control), and a
-     fenced code block clears 4.5:1 in light mode. Computed styles only — a
-     class present in a stylesheet proves nothing about whether it reaches the
-     element. Both halves are load-bearing: every one of B5–B14 stayed green
-     through a build where Tailwind emitted nothing, AND through a build where
-     Tailwind's preflight had stripped every primitive's border and padding.
+B14  RETIRED 2026-08-14 — it asserted a stock configuration that can no
+     longer be produced (see the positive contract). The two Playwright
+     projects today are the fixture site and its sentinel twin, which is what
+     B12 needs; they are not two theme configurations.
+B15  design-system liveness (added 2026-08-14). A probe carrying only
+     `flex items-center gap-2 text-sm` computes flex/center/8px/14px; the
+     mobile trigger is hidden at 1440px and opens a Radix sheet carrying the
+     corpus tree at 375px; lucide renders as inline SVG. The control, in place
+     of the retired stock project: an UNSCANNED utility (`gap-[13px]`) must
+     compute to `normal` and must not appear in the stylesheet — so a build
+     where Tailwind emitted everything indiscriminately fails too. Also: a
+     CSS-module-styled primitive keeps its own box (the quiz option's border
+     and padding survive preflight), and a fenced code block clears 4.5:1 in
+     light mode. Computed styles only — a class present in a stylesheet proves
+     nothing about whether it reaches the element. This tier is load-bearing:
+     every one of B5–B13 stayed green through a build where Tailwind emitted
+     nothing, AND through a build where preflight had stripped every
+     primitive's border and padding.
+B16  admonitions render in BOTH syntaxes (added 2026-08-14). Docusaurus 3
+     requires `:::tip[Title]`; the Docusaurus 2 form `:::tip Title` is not a
+     directive at all and renders as literal text with a green build — 429
+     occurrences in the corpus this shell was forked from. The shell migrates
+     the v2 form in `markdown.preprocessor`, and the fixture carries one doc of
+     each form so either path regressing is visible.
 ```
 
 **Checklist — implement-time, not CI** (How-we-build #5; findings recorded beside the code):
