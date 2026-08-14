@@ -1,6 +1,7 @@
 # vsor
 
-**Turn a folder of markdown into a governed knowledge site.**
+**A Vertical System of Record: one folder of governed markdown, compiled into two surfaces — a
+website people browse, and an MCP server AI agents can cite.**
 
 ```bash
 vsor init my-sor      # a project in your own repo: markdown, config, git initialized
@@ -9,13 +10,19 @@ vsor dev              # the live site on 127.0.0.1:3000, reloading as you write
 vsor build            # → build/, ready to upload anywhere
 ```
 
-You write markdown in `knowledge/`. vsor compiles it into a real website — search, dark mode,
-quizzes and flashcards, self-hosted fonts, **no external requests at all** — plus
-`build.lock.json`, a committed record of exactly which documents were built and with what.
+You write markdown in `knowledge/`. One command compiles it into a real website — search, dark
+mode, quizzes and flashcards, self-hosted fonts, **no external requests at all** — and into
+Postgres rows an MCP server answers from, where every answer names the document it came from and a
+question the corpus does not cover is declined rather than guessed. Both surfaces derive from the
+same source, so adding one never means editing the knowledge.
 
-It is for people who own a body of professional knowledge and are accountable for it: a tax
-practice, a clinic, a school. Your project stays markdown and one config file. The machinery is
-installed, not copied into your repo, so it upgrades underneath you.
+Every build also writes `build.lock.json`: a committed record of exactly which documents were
+built, from which commit, with which tool versions.
+
+It is not an agent framework; it is the knowledge layer such frameworks read *from*. It is for
+people who own a body of professional knowledge and are accountable for it — a tax practice, a
+clinic, a school. Your project stays markdown and one config file. The machinery is
+installed rather than copied into your repo, so it upgrades underneath you.
 
 ## Status
 
@@ -26,8 +33,6 @@ and walked live on a real corpus.
 corpus does not cover — **is not in this release.** Running it says so and exits 2. That half is
 where the interesting claim lives, and it is next; see [CHANGELOG.md](CHANGELOG.md) for what
 landed and [docs/status.md](docs/status.md) for what is honestly still missing.
-
-This is not an agent framework. It is the knowledge layer such frameworks read *from*.
 
 ## Install
 
