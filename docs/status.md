@@ -142,6 +142,33 @@ entirely by a coding agent, human only pasting paths · serve-time token cost of
 surface on `fixtures/tiny/` · scaffold-upgrade story once 0.2.0 meets a 0.1.0 project (record enough
 in `build.lock.json` to derive it later).
 
+## Measured limits (2026-08-14) — the corpus-scale experiment
+
+Everything had been proven on 3–48 documents. A system of record holds thousands, so the site
+build was measured against synthetic corpora on this machine (Node 24, Apple Silicon):
+
+| corpus | layout | build | output | per doc-page HTML |
+| ---: | :--- | ---: | ---: | ---: |
+| 100 | flat | 25s | 12 MB | 120 KB |
+| 500 | flat | 33s | 74 MB | 148 KB |
+| 2,000 | flat | 231s | 806 MB | 378 KB |
+| 2,000 | 20 folders × 100 | 109s | 155 MB | 47 KB |
+
+**Output size is quadratic in a FLAT corpus.** Docusaurus bakes the whole sidebar into every page,
+so 2,000 flat documents put 2,000 `<li>` entries on each of 2,000 pages — 742 MB of the 806 MB is
+`docs/`. Collapsed folder categories emit only their own section (120 entries), which is why the
+same 2,000 documents cost 155 MB and half the build time. **Folder structure is not cosmetic in
+this framework; it is the difference between O(n²) and O(n·k).** The scaffold ships a flat
+`knowledge/` and, until this was measured, said nothing about it.
+
+Second-order: `search-index.json` is 34 MB at 2,000 documents and the browser fetches it on first
+search — fine at hundreds, not at thousands. A server-side search or a sharded index is the
+post-v0 answer; the ceiling is recorded rather than guessed.
+
+**Working guidance until the machinery changes:** comfortable to ~500 documents in any layout;
+past that, organize `knowledge/` into folders. A build-time warning enforces the advice rather
+than leaving it in a document nobody reads.
+
 ## Ship order — two slices (decided 2026-08-13)
 
 **Slice 1 — the site surface.** `learn-app` extraction → `sor-site`; `vsor init` + `vsor build`

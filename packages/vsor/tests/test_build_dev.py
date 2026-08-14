@@ -252,3 +252,46 @@ def test_dev_occupied_port_is_port_in_use_never_a_prompt_or_increment(
     assert slug_line(err).startswith("error: port-in-use")
     assert str(port) in err  # names the port…
     assert "--port" in err  # …and the way out
+
+
+# ── the flat-corpus warning ────────────────────────────────────────────────
+# Measured 2026-08-14: 2,000 flat documents build to 806 MB (378 KB of HTML per
+# page, because Docusaurus writes the whole sidebar into every one); the same
+# 2,000 in twenty folders build to 155 MB in half the time. The warning exists
+# so that ceiling is met with advice rather than with a slow build and a
+# hosting bill.
+
+
+def _docs(paths: list[str]) -> list[object]:
+    return [{"path": p, "sha256": "0" * 64} for p in paths]
+
+
+def test_flat_corpus_warns_only_past_the_measured_threshold(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    from vsor.build_cmd import _FLAT_CORPUS_WARNING_THRESHOLD, _warn_flat_corpus
+
+    small = _docs([f"knowledge/doc-{i}.md" for i in range(_FLAT_CORPUS_WARNING_THRESHOLD - 1)])
+    _warn_flat_corpus(small)
+    assert capsys.readouterr().err == "", "a small flat corpus is the normal case, not a warning"
+
+    big = _docs([f"knowledge/doc-{i}.md" for i in range(_FLAT_CORPUS_WARNING_THRESHOLD)])
+    _warn_flat_corpus(big)
+    err = capsys.readouterr().err
+    assert err.startswith("warning:")
+    assert "knowledge/" in err
+    assert "806 MB" in err, "the remedy carries the measurement that motivates it"
+
+
+def test_foldered_corpus_never_warns(capsys: pytest.CaptureFixture[str]) -> None:
+    """The layout the warning asks for must not itself trip the warning."""
+    from vsor.build_cmd import _FLAT_CORPUS_WARNING_THRESHOLD, _warn_flat_corpus
+
+    nested = _docs(
+        [
+            f"knowledge/section-{i // 100}/doc-{i}.md"
+            for i in range(_FLAT_CORPUS_WARNING_THRESHOLD * 3)
+        ]
+    )
+    _warn_flat_corpus(nested)
+    assert capsys.readouterr().err == ""

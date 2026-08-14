@@ -168,6 +168,38 @@ def run_build(project_root: Path | None = None) -> int:
             f"warning: instance.md pins vsor.requires {instance.requires!r} but vsor "
             f"{vsor_version} ran — recorded in build.lock.json (requires_satisfied: false).\n"
         )
+    corpus_block = record["corpus"]
+    if isinstance(corpus_block, dict):
+        documents = corpus_block.get("documents")
+        if isinstance(documents, list):
+            _warn_flat_corpus(documents)
     print("build/ written — the deployable static site (serve it from any static host)")
     print(f"build.lock.json written — build_id {record['build_id']}")
     return 0
+
+# Measured 2026-08-14 on synthetic corpora (Node 24, Apple Silicon). Docusaurus renders the whole
+# sidebar into every page, so a FLAT corpus costs O(n^2) output: 2,000 flat documents built to
+# 806 MB with 378 KB of HTML per page, while the same 2,000 in twenty folders built to 155 MB with
+# 47 KB per page — and in half the time. Folder structure is not cosmetic here, which is why this
+# says so at the moment it starts to matter rather than in a document nobody opens.
+_FLAT_CORPUS_WARNING_THRESHOLD = 300
+
+
+def _warn_flat_corpus(documents: list[object]) -> None:
+    """Warn when a large corpus is flat — the layout that makes output size quadratic."""
+    if len(documents) < _FLAT_CORPUS_WARNING_THRESHOLD:
+        return
+    # "knowledge/a.md" is flat; "knowledge/section/a.md" is not.
+    flat = [
+        d
+        for d in documents
+        if isinstance(d, dict) and str(d.get("path", "")).count("/") <= 1
+    ]
+    if len(flat) < _FLAT_CORPUS_WARNING_THRESHOLD:
+        return
+    sys.stderr.write(
+        f"warning: {len(flat)} documents sit directly in knowledge/ with no folders. Docusaurus\n"
+        f"  writes the whole sidebar into every page, so a flat corpus grows the site quadratically\n"
+        f"  (measured: 2,000 flat documents build to 806 MB; the same 2,000 in folders, 155 MB).\n"
+        f"  Group them into subdirectories of knowledge/ — the sidebar collapses per folder.\n"
+    )
