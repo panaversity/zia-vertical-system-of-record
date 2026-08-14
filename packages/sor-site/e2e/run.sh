@@ -9,11 +9,12 @@
 # 127.0.0.1 port → run the single Playwright suite.
 #
 # Two builds, not four: the stock/themed axis died with the fork. "Stock
-# preset-classic" meant a scaffold that deleted @vsor/sor-site-theme from its own
-# `themes` array; `themes` is now a key the shell owns and drops from a project's
-# config, and the design system lives inside the shell itself. There is no
-# configuration a vsor project can produce that lacks it, so there is none to
-# build here. Recorded against B14/B15 for the lead.
+# preset-classic" meant a scaffold that deleted the separate design-system theme
+# package from its own `themes` array; `themes` is now a key the shell owns and
+# drops from a project's config, the design system lives inside the shell itself,
+# and that theme package was deleted on 2026-08-14. There is no configuration a
+# vsor project can produce that lacks it, so there is none to build here. B14 is
+# retired in the spec; B15's control probe replaced what it was standing in for.
 #
 # Determinism notes:
 #   - ports are ephemeral (http.server binds port 0 and reports what it got; we

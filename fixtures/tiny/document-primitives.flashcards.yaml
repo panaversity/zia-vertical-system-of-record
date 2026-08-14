@@ -1,0 +1,28 @@
+# Co-located deck for document-primitives.md.
+#
+# The loader pairs a document with `<stem>.flashcards.yaml` and the remark plugin
+# injects the parsed deck as the `cards` prop of the page's <Flashcards />, so a
+# document with no sibling file renders the primitive's own empty state instead of
+# failing the build. Three cards, because the browser tier walks the deck to its
+# end and a shorter one would not exercise the advance.
+deck:
+  id: document-primitives
+  title: Terms this document introduces
+  description: Recall checks for authority, abstention and the two surfaces.
+  tags:
+    - primitives
+  version: 1
+cards:
+  - id: card-authority
+    front: When two versions of a governed document disagree, what settles it?
+    back: Authority — the system of record is the version the other copies defer to.
+    difficulty: basic
+    why: Authority is what separates a record from a well-written draft.
+  - id: card-abstention
+    front: What is the correct answer to a question the corpus does not cover?
+    back: An abstention. "Not covered here" is an answer, never an error.
+    difficulty: basic
+  - id: card-surfaces
+    front: How many surfaces are compiled from one governed source?
+    back: Two — a website for people, and an MCP server for AI assistants.
+    difficulty: basic

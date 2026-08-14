@@ -164,25 +164,39 @@ package **extracted from learn-app** (owner decision 2026-08-13 superseded the r
 theme upgrade literally changes look, never contract.
 
 **`sor-site` landed 2026-08-13 — the extraction is real.** `packages/sor-site/` (npm workspace,
-lockfile committed): `@vsor/sor-site-mdx` (Quiz, flashcards, gallery, ExerciseCard, HighlightTip,
-ImageZoom + `@theme/MDXComponents` mapping — works on stock preset-classic), `@vsor/sor-site-theme`
-(the design system — Tailwind v4 + shadcn/ui primitives + an OKLCH token layer bridged onto the
-`--ifm-*` variables + lucide — and the chrome it paints: **full swizzles** of Navbar, Footer and
-Landing, plus LessonContent, DocPageActions audited to four corpus-neutral actions, ReadingProgress,
-SearchBar and ModeToggle. Amended 2026-08-14: the first pass shipped bespoke CSS and the owner
-rejected it as "simple Docusaurus, not specialized"; the design system now crosses whole, which is
-also what makes B12 seam liveness load-bearing rather than theoretical), and ten `@vsor/lib-*` content-pipeline packages
+lockfile committed): `@vsor/sor-site-app` (the runtime shell — the whole forked Docusaurus site:
+the MDX vocabulary of Quiz, flashcards, gallery, ExerciseCard, HighlightTip and ImageZoom through
+its own `@theme/MDXComponents`, AND the design system — Tailwind v4 + shadcn/ui primitives + an
+OKLCH token layer bridged onto the `--ifm-*` variables + lucide — AND the chrome it paints: **full
+swizzles** of Navbar, Footer and Landing, plus LessonContent, DocPageActions audited to four
+corpus-neutral actions, ReadingProgress, SearchBar and ModeToggle), and ten `@vsor/lib-*`
+content-pipeline packages
 with the five tab plugins collapsed into one `remark-tabs` before crossing the seam — all copied
 from `ag2` at the pinned survey SHA under the owner's copy authorization, stripped per the surface
-spec's exclusion contract, de-branded (CI-scanned). Phase A runs inside `make gate` (allowlist +
+spec's exclusion contract, de-branded (CI-scanned).
+*Amended 2026-08-14, twice.* First: the extraction's first pass shipped bespoke CSS and the owner
+rejected it as "simple Docusaurus, not specialized", so the design system crosses whole — which is
+what makes B12 seam liveness load-bearing rather than theoretical. Then: the extraction shipped as
+two installable packages, `@vsor/sor-site-mdx` and `@vsor/sor-site-theme`, and the fork superseded
+both. The shell manifest referenced neither, so they reached no user while still reading like the
+place to edit a Navbar; **both were deleted** (63 source files) and Phase A's two remaining
+pointers at them — A3's designated token file, A4's frozen prop baseline — were repointed at
+`app/src` in the same change. Phase A runs inside `make gate` (allowlist +
 denylist backstop, exclusion boundary scan from the one committed `exclusions.json`, token lint at
-baseline zero, prop baseline); the browser tier is `make surface` — 32 Playwright checks (B5–B14, plus the
-design-system tier B15 added 2026-08-14) against BOTH stock and themed builds. The live walk caught what suites alone would have shipped:
+baseline zero, prop baseline); the browser tier is `make surface` — 29 Playwright checks (B5–B13,
+B15, B16; B14 retired 2026-08-14) against one configuration built twice, normally and with B12's
+sentinels. The live walk caught what suites alone would have shipped:
 React #418 hydration on every themed doc page for Mac readers (Node ≥21's global `navigator` made
 the SSR guard dead), the build host's OS baked into shipped HTML, clipboard junk in
-Copy-as-Markdown — all fixed with red-state evidence and found-live comments. Named follow-up:
-per-primitive render assertions (flashcards, gallery, ExerciseCard, HighlightTip, ImageZoom) land
-with the fixture docs that exercise them; search title-ranking niggle recorded beside the code.
+Copy-as-Markdown — all fixed with red-state evidence and found-live comments.
+**The named follow-up closed 2026-08-14:** the per-primitive render assertions (flashcards,
+gallery, ExerciseCard, HighlightTip, ImageZoom, tabs, mermaid) landed with the fixture doc that
+exercises them — `fixtures/tiny/document-primitives.md` plus its co-located flashcard and gallery
+YAML — taking the browser tier from 21 checks to 28. Each asserts computed-style *floors* (a rule
+width, a padding, a hairline) rather than equalities, so a stripped box fails while decoration
+stays free to change. A 29th followed in the green pass: the hero's uppercase had shipped as a
+recorded `found live` with no assertion, so it now has one. Still open: the search title-ranking
+niggle, recorded beside the code.
 
 **The design-system pass, 2026-08-14 — what the browser found that CI could not.** Bringing
 Tailwind across whole introduced a failure the entire B-suite stayed green through: Docusaurus's
@@ -200,8 +214,10 @@ is dark — the scaffold now sets `prism`), `--info`/`--warning` were never in t
 three of five admonition kinds were indistinguishable, the breadcrumb's designed "/" never rendered
 behind Infima's chevron, the mobile sheet's search control was a bare unlabelled magnifier, the
 search box was the one piece of chrome off the token set, and a new site's footer was a 214px band
-of nothing. B15 is the net: it now asserts a CSS-module primitive keeps its own box in both builds,
-and that fenced code clears 4.5:1 in light mode — the two assertions that would have caught this.
+of nothing. B15 is the net: it asserts a CSS-module primitive keeps its own box, and that fenced
+code clears 4.5:1 in light mode — the two assertions that would have caught this. (It read "in both
+builds" while stock was the live control; with one configuration the control moved inside the build
+— see the B14/B15 note above.)
 
 **CI is red for a non-code reason:** GitHub Actions reports "account payments have failed or your
 spending limit needs to be increased" — jobs never start. Owner action; local `make gate` and
@@ -218,7 +234,12 @@ were right — upstream's styling is 5,733 lines and the extraction had carried 
 kept, 82.5k → 12.2k lines of src, 57 → 30 runtime deps), and it is the shell `vsor build`
 materializes. Fidelity is measured, not asserted: paragraph rhythm, search field, mobile type scale
 and fonts now match the AF build's computed values. The `mdx` and `theme` packages it supersedes
-are still in the tree and are the lead's consolidation call.
+were **deleted 2026-08-14** (the lead's consolidation call, taken): 63 source files, diffed
+one-by-one against the fork first — 34 byte-identical, the rest either import-alias rewrites or
+places the fork was already ahead. Three fixes lived only in the old copies and were moved across
+before the delete; the theme-only preflight and `tailwind.css` fixes were verified *inapplicable*
+to the fork (it imports Tailwind whole and runs Lightning CSS via `future.faster`, so the
+polyfilled-`@layer` pipeline those fixes existed for is gone) rather than assumed so.
 
 **Found live on real content, all fixed and guarded:** Docusaurus 3 requires `:::tip[Title]` and
 silently renders the v2 form `:::tip Title` as literal text — the shell now migrates it in
@@ -236,9 +257,12 @@ lucide crossed the seam intact rather than being re-implemented — the owner re
 stripped build as "simple Docusaurus, not specialized", and the root cause was pass 1 substituting
 bespoke CSS for a design system. Also across: the chrome (navbar with its mobile sheet, footer,
 layout, root), the doc-page and sidebar polish, and the landing-page pattern as a content-driven
-primitive. The theme is **on by default**; stock preset-classic is a tested fallback (B14), and a
-new **B15** tier proves the design system is live in the themed build and provably absent from the
-stock one — 32 browser checks now, up from 20. Two live scars are recorded in the code: Tailwind's
+primitive. *Superseded 2026-08-14 by the fork:* this paragraph read "the theme is **on by default**;
+stock preset-classic is a tested fallback (B14), and a new **B15** tier proves the design system is
+live in the themed build and provably absent from the stock one". There is no stock configuration
+any more — `themes` is a shell-owned key a project cannot set — so B14 was retired and B15's
+control became an *unscanned* utility (`gap-[13px]`) that must compute to nothing, which is the
+claim the stock half was standing in for. Two live scars are recorded in the code: Tailwind's
 preflight, boosted above CSS modules by Docusaurus's `@layer` polyfill, was silently un-styling the
 very primitives the theme exists to dress; and an unset `prism` key renders every fenced block at
 ~1.3:1 in light mode.

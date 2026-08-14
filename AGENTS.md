@@ -251,7 +251,7 @@ scaffolded projects.
 | Boundary | `tests/test_boundaries.py` | reads source, parses with `ast`, never imports | ✅ |
 | Composition smoke | `tests/test_*_smoke.py` | real composition root; fake pool that *raises if touched* | ✅ |
 | Scaffold | one job | runs `vsor init` and builds the output | ✅ |
-| Surface | `make surface` (Playwright over the built fixture site, B5–B15 of `specs/sor-site/surface` — B15 is the design-system tier: the utilities compute, the shadcn sheet is the mobile menu, lucide is inline SVG, a CSS-module primitive keeps its own box, code is legible in light mode) | Node + pinned Chromium; static server on 127.0.0.1; deterministic by construction — DOM-state waits only, no screenshots | own job (needs Node) |
+| Surface | `make surface` (Playwright over the built fixture site, B5–B13 + B15–B16 of `specs/sor-site/surface`; B14 retired 2026-08-14 with the stock configuration it named — B15 is the design-system tier: the utilities compute *and only the scanned ones*, the shadcn sheet is the mobile menu, lucide is inline SVG, a CSS-module primitive keeps its own box, code is legible in light mode; B16 is admonitions in both the v2 and v3 syntaxes) | Node + pinned Chromium; static server on 127.0.0.1; deterministic by construction — DOM-state waits only, no screenshots | own job (needs Node) |
 | Database | `skipif` on an env pair | disposable local Postgres | opt-in |
 | Eval | console scripts, not pytest | live provider | release gate |
 

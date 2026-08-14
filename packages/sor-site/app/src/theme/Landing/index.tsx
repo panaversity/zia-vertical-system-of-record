@@ -14,10 +14,11 @@
  * installed theme — the destination `docusaurus swizzle --eject` would choose,
  * reached the way this framework reaches everything: a native seam, no new verb.
  *
- * Design lineage: the structure — an 85vh full-bleed hero over a 1.2fr/1fr
- * hairline split, then bands of py-24 across a 1800px measure, each opened by a
- * mono kicker and closed by a 40% rule, sharp corners throughout, and a colour
- * change on the last band — is upstream's (ag2 apps/learn-app at d764f334),
+ * Design lineage: the structure — a 100vh hero band whose 85vh 1.2fr/1fr
+ * hairline split is inset 32px from it, then bands of py-24 across a 1800px
+ * measure, each opened by a mono kicker and closed by a 40% rule, sharp corners
+ * throughout, and a colour change on the last band — is upstream's (ag2
+ * apps/learn-app at d764f334),
  * reworked. Four bands where upstream had nine, because upstream's other five
  * were arguments for a product; the geometry of the four is upstream's own. The
  * reasons for each divergence are recorded beside the divergence.

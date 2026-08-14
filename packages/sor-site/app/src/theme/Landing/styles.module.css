@@ -1,16 +1,68 @@
 /**
- * The homepage's craft layer — the four effects the utility classes cannot say.
+ * The homepage's craft layer — the five effects the utility classes cannot say.
  *
  * Lineage: apps/learn-app/src/pages/index.module.css at d764f334, which carried
- * the same effects for the same hero. Three crossed (the dot field, the
- * spotlight, the entrance); one was written here (the reduced-motion rule).
- * Everything else on this page is utilities, because everything else is layout.
+ * the same effects for the same hero. Four crossed (the hero frame, the dot
+ * field, the spotlight, the entrance); one was written here (the reduced-motion
+ * rule). Everything else on this page is utilities, because everything else is
+ * layout.
  *
  * No literal colour appears below, and none is needed: the dot field paints in
  * `currentColor` at 3% and the spotlight in `var(--primary)`, so both follow the
  * theme through the token layer rather than around it. That is also what the
  * A3 token scan requires of every stylesheet outside the designated token file.
  */
+
+/* --------------------------------------------------------------- hero frame
+   Upstream's `.heroBanner`, to the number (index.module.css:22 at d764f334):
+   a full-viewport band whose content is inset 32px from the top and the sides
+   and 96px from the bottom, with the hero grid centred inside it.
+
+   That inset is the half of upstream's hero signature that is not typography,
+   and it was the half missing here. Without it the grid runs to the viewport
+   edges: the column hairline becomes a full-height rule across the page and the
+   hero reads as a stripe. With it the hairline stops short of both edges and
+   the whole grid reads as one object sitting on the page — which is what the
+   32px of background around it is actually for.
+
+   A class rather than utilities because the ramp is four MAX-width breakpoints
+   (996 / 768 / 580 / 420, upstream's own), and Tailwind's are min-width:
+   restating them as sm:/md:/lg: would be a translation of upstream's numbers
+   rather than a copy of them. `min-height` drops to auto below 996px for the
+   reason upstream drops it — a phone should not have to scroll a viewport-tall
+   hero to reach the first word of content. */
+.heroFrame {
+    position: relative;
+    display: flex;
+    align-items: center;
+    min-height: 100vh;
+    padding: 2rem 2rem 6rem;
+}
+
+@media screen and (max-width: 996px) {
+    .heroFrame {
+        padding: 3rem 1.5rem 4rem;
+        min-height: auto;
+    }
+}
+
+@media screen and (max-width: 768px) and (min-width: 640px) {
+    .heroFrame {
+        padding: 2.5rem 1.5rem 3.5rem;
+    }
+}
+
+@media screen and (max-width: 580px) {
+    .heroFrame {
+        padding: 2.5rem 1rem 3.5rem;
+    }
+}
+
+@media screen and (max-width: 420px) {
+    .heroFrame {
+        padding: 2rem 0.75rem 3rem;
+    }
+}
 
 /* ---------------------------------------------------------------- dot field
    Upstream's "technical grid": a 40px dot lattice at 3%, laid behind the hero's

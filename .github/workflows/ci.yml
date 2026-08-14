@@ -36,13 +36,15 @@ jobs:
         env:
           UV_OFFLINE: "1"
 
-  # Browser tier of specs/sor-site/surface (B5–B14) plus the build/dev acceptance
-  # of specs/vsor/build: the only node job — the python gate above stays node-free.
+  # Browser tier of specs/sor-site/surface (B5–B13, B15, B16; B14 retired
+  # 2026-08-14) plus the build/dev acceptance of specs/vsor/build: the only node
+  # job — the python gate above stays node-free.
   # `make surface` first runs `make build-acceptance` (tests/acceptance/build.sh:
   # stages the site runtime via `make wheel`, builds the vsor wheel, drives
-  # `vsor build`/`vsor dev` for real), then assembles the fixture sites
-  # (stock + themed, each also with B12 sentinels), builds them with Docusaurus,
-  # serves them statically and runs the Playwright acceptance.
+  # `vsor build`/`vsor dev` for real), then assembles the fixture site twice
+  # (normally and with B12's sentinels — there is no stock/themed axis: the
+  # design system is inside the shell and a project cannot opt out), builds both
+  # with Docusaurus, serves them statically and runs the Playwright acceptance.
   surface:
     runs-on: ubuntu-latest
     steps:

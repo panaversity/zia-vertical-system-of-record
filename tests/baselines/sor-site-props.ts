@@ -9,11 +9,6 @@
  * Docusaurus and carry Docusaurus's own contract, not ours; HighlightTip takes
  * no props, so it has no prop type to freeze).
  *
- * Repointed here 2026-08-14: A4 previously baselined packages/sor-site/mdx,
- * which the forked app superseded and `make wheel` no longer packs — the test
- * was green over a module that ships to nobody, while the primitives users do
- * get were unpinned.
- *
  * Contracts are IDENTICAL to upstream at the pinned survey SHA (d764f334):
  * <Quiz /> normatively takes exactly four `options`, a `correctOption` index,
  * optional `explanation`/`source`.

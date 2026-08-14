@@ -90,12 +90,11 @@ packed := ./app \
 # its one home is packages/vsor/src/vsor/templates/site_runtime/package.json.
 wheel:
 	cd packages/sor-site && npm ci
-	# mdx/theme are neither shipped nor compiled here any more: the forked app
-	# supersedes both, and as of 2026-08-14 the browser tier builds the fork too,
-	# which was the last consumer of their compiled lib/. They stay in the
-	# workspace because Phase A still points at them (A3 designates
-	# theme/src/css/tokens.css, A4 baselines mdx/src/types.ts) — removing them is
-	# a spec-touching change, not a green-driver one.
+	# The mdx and theme packages are gone (deleted 2026-08-14). The forked app
+	# superseded both, the shell manifest referenced neither, so they shipped to
+	# nobody while still looking like the files to edit; Phase A's last two
+	# pointers at them (A3's token file, A4's prop baseline) were repointed at
+	# app/src in the same change.
 	rm -rf $(runtime_dir)
 	mkdir -p $(runtime_dir)
 	cd packages/sor-site && npm pack $(packed) --pack-destination "$(CURDIR)/$(runtime_dir)"
@@ -108,10 +107,12 @@ wheel:
 	cd $(runtime_dir) && npm install --package-lock-only
 	uv build --package vsor
 
-# Browser tier of specs/sor-site/surface (B5–B14): builds the fixture site from
-# the init scaffold + fixtures/tiny in stock and themed configs and runs the
-# Playwright acceptance against both. Node lives only here — `gate` stays
-# node-free. Installs nothing; one-time prereq:
+# Browser tier of specs/sor-site/surface (B5–B13, B15, B16; B14 retired
+# 2026-08-14): builds the fixture site from the forked shell + the init scaffold
+# + fixtures/tiny, twice — normally and with B12's sentinels — and runs the
+# Playwright acceptance against both. There is no stock/themed axis any more:
+# the design system is inside the shell and a project cannot opt out. Node lives
+# only here — `gate` stays node-free. Installs nothing; one-time prereq:
 #   (cd packages/sor-site && npm ci && npx playwright install chromium)
 # build-acceptance runs first (before playwright): the browser assertions then
 # certify the same config `vsor build` just proved it emits — one enforcement.

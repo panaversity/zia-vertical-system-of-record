@@ -1,18 +1,31 @@
 /**
- * Design-system liveness — the amendment of 2026-08-13 ("the design system
- * crosses whole"), made into an assertion.
+ * Design-system liveness — Acceptance B15 (and B16, below) of
+ * specs/sor-site/surface/spec.md: the amendment of 2026-08-13 ("the design
+ * system crosses whole"), made into an assertion.
  *
- * Why this file exists. B5–B14 pin the *contract* (no external requests, no
+ * Why this file exists. B5–B13 pin the *contract* (no external requests, no
  * product routes, the primitives render, the seams paint) and every one of them
  * stayed green through a build in which Tailwind emitted nothing at all. The
  * amendment's actual claim — Tailwind v4 + shadcn/ui + lucide reach the built
- * page — had no enforcement, and its single most likely failure is silent:
+ * page — had no enforcement, and its most likely failure is silent: the utility
+ * classes are still in the HTML, the build still succeeds, no console error is
+ * logged, and the page just quietly reverts to unstyled boxes. That is
+ * precisely the failure the owner rejected once.
  *
- *   Tailwind v4 does not scan node_modules. The theme's compiled chrome lives
- *   there in every real install, so if `@source` in theme/src/css/tailwind.css
- *   stops covering it, the utility classes are still in the HTML, the build
- *   still succeeds, no console error is logged — the page just quietly reverts
- *   to unstyled boxes. That is precisely the failure the owner rejected once.
+ *   Restated 2026-08-14 for the fork. This paragraph used to name `@source` in
+ *   theme/src/css/tailwind.css and the compiled chrome under node_modules; that
+ *   package was deleted the same day and the fork has no `@source` directive at
+ *   all — app/src/css/custom.css:15 is a bare `@import "tailwindcss"`, so v4's
+ *   AUTOMATIC source detection is the whole mechanism. Which relocates the
+ *   risk rather than removing it: auto-detection skips paths git ignores, and
+ *   in every real install the shell is materialized into a gitignored `.vsor/`.
+ *
+ *   found live 2026-08-14: that risk does not fire here, measured rather than
+ *   assumed. This suite's own shell (e2e/.scratch/site/site-runtime/src) is
+ *   gitignored too — packages/sor-site/.gitignore:4 — and the built stylesheet
+ *   still carries `.flex{`, `.items-center{` and `.gap-2{` while carrying no
+ *   `gap-[13px]`. So a gitignored materialization is the configuration this
+ *   file already runs against, and the control below is what keeps that true.
  *
  * So: computed styles, not stylesheet greps. A class name present in the CSS
  * proves nothing about whether it reaches the element.
@@ -298,7 +311,9 @@ test("doc typography: the mobile type scale applies at 375px", async ({ page }, 
 });
 
 /**
- * Admonitions, both syntaxes — the gap that shipped silently until 2026-08-14.
+ * Acceptance B16 — admonitions, both syntaxes; the gap that shipped silently
+ * until 2026-08-14. (Named here because it is the one B-row this file owns that
+ * is not B15; the file-to-row map is otherwise in e2e/README.md.)
  *
  * Docusaurus 3 requires `:::tip[Title]`. The Docusaurus 2 form `:::tip Title`
  * is not a directive at all, so it renders as the literal text ":::tip Title"
@@ -327,4 +342,80 @@ test("doc content: admonitions render in both the v2 and v3 syntaxes", async ({
     // The literal marker must not survive anywhere in the rendered body.
     await expect(page.locator("article")).not.toContainText(":::");
   }
+});
+
+/**
+ * The hero's display register — the design system reaching the one heading
+ * whose text an OWNER typed.
+ *
+ * Added 2026-08-14 by the green driver, closing a hole rather than a spec row:
+ * the hero landed with a recorded `found live` (Hero.tsx) and no assertion. The
+ * finding was that `text-transform: uppercase` alone breaks the promise it was
+ * chosen to keep. The promise: the display register is upstream's, but the TEXT
+ * stays exactly as authored, because ours is not a fixed brand — it is whatever
+ * an owner typed, and "Pakistan Tax Law" is not ours to case-mangle. Rendering
+ * the capitals in CSS keeps the DOM node authored; it does NOT keep the
+ * ACCESSIBLE NAME authored, because that is computed from rendered text. The
+ * heading whose DOM text is "fixture" reported an accessible name of "FIXTURE",
+ * and a screen reader may then spell a short all-caps string letter by letter.
+ * `aria-label={title}` is the fix.
+ *
+ * So the regression this guards is two-sided and neither side is visible to any
+ * other check: drop the aria-label and the accessible name silently re-mangles;
+ * drop the `uppercase` utility and the aria-label becomes a redundant lie about
+ * an element that no longer transforms. Both are asserted below, on the built
+ * page, from the instance name the manifest owns rather than a literal.
+ */
+test("the hero capitalizes in CSS only — authored text, authored accessible name", async ({
+  page,
+}, testInfo) => {
+  const env = envFor(testInfo.project.name);
+  const authored = env.manifest.instanceName; // "fixture" — lower-case as authored
+  const mangled = authored.toUpperCase();
+  expect(mangled, "the fixture's instance name must differ in case, or this test is vacuous").not.toBe(
+    authored,
+  );
+
+  await page.goto(env.url);
+  const h1 = page.locator("h1").first();
+
+  // 1. The design system reaches it: the register is upstream's, in CSS.
+  await expect(h1, "the hero h1 renders in upstream's all-caps display register").toHaveCSS(
+    "text-transform",
+    "uppercase",
+  );
+
+  // 2. The DOM keeps what the owner typed — pixels are capitals, text is not.
+  expect(
+    (await h1.textContent())?.trim(),
+    "the hero h1's DOM text is the authored instance name, never a transformed string",
+  ).toBe(authored);
+
+  // 3. The accessible name is the authored string too — read from CHROMIUM'S
+  //    OWN accessibility tree over CDP.
+  //
+  //    found live 2026-08-14, and the reason this is not a `getByRole` call:
+  //    the obvious spelling — `getByRole("heading", { name, exact: true })` —
+  //    is VACUOUS here, measured on a build with the aria-label deliberately
+  //    removed. Playwright computes accessible names with its own injected
+  //    engine, from DOM text, and it does not apply `text-transform`; it
+  //    reported "fixture" for the very heading Chromium was exposing as
+  //    "FIXTURE", and both halves of the assertion passed while the defect was
+  //    present. The AX tree is the only instrument that can see this, so it is
+  //    the one used. (Chromium-only — this suite pins Chromium; see
+  //    playwright.config.ts.)
+  const cdp = await page.context().newCDPSession(page);
+  await cdp.send("Accessibility.enable");
+  const { nodes } = (await cdp.send("Accessibility.getFullAXTree")) as {
+    nodes: { role?: { value?: string }; name?: { value?: string } }[];
+  };
+  const headings = nodes
+    .filter((n) => n.role?.value === "heading" && n.name?.value)
+    .map((n) => n.name!.value!);
+  expect(headings, "the AX tree exposes the hero heading at all").toContain(authored);
+  expect(
+    headings,
+    `no heading is exposed as ${mangled} — text-transform mangles the accessible name unless ` +
+      "Hero.tsx's aria-label restores the authored one",
+  ).not.toContain(mangled);
 });

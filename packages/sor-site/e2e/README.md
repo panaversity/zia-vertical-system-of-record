@@ -45,7 +45,8 @@ Run it as `make surface` from the repo root. One-time prerequisite:
 | `tests/static.spec.ts` | B5 (static scan of built HTML+CSS, zero non-local), B6 (route/sitemap + build-dir assertion), B7 (`tests/exclusions.json` vs built JS bundles) |
 | `tests/surface.spec.ts` | B9, B10, B11 walk, B13 (quiz feedback + search to the doc) |
 | `tests/seam.spec.ts` | B12 (sentinels present / old gone, token paints in light and dark) |
-| `tests/design.spec.ts` | B15 — design-system liveness AND the regression net |
+| `tests/primitives.spec.ts` | B13, the rest of the vocabulary — ExerciseCard, HighlightTip, flashcards, gallery, tabs, mermaid, ImageZoom — each against `fixtures/tiny/document-primitives.md`. Computed-style *floors* (a rule width, a padding, a hairline), never equalities: a stripped box fails, decoration stays free to change |
+| `tests/design.spec.ts` | B15 — design-system liveness AND the regression net; B16 (admonitions in both the v2 and v3 syntaxes); and the hero's CSS-only capitalization, read from Chromium's AX tree |
 | `tests/harness.ts` | the always-on guard that makes every visited page enforce B8 (same-origin, zero ≥ 400) and B11 (zero console.error / pageerror); plus `inMode()`, the one place that knows how a color mode is forced |
 
 Determinism: Chromium pinned via the committed `package-lock.json`, DOM-state
@@ -57,17 +58,20 @@ startup line.
 
 - **One configuration, not two** (2026-08-14, the fork). This harness built
   `stock` and `themed` variants until the forked app became the runtime shell.
-  "Stock preset-classic" meant a scaffold that deleted `@vsor/sor-site-theme`
-  from its own `themes` array; a project can no longer write `themes` at all (it
-  is one of the six keys the shell owns and drops with a warning), the design
-  system is imported by the shell's own `src/css/custom.css`, and the chrome it
-  dresses is the shell's `src/theme`. There is no seam by which a vsor project
-  produces a site without it, so building one here would certify a configuration
-  no user can have. B14 ("the identical B-suite passes against the stock
-  preset-classic configuration and the themed configuration") and B15's stock
-  half are therefore queued for the lead; the code is written so restoring a
-  second configuration is one entry in `playwright.config.ts` plus one `--out`
-  in `run.sh`.
+  "Stock preset-classic" meant a scaffold that deleted the separate
+  design-system theme package from its own `themes` array; a project can no
+  longer write `themes` at all (it is one of the six keys the shell owns and
+  drops with a warning), the design system is imported by the shell's own
+  `src/css/custom.css`, and the chrome it dresses is the shell's `src/theme`.
+  That theme package (`@vsor/sor-site-theme`, with the `@vsor/sor-site-mdx`
+  vocabulary package beside it) was deleted from the workspace later the same
+  day. There is no seam by which a vsor project produces a site without the
+  design system, so building one here would certify a configuration no user can
+  have. B14 ("the identical B-suite passes against the stock preset-classic
+  configuration and the themed configuration") is retired in the spec; the code
+  is still written so that restoring a second configuration would be one entry
+  in `playwright.config.ts` plus one `--out` in `run.sh` — but it would also
+  need an opt-out seam in the shell, which does not exist.
 - **The control B15 lost, replaced in-build.** Stock was the control that kept
   the themed numbers from being vacuous. In its place `design.spec.ts` probes an
   arbitrary utility that appears in no source file (`gap-[13px]`) and asserts it
@@ -96,13 +100,16 @@ startup line.
 - **B7 list:** `tests/exclusions.json` mirrors the spec's exclusion table
   row-for-row; its `$comment` records the two rows enforced elsewhere
   (`customFields`, locale trees) so the closure rule holds.
-- **`design.spec.ts` — B15.** B5–B14 pin the *contract*, and the whole of it
+- **`design.spec.ts` — B15.** B5–B13 pin the *contract*, and the whole of it
   stays green through a build where Tailwind emits nothing: the utility classes
   are still in the markup, no request fails, no console error is logged, the page
   just silently reverts to unstyled boxes. That is the exact failure the design
   system was brought across to fix, and its most likely cause is one line
-  drifting — Tailwind v4 does not scan `node_modules` and skips gitignored paths,
-  and in every real install the shell is materialized into a gitignored `.vsor/`.
+  drifting — the fork carries no `@source`, so v4's automatic source detection is
+  the whole mechanism, and it skips gitignored paths while every real install
+  materializes the shell into a gitignored `.vsor/`. Measured 2026-08-14: this
+  suite's own shell is gitignored as well and the utilities still emit, so the
+  gitignored case is the one already under test (see the file's header).
   So this file asserts *computed styles*, never stylesheet greps: Tailwind
   utilities resolve on an injected probe element, the responsive variant
   hides/shows the trigger, the Radix sheet opens carrying the corpus tree, lucide

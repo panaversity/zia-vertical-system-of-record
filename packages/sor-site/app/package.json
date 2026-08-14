@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "license": "Apache-2.0",
-  "description": "The runtime site shell: ag2 apps/learn-app forked at d764f334 with the product layer deleted per specs/sor-site/surface/spec.md. The corpus is a sibling ../knowledge directory.",
+  "description": "The vsor runtime site shell — the Docusaurus site that vsor build and vsor dev unpack over a project's .vsor/site-runtime. Generated and disposable, never edited in place: it builds from copies of the project's corpus and site config that are refreshed on every invoke.",
   "scripts": {
     "start": "docusaurus start",
     "build": "docusaurus build",

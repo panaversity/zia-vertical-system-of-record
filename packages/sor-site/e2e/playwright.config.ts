@@ -6,10 +6,13 @@
  * owns and drops from a project's config, and the design system is imported by
  * the shell's own stylesheet, so "stock preset-classic" names a configuration a
  * vsor project can no longer produce. The project list is the place that fact
- * shows, so it is recorded here rather than papered over; B14/B15's stock half
- * is queued for the lead. Adding a second configuration back is one entry here
- * plus one `--out` in run.sh, because everything below the project name reads
- * its URLs and dirs out of the environment.
+ * shows, so it is recorded here rather than papered over. That queue item is
+ * closed: the lead retired B14 in the spec on 2026-08-14 and B15's control
+ * probe (an unscanned utility that must compute to nothing) took over what the
+ * stock half was standing in for. Adding a second configuration back is one
+ * entry here plus one `--out` in run.sh — everything below the project name
+ * reads its URLs and dirs out of the environment — but it would also need an
+ * opt-out seam in the shell, which does not exist.
  *
  * URLs/dirs come from run.sh, which owns assembly, builds and static serving;
  * running `playwright test` without it fails fast with the remedy.

@@ -1,25 +1,30 @@
 /**
  * ImageZoom
  *
- * Click-to-enlarge for every image inside rendered lesson content: opens the
+ * Click-to-enlarge for every image inside rendered doc content: opens the
  * image fit-to-screen, then lets the reader zoom past 100% and pan around.
  * Headless — renders nothing, mounted once from src/theme/Root.tsx.
  *
- * Zoom-and-pan rather than a plain fit-to-screen lightbox because the book's
- * tall infographics (some are 2720x3520) are already taller than a laptop
- * screen. Fitting them to the viewport barely enlarges them; the reader has to
- * be able to push past the fit and move around to actually read them.
+ * Zoom-and-pan rather than a plain fit-to-screen lightbox because tall corpus
+ * infographics can be taller than a laptop screen: fitting them to the
+ * viewport barely enlarges them; the reader has to be able to push past the
+ * fit and move around to actually read them.
  *
  * Mounted at the Root rather than swizzling @theme/MDXComponents/Img so it also
  * covers <img> rendered by MDX components, which never pass through the MDX
  * `img` mapping.
+ *
+ * Stripped against upstream: the branded `af-image-zoom` class name, now
+ * `vsor-image-zoom` (the paired rule lives in src/css/custom.css). photoswipe
+ * is fully self-contained — no network requests, assets bundled — which is why
+ * it can live under the spec's "introduces no external requests" contract.
  */
 
 import { useEffect } from "react";
 import PhotoSwipeLightbox from "photoswipe/lightbox";
 import "photoswipe/style.css";
 
-/** Rendered doc/lesson body — markdown images and MDX-component images alike. */
+/** Rendered doc body — markdown images and MDX-component images alike. */
 const CONTENT_IMAGES = ".markdown img";
 
 /**

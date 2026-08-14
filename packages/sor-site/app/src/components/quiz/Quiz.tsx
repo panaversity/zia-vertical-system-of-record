@@ -1,3 +1,20 @@
+/**
+ * Quiz — forked from ag2/apps/learn-app/src/components/quiz/Quiz.tsx at
+ * d764f334 (the pinned survey SHA; owner copy authorization 2026-08-13).
+ *
+ * Stripped against upstream (surface spec negative contract):
+ *   - the optional-auth context hook and translator-role detection
+ *     (auth & gating excluded)
+ *   - QuizTranslationSeed + QUIZ_STATIC_LABELS (i18n machinery deferred
+ *     wholesale post-v0)
+ * Everything else — batching, shuffling, per-question feedback, results
+ * review, keyboard/aria affordances — is upstream's code unchanged.
+ *
+ * The props contract is pinned by specs/sor-site/surface/spec.md: exactly
+ * four `options`, `correctOption` index, optional `explanation`/`source`.
+ * The exported types are re-exported from src/types.ts, which A4 freezes
+ * byte-for-byte against tests/baselines/sor-site-props.ts.
+ */
 import React, { useState, useRef, useEffect, useLayoutEffect } from 'react';
 import ReactMarkdown from 'react-markdown';
 import styles from './Quiz.module.css';

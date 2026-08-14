@@ -1,9 +1,13 @@
 /**
- * HighlightTip Component
+ * HighlightTip — a dismissible inline hint whose dismissal persists in
+ * localStorage. Forked from ag2/apps/learn-app at d764f334.
  *
- * Subtle inline hint to educate users about highlight-to-ask.
- * Uses brand blue, minimal footprint, dismissible.
- * Shows for ALL users (Ask button now works for everyone).
+ * De-producted 2026-08-14. Upstream's copy read "Highlight text to **Ask**
+ * questions" and its header described the tutor's highlight-to-ask affordance;
+ * the tutor surface is excluded by the negative contract of
+ * specs/sor-site/surface/spec.md, so the component was promising a feature no
+ * vsor site has. The default text is now feature-neutral. Upstream had no
+ * props and the component still takes none, so the A4 contract is unchanged.
  */
 
 import React, { useState, useEffect } from "react";
@@ -37,7 +41,7 @@ export function HighlightTip() {
     <div className={styles.highlightTip}>
       <Info className={styles.tipIcon} />
       <span className={styles.tipText}>
-        Highlight text to <strong>Ask</strong> questions
+        Highlight text to <strong>select</strong> a passage
       </span>
       <button
         className={styles.dismissButton}

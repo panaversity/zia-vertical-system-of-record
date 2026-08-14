@@ -38,12 +38,13 @@
  * ── Variants ─────────────────────────────────────────────────────────────────
  * One configuration, built twice (normal and --sentinel). The old stock/themed
  * axis is gone because the configuration it named cannot exist any more: "stock
- * preset-classic" meant deleting @vsor/sor-site-theme from the scaffold's own
- * `themes` array, and a project can no longer write `themes` at all — the design
- * system is inside the shell, imported by the shell's own custom.css, and its
- * chrome is the shell's src/theme. There is no seam by which a vsor project
+ * preset-classic" meant deleting the separate design-system theme package from
+ * the scaffold's own `themes` array, and a project can no longer write `themes`
+ * at all — the design system is inside the shell, imported by the shell's own
+ * custom.css, and its chrome is the shell's src/theme. (That theme package was
+ * deleted outright on 2026-08-14.) There is no seam by which a vsor project
  * produces a site without it, so building one would certify a configuration no
- * user can have. Recorded for the lead against B14/B15; see the report.
+ * user can have. B14 is retired in the spec; B15's control probe replaced it.
  *
  * --sentinel (Acceptance B12): after normal stamping, replace exactly three seams
  * of the PROJECT's authored site — themeConfig.navbar.title, footer copyright,

@@ -1,0 +1,46 @@
+# Co-located gallery for document-primitives.md, keyed to the task card on the
+# same page (exercise_id matches <ExerciseCard id="EX-01" />).
+#
+# Two conversations, one labelled "Strong" and one "Weak": the component derives
+# its side-by-side view from those two prefixes, so a gallery with only one of
+# them renders the list and no comparison. `student_input` is the schema's name
+# for the question that was asked; the field is required by the loader.
+gallery:
+  exercise_id: EX-01
+  conversations:
+    - id: conv-grounded
+      label: Strong — answered from the record
+      provider: assistant
+      student_input: >-
+        Using only the governed corpus, what does provenance prove about a claim,
+        and what does it leave unproven? Cite the document you took it from.
+      ai_output: >-
+        Provenance proves who said something and when. It does not prove the claim
+        is still true, current or uncontested — which is why an effective date
+        belongs in the document itself. Source: What a System of Record Is.
+      scores:
+        independent_thinking: 8
+        critical_evaluation: 9
+        reasoning_depth: 8
+        originality: 7
+        self_awareness: 9
+      commentary: >-
+        The question fixed the source before it asked for an answer, so the reply
+        could be checked against a document rather than trusted.
+    - id: conv-improvised
+      label: Weak — answered from general knowledge
+      provider: assistant
+      student_input: What does provenance prove?
+      ai_output: >-
+        Provenance generally establishes that a claim is reliable and well
+        sourced, and is usually taken as evidence that the underlying statement
+        is accurate and current.
+      scores:
+        independent_thinking: 3
+        critical_evaluation: 2
+        reasoning_depth: 3
+        originality: 2
+        self_awareness: 1
+      commentary: >-
+        Fluent, unsourced, and wrong in the way that is hardest to catch: it
+        arrives in exactly the same confident voice as the grounded answer.

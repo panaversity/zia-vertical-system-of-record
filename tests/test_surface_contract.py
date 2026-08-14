@@ -2,7 +2,8 @@
 
 Source + manifest checks only (spec: "runs the day the package lands"). Boundary
 tier: reads files, never imports, never runs Node — `make gate` stays node-free.
-The browser tier (Phase B, B5-B14) is a separate suite and a separate make target.
+The browser tier (Phase B, B5-B13 + B15-B16; B14 retired 2026-08-14) is a
+separate suite and a separate make target.
 
   A1  every direct runtime dep of packages/sor-site is in the committed allowlist;
       the lockfile contains no denylisted name (transitives included)
@@ -31,7 +32,6 @@ LOCKFILE = SOR_SITE / "package-lock.json"
 # A3: the designated token files (spec "Token discipline" — "the designated
 # token file(s)"). Every color literal in shipped CSS lives in one of these;
 # everything else consumes var(--…).
-#   - tokens.css: the theme package's token file.
 #   - the scaffold's custom.css: the CONSUMING site's token seam — B12's
 #     sentinel builds patch exactly its --ifm-color-primary lines and the
 #     scaffold AGENTS.md names it "the design tokens". Designated here
@@ -43,9 +43,11 @@ LOCKFILE = SOR_SITE / "package-lock.json"
 #     the rule bodies and into this one file, and expressed the brand hues as
 #     `R G B` channel triples so a consuming project re-brands by redeclaring
 #     one token rather than eight rgba() literals.
-TOKEN_FILE = SOR_SITE / "theme" / "src" / "css" / "tokens.css"
+# A third entry, packages/sor-site/theme/src/css/tokens.css, was dropped
+# 2026-08-14 when that package was deleted: the shell manifest
+# (templates/site_runtime/package.json) referenced neither it nor the mdx
+# package, so both shipped to nobody while still looking like the file to edit.
 TOKEN_FILES = (
-    TOKEN_FILE,
     TEMPLATE_SITE / "src" / "css" / "custom.css",
     SOR_SITE / "app" / "src" / "css" / "tokens.css",
 )
@@ -59,15 +61,21 @@ TOKEN_FILES = (
 #   so A4 was pinning a module that ships to nobody while the primitives users
 #   actually get (app/src/components/**, reached through the fork's own
 #   MDXComponents) were unpinned. The mdx module also still re-exported
-#   HighlightTipProps, a type the fork does not export at all.
+#   HighlightTipProps, a type the fork does not export at all. That package was
+#   deleted later the same day; this is now the only prop-type module there is.
 PROP_MODULE = SOR_SITE / "app" / "src" / "types.ts"
 BASELINE = REPO / "tests" / "baselines" / "sor-site-props.ts"
 
 SOURCE_EXTS = {".ts", ".tsx", ".js", ".css"}
 
-# Compiled output (gitignored per packages/sor-site/.gitignore) — the scan covers
-# shipped source; built-bundle scanning is Phase B's B7, in the node tier.
-_GENERATED = (SOR_SITE / "mdx" / "lib", SOR_SITE / "theme" / "lib")
+# Generated output (gitignored per packages/sor-site/.gitignore) — the scan
+# covers shipped source; built-bundle scanning is Phase B's B7, in the node tier.
+# Repointed 2026-08-14 with the deletion of the mdx/theme packages, whose
+# compiled `lib/` dirs this used to name: the only generated trees left inside
+# packages/sor-site are the forked shell's own, which appear the moment anyone
+# runs a local `docusaurus build` in app/ and would otherwise put a whole
+# bundled Docusaurus under the A2/A3 scanners.
+_GENERATED = (SOR_SITE / "app" / "build", SOR_SITE / "app" / ".docusaurus")
 
 # Out of A2/A3 scope by the spec's own words — the scan covers "the package's
 # shipped source (src/, theme/, css) and the templates/ site shell", and the e2e
@@ -110,11 +118,14 @@ ALLOWLIST_EXACT = {
     "clsx",
     "prism-react-renderer",
     "@easyops-cn/docusaurus-search-local",
-    # Growth — each entry justified by an extraction report (2026-08-13):
-    "react-markdown",  # mdx+theme: renders quiz/flashcard markdown and the summary tab, as upstream did
-    "photoswipe",  # mdx: ImageZoom engine; self-contained, no network
-    "turndown",  # theme: client-side Copy-Markdown — a spec-kept DocPageActions action
-    "lunr",  # theme: bundled search index — replaces upstream's runtime CDN load (would fail B8)
+    # Growth — each entry justified by an extraction report (2026-08-13).
+    # The "which package needs it" notes read `app:` throughout since 2026-08-14:
+    # they used to say mdx/theme, and those two packages are deleted — the forked
+    # shell (packages/sor-site/app) is the one thing that ships.
+    "react-markdown",  # app: renders quiz/flashcard markdown and the summary tab, as upstream did
+    "photoswipe",  # app: ImageZoom engine; self-contained, no network
+    "turndown",  # app: client-side Copy-Markdown — a spec-kept DocPageActions action
+    "lunr",  # app: bundled search index — replaces upstream's runtime CDN load (would fail B8)
     "unist-util-visit",  # lib: remark plugins' tree walker, upstream pin
     "yaml",  # lib/shared: flashcard/gallery deck loaders
     "glob",  # lib: chapter-manifest + summaries corpus walks
@@ -124,17 +135,18 @@ ALLOWLIST_EXACT = {
     # The design system (spec amendment 2026-08-13, "added 2026-08-13 with the
     # design system") — landed 2026-08-14. The spec names each of these; the
     # radix primitives are listed individually, never as a wildcard, and the set
-    # is exactly what the kept chrome imports (theme/src/ui holds button + sheet).
-    "tailwindcss",  # theme: the design system's engine — v4, no config file
-    "@tailwindcss/postcss",  # theme: added to the site's pipeline by configurePostCss
-    "postcss",  # theme: peer of the two above; pinned so the shell resolves one copy
-    "autoprefixer",  # theme: last plugin in the same pipeline
-    "tailwindcss-animate",  # theme: the enter/exit utilities the sheet uses (no framer-motion)
-    "lucide-react",  # theme: the icon set the chrome renders (navbar, footer, landing)
-    "class-variance-authority",  # theme: shadcn variant tables (button, sheet)
-    "tailwind-merge",  # theme: the other half of cn() — conflicting-class resolution
-    "@radix-ui/react-slot",  # theme: ui/button's asChild
-    "@radix-ui/react-dialog",  # theme: ui/sheet (the navbar's mobile menu) is built on it
+    # is exactly what the kept chrome imports (app/src/components/ui holds
+    # button, dialog and sheet).
+    "tailwindcss",  # app: the design system's engine — v4, no config file
+    "@tailwindcss/postcss",  # app: the site's postcss pipeline (app/postcss.config.js)
+    "postcss",  # app: peer of the two above; pinned so the shell resolves one copy
+    "autoprefixer",  # app: last plugin in the same pipeline
+    "tailwindcss-animate",  # app: the enter/exit utilities the sheet uses (no framer-motion)
+    "lucide-react",  # app: the icon set the chrome renders (navbar, footer, landing)
+    "class-variance-authority",  # app: shadcn variant tables (button, sheet)
+    "tailwind-merge",  # app: the other half of cn() — conflicting-class resolution
+    "@radix-ui/react-slot",  # app: ui/button's asChild
+    "@radix-ui/react-dialog",  # app: ui/sheet (the navbar's mobile menu) is built on it
     # The fork (2026-08-14). The runtime shell is now a workspace package of its
     # own (app/), so its direct deps face this gate for the first time. Every
     # other name it declares was already allowlisted above; this is the one

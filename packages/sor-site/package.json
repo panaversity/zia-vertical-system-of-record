@@ -7,8 +7,6 @@
   },
   "workspaces": [
     "app",
-    "mdx",
-    "theme",
     "lib/*",
     "e2e"
   ],
