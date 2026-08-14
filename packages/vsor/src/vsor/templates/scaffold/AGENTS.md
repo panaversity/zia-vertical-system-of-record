@@ -27,7 +27,7 @@ means an unimplemented verb, stated explicitly so nothing branches on the wrong 
 | :--- | :--- |
 | 0 | success — including `vsor dev` stopped with Ctrl-C |
 | 1 | refused, or the input speaking — the first stderr line is a stable slug (`error: exists`, `blocked`, `bad-name`, `nested`, `instance-invalid`, `build-failed`, `bad-port`, `port-in-use`, `dev-failed`) |
-| 2 | unimplemented verb — it says so honestly and points at its spec |
+| 2 | unimplemented verb — it says so honestly and names what this release does implement |
 | 3 | environment or packaging (`error: unsupported-platform`, `error: unstamped`, `error: missing-runtime`, `error: install-failed`, `error: build-crashed`) |
 
 ## The rules
@@ -61,6 +61,7 @@ re-derived each session.
 | `summary-generator` | a document needs the short "in short" opening a search-arriving reader reads first |
 | `quiz-generator` | a document needs a `<Quiz />` self-check |
 | `generate-flashcards` | a document holds definitions or thresholds a reader must carry in their head |
+| `deploy` | the site is about to be published, or where it is served from is changing |
 | `skill-creator` | a job here has repeated and should stop being re-derived |
 | `find-skills` | the capability sounds general enough that someone has already published it |
 
@@ -71,7 +72,37 @@ re-derived each session.
 - Read the rendered page before calling a document done: `vsor dev`, then open it.
 - Never hand-edit `build/`, `.vsor/` or `build.lock.json` — they are generated.
 
+## Publishing
+
+`vsor build` writes `build/` — ordinary static files that any host serves. Two ways to publish,
+and the difference is only who runs the build:
+
+- **The host builds it.** Add one config file at the repository root — the deploy skill carries the
+  exact contents for Vercel, Netlify and Cloudflare Pages — and a connected repository deploys on
+  push. This needs `vsor` installable from PyPI — check with `uvx vsor --version`, and use the
+  other path if it reports that vsor was not found in the package registry.
+- **You build it, then upload.** `vsor build`, then `netlify deploy --dir=build --prod`, a bucket,
+  GitHub Pages, or your own nginx. Works today — and the corpus never leaves your machine, which
+  is the right choice for a corpus that may not travel.
+
+Before the first deploy, set `url` (and `baseUrl` for a subpath host) in
+`site/docusaurus.config.ts` — Docusaurus writes them into the sitemap, the canonical links and the
+Open Graph tags, so a default build advertises `localhost` to search engines.
+
+`build/` is git-ignored while `build.lock.json` is committed: the record of a build travels with
+the repository, and the output is reproducible from it.
+
+Read `.agents/skills/deploy/SKILL.md` before deploying — including how to verify a deploy rather
+than trusting the URL a CLI printed.
+
 ## Docs
 
-Docs will ship inside the installed `vsor` package (`docs/`) in a later release. Until then, the
-web reference is: github.com/panaversity/zia-vertical-system-of-record-framework
+**Everything needed to work in this project is in this project** — this file, the four
+`.claude/rules/`, and the fourteen `.agents/skills/`. That is deliberate: none of it needs a
+network, and none of it can rot away from the version that scaffolded it. Publishing in
+particular is complete here, in `.agents/skills/deploy/SKILL.md`, including the command for each
+host.
+
+Reference docs will ship inside the installed `vsor` package (`docs/`) in a later release. The
+framework's source repository is github.com/panaversity/zia-vertical-system-of-record-framework —
+it is where the specs and the CHANGELOG live, and it is not needed to use what is here.

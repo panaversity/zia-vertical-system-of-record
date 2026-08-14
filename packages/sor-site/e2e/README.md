@@ -9,6 +9,12 @@ Run it as `make surface` from the repo root. One-time prerequisite:
 (cd packages/sor-site && npm ci && npx playwright install chromium)
 ```
 
+There is a **second suite in this directory** with a different question:
+`deploy/` + `playwright.deploy.config.ts` ask whether the *deployable output*
+works on the two shapes a static host has. It is driven by
+[`tests/acceptance/deploy.sh`](../../../tests/acceptance/deploy.sh), not by
+`run.sh`, and it is documented at the bottom of this file.
+
 ## How it works
 
 `run.sh` (the driver, invoked by `make surface`):
@@ -144,3 +150,103 @@ startup line.
   stayed green (B13 asserts only that feedback text appears). So one CSS-module
   primitive must keep its own box, and a fenced code block must clear 4.5:1 in
   light mode.
+
+---
+
+# deploy/ — the hosting-layout suite
+
+A second, separate suite in this directory. `make surface` does not run it and
+`run.sh` does not know about it: its driver is
+[`tests/acceptance/deploy.sh`](../../../tests/acceptance/deploy.sh) and its
+config is `playwright.deploy.config.ts` (`testDir: ./deploy`).
+
+```
+bash tests/acceptance/deploy.sh              # from the repo root
+VSOR_WHEEL=dist/vsor-0.1.0-py3-none-any.whl bash tests/acceptance/deploy.sh
+```
+
+**The question is different from the surface suite's.** That one asks whether
+the *site* is right, against one build assembled from source. This one asks
+whether the *deployable output* is right, against the two shapes a static host
+actually has — built by the real `vsor build` from the real wheel, the way a
+user gets it:
+
+| Project | Shape | Served how |
+| :--- | :--- | :--- |
+| `root` | Vercel, Netlify, S3+CloudFront, nginx — `baseUrl: "/"` | the build *is* the document root |
+| `subpath` | a GitHub Pages project site, an internal path — `baseUrl: "/<name>/"` | the build sits at `<docroot>/<name>/` and the server serves the **parent** |
+
+The parent-serving is the point. A subpath run that served the build directory
+itself and pretended the prefix existed would pass every prefix assertion
+without proving anything; `D9` is the row that proves the harness is honest —
+the document root answers with a marker file the driver put there, and an asset
+path with the prefix stripped must 404.
+
+**They fail differently, which is why both are here.** The root shape fails
+*quietly*, in the machine-readable half: `url` in `site/docusaurus.config.ts` is
+baked into `sitemap.xml`, every `<link rel=canonical>`, `og:url`, the og:/twitter:
+image URLs and the JSON-LD, so a build made with the scaffold's placeholder
+renders perfectly while telling crawlers and link previews that the site lives
+on the machine that built it. The subpath shape fails *loudly*: Docusaurus
+prefixes every asset, route and router link with `baseUrl`, so a mismatch 404s
+the whole site.
+
+| File | Rows |
+| :--- | :--- |
+| `deploy/output.spec.ts` | S1 (no built page names localhost or the serving machine, and the client bundle does carry the configured origin), S2 (every root-relative reference is under the deployed baseUrl) |
+| `deploy/hosting.spec.ts` | D1 homepage 200 + title · D2 a doc renders · D3 CSS+JS respond 200 *and* the CSS computes · D4 a sidebar link navigates client-side under the prefix · D5 search finds the phrase and its result renders · D6 sitemap names the real host · D7 canonical/og:url in the served bytes **and** in the DOM after a client-side navigation · D8 every declared asset resolves 200 · D9 the prefix is real |
+| `deploy/harness.ts` | the per-shape environment, the corpus facts (nothing about a fixture is hardcoded), and the always-on guard: same-origin, **every request path under the deployed baseUrl**, zero ≥ 400, zero console.error/pageerror |
+| `tests/acceptance/deploy.sh` | the driver, plus the two rows that need both builds at once: the record distinguishes them (`build_id` covers the site tree), and the two shapes publish the same route set modulo the prefix |
+
+## Decisions recorded here
+
+- **A headless browser does not fetch declared favicons** (measured 2026-08-14).
+  The subpath build shipped `<link rel=icon href="/img/favicon.svg">` — a 404 on
+  every page for every real visitor — and the browser guard never saw it,
+  because Chromium in this harness never requested it. That is why `D8` fetches
+  every declared URL itself with `page.request` instead of trusting what the
+  browser happened to ask for, and why `S2` scans the built HTML statically. A
+  browser-only proof of "every asset loads" is not one.
+- **The route set is compared across shapes, not just within one.** Anything
+  whose *inclusion* depends on `baseUrl` — a sitemap ignore pattern written as
+  an absolute path, a route emitted only at "/" — is invisible to any per-shape
+  assertion, because each shape looks internally consistent. The set difference
+  in `deploy.sh` is the only row that can see it.
+- **Independent rows accumulate rather than exit.** The driver's rows are
+  cross-shape and Playwright's are per-shape; one failing says nothing about the
+  others, so `deploy.sh` records them and exits 1 at the end with all of them
+  listed. Structural problems (a build that did not build, a server that did not
+  start) still exit immediately — nothing after them is worth measuring.
+- **Canonical's trailing slash is Docusaurus's, not ours** (measured
+  2026-08-14). The SSG pass emits the slashless form; the hydrated head mirrors
+  the URL the visitor actually requested, so `/docs/x/` self-canonicalizes *with*
+  the slash. D7 therefore pins the served bytes exactly and compares the DOM
+  slash-insensitively, rather than pinning behaviour this framework does not own.
+- **This suite builds through the wheel, and that turned out to matter**
+  (found live 2026-08-14). The surface suite assembles the shell from the
+  working tree; this one runs the real `vsor build`, and the two do not produce
+  the same stylesheet. Same source, same corpus, same page, measured:
+
+  | | assembled (`make surface`) | `vsor build` output |
+  | :--- | :--- | :--- |
+  | `build/assets/css/styles.*.css` | 220,135 bytes | 347,962 bytes |
+  | native `@layer` blocks | 12 | 0 |
+  | selectors carrying the `:not(#\#_x):not(#\#_x)` cascade-layer polyfill | 0 | 6,753 |
+  | `.theme-doc-sidebar-container` computed `margin-top` | `0px` | `-64px` |
+  | first sidebar link, y | 85 (below the 65px navbar) | 23 (behind it) |
+
+  The last row is a user-visible defect: in a site a user actually deploys, the
+  first document in the sidebar is underneath the fixed navbar and cannot be
+  clicked — `document.elementFromPoint()` at its centre returns the navbar. D4
+  and D7 fail on it through `clickSidebarLink`'s reachability check, which is
+  why that check exists.
+
+  One confirmed input difference: the materialized shell's `package.json`
+  (generated from `packages/vsor/src/vsor/templates/site_runtime/package.json`)
+  carries no `browserslist`, while the app's own does — and that template's
+  description says it "must carry everything the app imports", because the app
+  tarball is unpacked over it. Adding the field to a materialized shell and
+  rebuilding moved the pipeline a long way (6,753 → 1,356 polyfilled selectors,
+  0 → 5 `@layer` blocks) but did not restore the sidebar offset, so it is one
+  cause and not the whole one. Recorded rather than fixed: the fix is in
+  `packages/vsor` and `packages/sor-site/app`, not in a test directory.

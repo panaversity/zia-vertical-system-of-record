@@ -1,0 +1,111 @@
+name: release
+
+# Publish `vsor` to PyPI from a version tag.
+#
+# NOT YET EXERCISED — recorded here rather than implied. No job in this repository has
+# ever started (a GitHub billing state on the account, not a code fault), and the PyPI
+# name is not claimed, so this file has never run end to end. Every step it takes has
+# been run by hand on 2026-08-14 and is quoted from that walk; the first real run is
+# still a first run, and should be watched.
+#
+# Two owner-side prerequisites, neither of which a workflow can do for itself:
+#   1. claim `vsor` on PyPI;
+#   2. add a Trusted Publisher for it — repository
+#      panaversity/zia-vertical-system-of-record-framework, workflow `release.yml` —
+#      so `uv publish` can mint a short-lived token from the OIDC identity below.
+#      No API token is stored in this repository, which is the point.
+#
+# Actions are SHA-pinned per the supply-chain rule, and deliberately only the three
+# `ci.yml` already reviews: a release path is the worst place to widen the dependency
+# surface. Publishing is `uv publish`, the tool the workspace already runs.
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Build and check the artifacts, then stop before uploading"
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write # the OIDC identity PyPI Trusted Publishing verifies
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      # Node is a BUILD requirement of the wheel, not a runtime one: `make wheel` packs
+      # the forked site app and its workspace libraries into the wheel as tarballs
+      # (specs/vsor/build, "What the wheel ships"). A wheel built without this step
+      # installs fine and then fails on the user's first `vsor build` — which is the
+      # single most expensive mistake available on this path, because a PyPI version
+      # cannot be replaced once uploaded. The wheel-contents gate below is what makes
+      # that impossible rather than merely unlikely.
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: packages/sor-site/package-lock.json
+      - uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9 # v9.0.0
+
+      # A tag that disagrees with the packaged version would publish the wrong number
+      # under the right name, permanently. Cheapest possible check, run first.
+      - name: tag matches the packaged version
+        if: startsWith(github.ref, 'refs/tags/')
+        run: |
+          packaged=$(uv run --no-project python -c \
+            'import tomllib;print(tomllib.load(open("packages/vsor/pyproject.toml","rb"))["project"]["version"])')
+          tagged="${GITHUB_REF_NAME#v}"
+          test "$packaged" = "$tagged" || {
+            echo "tag $GITHUB_REF_NAME names $tagged, packages/vsor/pyproject.toml says $packaged" >&2
+            exit 1
+          }
+
+      # Stages the site runtime into packages/vsor/src/vsor/_site_runtime/ and then
+      # builds the sdist and the wheel into dist/. Both artifacts are published: the
+      # sdist→wheel path is the one `uv build` takes by default and is what a
+      # `--no-binary` install would exercise.
+      # `rm -rf dist` is belt-and-braces: on a fresh checkout dist/ is absent (gitignored),
+      # but the publish step below globs it, and a stale artifact from an earlier version
+      # sitting there would be uploaded alongside the new one. A developer's own dist/
+      # routinely holds exactly that — see the report of 2026-08-14, where the working
+      # tree carried both 0.0.0 and 0.1.0.
+      - run: rm -rf dist && make wheel
+
+      # The gate on the step above. It asserts the wheel actually carries the site
+      # runtime — the app tarball, one tarball per workspace library derived from the
+      # shell manifest's own `file:` dependencies, the shell package.json and its
+      # lockfile, the vendored typefaces and both of their OFL licences — so a wheel
+      # missing any of it cannot reach the index.
+      - run: uv run --package vsor pytest packages/vsor/tests/test_wheel_contents.py -q
+
+      # The hosting tier, on the release path, against the wheel that is about to be
+      # uploaded — not a rebuild of it. A PyPI version cannot be replaced once
+      # published, and this is the only tier that reads `vsor build`'s own output and
+      # the only one that ever serves at a subpath: it is where "the thing we are about
+      # to publish produces a site a stranger can actually deploy" is decided. Its first
+      # honest run found three user-visible defects that every other tier was green
+      # through. The wheel is passed in, so this adds a scaffold + two real builds + a
+      # browser (~3 minutes), not another `make wheel`.
+      - run: npm ci
+        working-directory: packages/sor-site
+      - run: npx playwright install --with-deps chromium
+        working-directory: packages/sor-site
+      - name: the built wheel deploys to both hosting shapes
+        run: |
+          wheel="$(ls dist/vsor-*.whl)"
+          test -f "$wheel" || { echo "no wheel in dist/ to test" >&2; exit 1; }
+          VSOR_WHEEL="$wheel" bash tests/acceptance/deploy.sh
+
+      # Metadata PyPI will reject is cheaper to find here than at upload.
+      - run: uvx twine check dist/*
+
+      - name: publish to PyPI
+        if: ${{ github.event_name == 'push' || !inputs.dry_run }}
+        run: uv publish --trusted-publishing always dist/*

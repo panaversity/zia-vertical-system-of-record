@@ -33,7 +33,17 @@ const config: Partial<Config> = {
   title: "__VSOR_NAME__",
   // The sentence under the title on your homepage. Say what this covers.
   tagline: "The system of record for __VSOR_NAME__",
-  url: "http://localhost:3000", // set to your real domain when you deploy
+  // The origin this site will be served from: scheme + host, no path. It ships as a
+  // placeholder, and it is the one value here whose cost is invisible in a browser —
+  // Docusaurus bakes it into build/sitemap.xml, every page's <link rel="canonical">, the
+  // og:/twitter: image URLs and the JSON-LD in each page's <head>. Deploy with it still
+  // saying localhost and every page looks perfect while its machine-readable half tells
+  // search engines and link previews that this site lives on the machine that built it.
+  // `vsor build` warns while this is a placeholder; `vsor dev` does not — a local preview
+  // belongs here. Change it once, when you know where the site lives.
+  url: "http://localhost:3000",
+  // The path under that origin. "/" unless the site is served from a subdirectory
+  // (a project page at https://<user>.github.io/<repo>/ needs baseUrl: "/<repo>/").
   baseUrl: "/",
 
   themeConfig: {

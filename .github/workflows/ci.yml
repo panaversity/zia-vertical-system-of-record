@@ -64,3 +64,33 @@ jobs:
       - run: npx playwright install --with-deps chromium
         working-directory: packages/sor-site
       - run: make surface
+
+  # The HOSTING tier (tests/acceptance/deploy.sh): the two shapes a static host
+  # has — the build AS the document root, and the build under a `/<name>/`
+  # subpath — through the real wheel and a real browser.
+  #
+  # Its own job rather than a step in `surface`, for the reason the Makefile
+  # gives: it stages the same shared paths (`make wheel` and packages/sor-site's
+  # node_modules), so the two cannot run on one checkout at the same time.
+  #
+  # It exists as a job because it is the only tier that reads `vsor build`'s own
+  # output rather than an assembled fixture, and the only one that ever serves at
+  # a prefix. Both of those gaps hid real, user-visible defects: an unclickable
+  # first sidebar link in every build, a favicon 404 on every page of a subpath
+  # deploy, and a sitemap whose route set changed with the deploy shape. Nothing
+  # else in this file could see any of them.
+  hosting:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: packages/sor-site/package-lock.json
+      - uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9 # v9.0.0
+      - run: npm ci
+        working-directory: packages/sor-site
+      - run: npx playwright install --with-deps chromium
+        working-directory: packages/sor-site
+      - run: make deploy-acceptance

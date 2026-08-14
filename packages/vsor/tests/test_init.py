@@ -41,6 +41,7 @@ EXPECTED_FILES = [
     ".agents/skills/add-sources/SKILL.md",
     ".agents/skills/canonical-format-checker/SKILL.md",
     ".agents/skills/content-refiner/SKILL.md",
+    ".agents/skills/deploy/SKILL.md",
     ".agents/skills/docx/SKILL.md",
     ".agents/skills/fetch-library-docs/SKILL.md",
     ".agents/skills/find-skills/SKILL.md",
@@ -228,6 +229,33 @@ def test_bare_form_prints_instructions_creates_nothing(
     assert out == template("stdout", "bare.txt")  # stdout canon lives in templates/
     assert "vsor init" in out
     assert list(sandbox.iterdir()) == []  # never scaffolds
+
+
+@pytest.mark.parametrize("flag", ["-h", "--help"])
+def test_help_flag_is_help_and_never_a_project_name(
+    sandbox: Path, capsys: pytest.CaptureFixture[str], flag: str
+) -> None:
+    """found live 2026-08-14: `vsor init --help` exited 1 with `error: bad-name` and
+    printed `Try: vsor init help` — and following that suggestion scaffolded a real
+    31-file project called `help` from a stranger's first exploratory keystroke.
+    `init` never reaches argparse (see cli.py), so it owns the flag itself."""
+    assert run_init([flag]) == 0
+    captured = capsys.readouterr()
+    assert captured.out == template("stdout", "init-help.txt")
+    assert captured.err == ""
+    assert list(sandbox.iterdir()) == []  # nothing scaffolded, from either spelling
+
+
+def test_a_mistyped_flag_is_never_slugged_into_a_suggestion(
+    sandbox: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """The general form of the same defect: anything starting with `-` is a flag the
+    user mistyped, so the bad-name refusal offers no `Try: vsor init <slug>` line."""
+    assert run_init(["--with-source"]) == 1
+    err = capsys.readouterr().err
+    assert slug(err).startswith("error: bad-name")
+    assert "Try:" not in err
+    assert list(sandbox.iterdir()) == []
 
 
 # ----------------------------------------------------------------------- named fresh

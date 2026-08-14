@@ -33,3 +33,9 @@ is true, and that is on purpose.
   gone by the next command. Everything the project owns is already in the tree above.
 - **A document's path is its identity.** Renaming a file in `knowledge/` changes its URL and its
   citation. Rename deliberately, and tell the owner when you do.
+- **The record is committed; the output is not.** `build.lock.json` is in git and `build/` is
+  ignored, and the asymmetry is deliberate: the record says which documents were built, at which
+  hashes, by which versions — it is small, it is read by people, and it has to travel with the
+  repository. The output is derivable from it by anyone who can run `vsor build`, so committing it
+  would only add a churning second copy of every document that nobody edits. The deploy paths this
+  implies are in `.agents/skills/deploy/SKILL.md`.

@@ -61,6 +61,7 @@ diff <(find demo -path demo/.git -prune -o -type f -print | LC_ALL=C sort) - <<'
 demo/.agents/skills/add-sources/SKILL.md
 demo/.agents/skills/canonical-format-checker/SKILL.md
 demo/.agents/skills/content-refiner/SKILL.md
+demo/.agents/skills/deploy/SKILL.md
 demo/.agents/skills/docx/SKILL.md
 demo/.agents/skills/fetch-library-docs/SKILL.md
 demo/.agents/skills/find-skills/SKILL.md

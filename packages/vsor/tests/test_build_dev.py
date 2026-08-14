@@ -27,7 +27,7 @@ import socket
 from pathlib import Path
 
 import pytest
-from vsor import dev_cmd, site_runtime
+from vsor import build_cmd, dev_cmd, site_runtime
 from vsor.cli import main
 from vsor.errors import SLUG_EXITS, CommandError
 
@@ -295,3 +295,177 @@ def test_foldered_corpus_never_warns(capsys: pytest.CaptureFixture[str]) -> None
     )
     _warn_flat_corpus(nested)
     assert capsys.readouterr().err == ""
+
+
+# ── the placeholder-url warning ────────────────────────────────────────────
+# The scaffold ships `url: "http://localhost:3000"`, and Docusaurus bakes that
+# value into build/sitemap.xml, every <link rel="canonical">, the og:/twitter:
+# image URLs and each page's JSON-LD. A user who uploads the output publishes a
+# site whose machine-readable half names their laptop, and every page still
+# looks right — so no other tier can see it. `vsor build` says so; it is a
+# WARNING, because building against localhost is what every local preview does.
+#
+# One seam beyond the two in this file's header, used by the wiring rows below:
+# `build_cmd._run_docusaurus_build(runtime_dir, staging)` is the Node boundary —
+# stubbed here to write the staging tree Docusaurus would have written, so the
+# unit tier can assert on the emitted artifact without npm.
+
+SITEMAP = (
+    '<?xml version="1.0" encoding="UTF-8"?>'
+    '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">'
+    "<url><loc>{loc}</loc><changefreq>weekly</changefreq><priority>0.5</priority></url>"
+    "</urlset>"
+)
+
+
+@pytest.mark.parametrize(
+    "host",
+    [
+        "localhost",  # the scaffold's own placeholder
+        "127.0.0.1",
+        "127.0.0.53",  # the whole loopback /8, not one address
+        "::1",
+        "0.0.0.0",
+        "example.com",  # RFC 2606
+        "your-docusaurus-site.example.com",  # create-docusaurus' own default
+        "my-sor.test",  # RFC 6761
+        "notes.invalid",
+        "sor.example",
+    ],
+)
+def test_placeholder_hosts_are_the_ones_nobody_can_reach(host: str) -> None:
+    assert build_cmd.is_placeholder_host(host) is True
+
+
+@pytest.mark.parametrize(
+    "host",
+    [
+        "sor.acme.com",
+        "acme.github.io",
+        "192.168.1.10",  # a LAN deployment is a real deployment…
+        "10.4.0.7",
+        "wiki.internal",  # …so is an intranet name…
+        "macbook.local",  # …and so is mDNS (RFC 6762)
+        "myexample.org",  # only `example.<tld>` itself is reserved
+        "example-corp.com",
+    ],
+)
+def test_real_hosts_never_trip_the_warning(host: str) -> None:
+    """Crying wolf is the failure mode that makes a warning worthless — these are
+    the hosts a user legitimately deploys to."""
+    assert build_cmd.is_placeholder_host(host) is False
+
+
+def test_built_site_origin_reads_the_emitted_sitemap(tmp_path: Path) -> None:
+    """The origin is measured from the artifact Docusaurus wrote, never from the
+    config text: the shell merges the project's config over its own, whose default
+    is the same placeholder, so a project that deletes `url` still ships localhost."""
+    build_dir = tmp_path / "build"
+    build_dir.mkdir()
+    (build_dir / "sitemap.xml").write_text(
+        SITEMAP.format(loc="https://sor.acme.com:8443/docs/example"), encoding="utf-8"
+    )
+    assert build_cmd.built_site_origin(build_dir) == "https://sor.acme.com:8443"
+
+
+@pytest.mark.parametrize("sitemap", [None, "not xml at all", "<urlset><url/></urlset>"])
+def test_built_site_origin_is_none_when_there_is_nothing_to_read(
+    tmp_path: Path, sitemap: str | None
+) -> None:
+    """A warning never crashes a build that succeeded."""
+    build_dir = tmp_path / "build"
+    build_dir.mkdir()
+    if sitemap is not None:
+        (build_dir / "sitemap.xml").write_text(sitemap, encoding="utf-8")
+    assert build_cmd.built_site_origin(build_dir) is None
+
+
+def given_built_site(monkeypatch: pytest.MonkeyPatch, loc: str) -> None:
+    """Stand in for the whole Node half: a materialized shell carrying the two files
+    the record reads, and a build that writes the sitemap Docusaurus would emit."""
+
+    def fake_runtime(project_root: Path, *args: object, **kwargs: object) -> Path:
+        runtime = project_root / ".vsor" / "site-runtime"
+        core = runtime / "node_modules" / "@docusaurus" / "core"
+        core.mkdir(parents=True, exist_ok=True)
+        (core / "package.json").write_text('{"version": "3.10.2"}\n', encoding="utf-8")
+        (runtime / "package-lock.json").write_text('{"lockfileVersion": 3}\n', encoding="utf-8")
+        return runtime
+
+    def fake_docusaurus_build(runtime_dir: Path, staging: Path) -> None:
+        staging.mkdir(parents=True)
+        (staging / "index.html").write_text("<html><body>built</body></html>", encoding="utf-8")
+        (staging / "sitemap.xml").write_text(SITEMAP.format(loc=loc), encoding="utf-8")
+
+    monkeypatch.setattr(site_runtime, "ensure_runtime", fake_runtime)
+    monkeypatch.setattr(build_cmd, "_run_docusaurus_build", fake_docusaurus_build)
+
+
+def test_build_warns_when_the_built_site_carries_a_placeholder_url(
+    project: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    given_node(monkeypatch, "24.4.1")
+    given_built_site(monkeypatch, "http://localhost:3000/docs/example")
+
+    assert main(["build"]) == 0, "building against localhost is legitimate — warn, never fail"
+
+    captured = capsys.readouterr()
+    err = captured.err
+    assert err.startswith("warning:"), err
+    assert "http://localhost:3000" in err  # what was measured
+    assert "site/docusaurus.config.ts" in err  # the file…
+    assert "`url`" in err  # …and the key
+    assert "sitemap" in err and "canonical" in err  # the consequence, named
+    assert "vsor build" in err  # the fix ends in a rerun
+    assert (project / "build" / "sitemap.xml").exists(), "the build still completed"
+    assert "build/ written" in captured.out
+
+
+@pytest.mark.parametrize(
+    ("host", "kind"),
+    [
+        ("localhost", "this-machine"),
+        ("127.0.0.1", "this-machine"),
+        ("::1", "this-machine"),
+        ("0.0.0.0", "this-machine"),
+        ("example.com", "resolves-nowhere"),
+        ("mysite.example.com", "resolves-nowhere"),
+        ("my-sor.test", "resolves-nowhere"),
+        ("sor.example", "resolves-nowhere"),
+        ("sor.acme.com", None),
+    ],
+)
+def test_placeholder_kind_separates_the_two_ways_of_being_wrong(
+    host: str, kind: str | None
+) -> None:
+    """A loopback address really does name the machine that built the site; a reserved
+    documentation name names no machine at all. One message covering both told a user
+    who had just set `https://mysite.example.com` that their site "lives on this
+    machine" — two falsehoods in a sentence they had already acted on."""
+    assert build_cmd.placeholder_kind(host) == kind
+
+
+def test_the_reserved_name_warning_does_not_say_this_machine(
+    project: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    given_node(monkeypatch, "24.4.1")
+    given_built_site(monkeypatch, "https://mysite.example.com/docs/example")
+
+    assert main(["build"]) == 0
+    err = capsys.readouterr().err
+    assert err.startswith("warning:")
+    assert "https://mysite.example.com" in err
+    assert "resolves nowhere" in err
+    assert "on this machine" not in err
+
+
+def test_build_says_nothing_when_the_url_is_a_real_domain(
+    project: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    given_node(monkeypatch, "24.4.1")
+    given_built_site(monkeypatch, "https://sor.acme.com/docs/example")
+
+    assert main(["build"]) == 0
+    captured = capsys.readouterr()
+    assert captured.err == "", f"a configured site must build silently, got: {captured.err!r}"
+    assert "build/ written" in captured.out

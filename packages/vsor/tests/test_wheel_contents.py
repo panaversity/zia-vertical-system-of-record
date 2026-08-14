@@ -135,6 +135,34 @@ def test_wheel_carries_every_artifact_the_shell_manifest_names(wheel_path: Path)
     assert not missing, f"{wheel_path.name} lacks {missing} under vsor/_site_runtime/ — run make wheel"
 
 
+def test_the_wheel_ships_its_notice_beside_its_licence() -> None:
+    """A wheel is the only artifact a reader of the PyPI page can open, so the
+    attribution has to be inside it. `packages/vsor/NOTICE` is a copy of the repo-root
+    NOTICE for the same reason `packages/vsor/LICENSE` is a copy of the root LICENSE:
+    PEP 639's `license-files` globs cannot escape the project root."""
+    root = (REPO_ROOT / "NOTICE").read_text(encoding="utf-8")
+    shipped = (REPO_ROOT / "packages" / "vsor" / "NOTICE").read_text(encoding="utf-8")
+    assert shipped == root, "packages/vsor/NOTICE has drifted from the repo-root NOTICE"
+    for obligation in ("shadcn", "SIL Open Font License", "Apache License, Version 2.0"):
+        assert obligation in shipped, f"NOTICE no longer names {obligation}"
+
+
+def test_every_shipped_package_carries_the_licence_it_declares(wheel_path: Path) -> None:
+    """Ten npm packages ship into every user's `.vsor/site-runtime/`, each declaring
+    `"license": "Apache-2.0"` in its own manifest — and, until 2026-08-14, none of them
+    carrying a word of the licence text. Asserted by CONTENT for the reason the OFL row
+    gives: an empty LICENSE satisfies a membership check and nothing else."""
+    missing: list[str] = []
+    for artifact in (site_runtime.APP_TARBALL, *LIBRARY_TARBALLS):
+        blob = _member_bytes(wheel_path, artifact, ["package/LICENSE"]).get("package/LICENSE")
+        if blob is None or "Apache License" not in blob.decode("utf-8", "replace"):
+            missing.append(artifact)
+    assert not missing, (
+        "these shipped tarballs declare a licence and carry no licence text: "
+        f"{missing} — every packed package needs its own LICENSE beside its package.json"
+    )
+
+
 def test_app_tgz_is_the_whole_site(wheel_path: Path) -> None:
     """The app ships as source, not as a build: it becomes the siteDir, so what has to be
     inside is the config the merge seam lives in, the MDX vocabulary a corpus writes

@@ -199,6 +199,11 @@ const config: Config = {
 
   // Same-origin only. The contract is that a built site initiates no off-origin
   // request, so there is nothing here but the icon this shell ships.
+  //
+  // `href` is composed from this shell's OWN BASE_URL here and rewritten from the
+  // MERGED one by followBaseUrl() at the bottom — see the note there. This object
+  // is built before the project's config is loaded, so it cannot read the value a
+  // project sets.
   headTags: [
     {
       tagName: "link",
@@ -264,7 +269,11 @@ const config: Config = {
           changefreq: "weekly",
           priority: 0.5,
           filename: "sitemap.xml",
-          ignorePatterns: ["**/tags/**", "/search"],
+          // Route paths, and a route path CARRIES baseUrl — under `/repo/` the
+          // search route is `/repo/search`, which an absolute `/search` no
+          // longer matches. Written against this shell's own BASE_URL and
+          // rebased from the merged one by followBaseUrl() at the bottom.
+          ignorePatterns: ["**/tags/**", `${BASE_URL}search`],
         },
       } satisfies Preset.Options,
     ],
@@ -487,6 +496,69 @@ function followTitle(merged: Settings): Settings {
   return { ...merged, themeConfig: nextTheme };
 }
 
-export default followTitle(
-  mergeOver(config as unknown as Settings, projectSettings()),
+/**
+ * Post-merge backfill #2: the values the shell composes from `baseUrl`.
+ *
+ * `baseUrl` is the project's to set (it is not a SHELL_OWNED key, and a GitHub
+ * Pages project site cannot work without setting it), but two values above are
+ * built from this shell's own BASE_URL constant, in an object literal evaluated
+ * before the project's config is even loaded. They therefore have to be rebased
+ * once the merge has produced the real value.
+ *
+ * Found live 2026-08-14 by the hosting acceptance, in the subpath shape only:
+ *   - the declared favicon shipped `<link rel=icon href="/img/favicon.svg">` on
+ *     a site served at `/repo/` — a 404 on every page, for every visitor, that
+ *     no headless browser requests and so no browser tier could see (D8). The
+ *     theme's own react-helmet icon link, which reads the merged config, was
+ *     correct: the two disagreed inside one `<head>`.
+ *   - the sitemap's `/search` ignore pattern stopped matching `/repo/search`, so
+ *     a subpath deploy advertised its search page to crawlers and a root deploy
+ *     did not — a route set that depends on where the site is deployed.
+ *
+ * Narrow on purpose, like followTitle: the icon tag is rewritten only where the
+ * shell's own `rel="icon"` head tag is still in place, and only the ignore
+ * patterns that actually begin with the shell's BASE_URL are rebased (so
+ * `**\/tags/**`, which is relative and correct in both shapes, is left alone).
+ */
+function followBaseUrl(merged: Settings): Settings {
+  const base =
+    typeof merged.baseUrl === "string" && merged.baseUrl !== "" ? merged.baseUrl : BASE_URL;
+  if (base === BASE_URL) return merged;
+
+  const favicon = typeof merged.favicon === "string" ? merged.favicon : FAVICON;
+  const next: Settings = { ...merged };
+
+  if (Array.isArray(next.headTags)) {
+    next.headTags = next.headTags.map((tag) => {
+      if (!isPlainObject(tag) || tag.tagName !== "link") return tag;
+      const attributes = tag.attributes;
+      if (!isPlainObject(attributes) || attributes.rel !== "icon") return tag;
+      if (attributes.href !== `${BASE_URL}${FAVICON}`) return tag;
+      return { ...tag, attributes: { ...attributes, href: `${base}${favicon}` } };
+    });
+  }
+
+  const rebase = (pattern: unknown) =>
+    typeof pattern === "string" && pattern.startsWith(BASE_URL)
+      ? `${base}${pattern.slice(BASE_URL.length)}`
+      : pattern;
+
+  if (Array.isArray(next.presets)) {
+    next.presets = next.presets.map((entry) => {
+      if (!Array.isArray(entry) || !isPlainObject(entry[1])) return entry;
+      const options = entry[1] as Settings;
+      const sitemap = options.sitemap;
+      if (!isPlainObject(sitemap) || !Array.isArray(sitemap.ignorePatterns)) return entry;
+      return [
+        entry[0],
+        { ...options, sitemap: { ...sitemap, ignorePatterns: sitemap.ignorePatterns.map(rebase) } },
+      ];
+    });
+  }
+
+  return next;
+}
+
+export default followBaseUrl(
+  followTitle(mergeOver(config as unknown as Settings, projectSettings())),
 ) as Config;

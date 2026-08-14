@@ -47,9 +47,28 @@ const path = require("path");
 const orgId = (url) => `${url}/#organization`;
 const siteId = (url) => `${url}/#website`;
 
+/**
+ * The site's public root: origin joined with `baseUrl`, no trailing slash.
+ *
+ * Every URL and every `@id` in this file is built from it, and NOT from
+ * `siteConfig.url` alone — found live 2026-08-14 against a GitHub Pages project
+ * site (`url: "https://x.github.io"`, `baseUrl: "/mysite/"`), where the bare
+ * origin made the homepage claim `@id "https://x.github.io/#website"` and a
+ * search endpoint at `https://x.github.io/search` — an identity and an action
+ * announced at a document root that belongs to somebody else's page. The
+ * placeholder-url warning cannot catch this, because `url` is right; only the
+ * join is missing.
+ */
+function publicRoot(siteConfig) {
+  const origin = String(siteConfig.url || "").replace(/\/+$/, "");
+  const base = String(siteConfig.baseUrl || "/").replace(/\/+$/, "");
+  if (base === "") return origin;
+  return `${origin}${base.startsWith("/") ? base : `/${base}`}`;
+}
+
 function resolveOrganization(siteConfig, options) {
   const org = options.organization || {};
-  const siteUrl = siteConfig.url;
+  const siteUrl = publicRoot(siteConfig);
   // No default logo. The old fallback pointed every site at /img/logo.svg,
   // which this framework ships on no build — a structured-data node that names
   // a 404 is worse than one that omits an optional field (found live
@@ -163,7 +182,7 @@ async function fileExists(filePath) {
 async function injectHomepageSchemas(filePath, siteConfig, org) {
   const html = await fs.readFile(filePath, "utf-8");
 
-  const url = siteConfig.url;
+  const url = publicRoot(siteConfig);
   const title = siteConfig.title || "";
   const description = siteConfig.tagline || "";
 
@@ -219,11 +238,20 @@ async function injectArticleSchema(filePath, siteConfig, org, outDir) {
   try {
     const html = await fs.readFile(filePath, "utf-8");
 
-    const url = siteConfig.url;
+    const url = publicRoot(siteConfig);
     const siteTitle = siteConfig.title || "";
     const rawTitle = extractTitle(html) || siteTitle;
-    const description =
-      extractMetaContent(html, "description") || siteConfig.tagline || "";
+    // The page's OWN description, and a fallback that says so. Silence here was
+    // how the quotes defect survived: every page carried the tagline and the
+    // build printed a green tick over it.
+    const pageDescription = extractMetaContent(html, "description");
+    if (!pageDescription) {
+      console.warn(
+        `⚠ ${path.basename(path.dirname(filePath))}: no <meta name="description"> in the built ` +
+          "page — its Article node falls back to the site tagline.",
+      );
+    }
+    const description = pageDescription || siteConfig.tagline || "";
     const canonical = extractCanonical(html);
 
     const articleData = {
@@ -276,26 +304,54 @@ function extractTitle(html) {
   return m ? decodeEntities(m[1].trim()) : "";
 }
 
+/**
+ * Attribute values in BUILT html are only sometimes quoted, and that is the
+ * whole reason these two functions exist in this shape.
+ *
+ * found live 2026-08-14, on a real `vsor build` (not a fixture): Docusaurus's
+ * production minifier drops quotes from every value that needs none, so the page
+ * carries `<meta data-rh=true name=description content="…">` and
+ * `<link data-rh=true rel=canonical href=https://…/docs/example />`. The earlier
+ * quotes-required patterns matched neither, silently, and the plugin then
+ * reported success over wrong data: every doc page's Article node carried the
+ * SITE TAGLINE as its description (identical on every page, while the page's own
+ * `<meta name=description>` was correct and different), and `mainEntityOfPage`
+ * was dropped entirely because the canonical never resolved.
+ *
+ * So: name matched with optional quotes and a delimiter lookahead (so `name=x`
+ * cannot match `name=xy`), value matched in all three legal forms.
+ */
+const ATTR_VALUE = '(?:"([^"]*)"|\'([^\']*)\'|([^\\s"\'=<>`]+))';
+const attrPattern = (name) => `\\b${name}\\s*=\\s*${ATTR_VALUE}`;
+const namedAttr = (name, value) => `\\b${name}\\s*=\\s*["']?${value}["']?(?=[\\s>/])`;
+// Three capture groups per value (double-quoted, single-quoted, bare); exactly
+// one of them participates in any match.
+const valueAt = (m, start) => m[start] ?? m[start + 1] ?? m[start + 2] ?? "";
+
 function extractMetaContent(html, name) {
   const nameFirst = new RegExp(
-    `<meta[^>]*\\bname=["']${name}["'][^>]*\\bcontent=["']([^"']*)["']`,
+    `<meta[^>]*${namedAttr("name", name)}[^>]*${attrPattern("content")}`,
     "i",
   );
   const contentFirst = new RegExp(
-    `<meta[^>]*\\bcontent=["']([^"']*)["'][^>]*\\bname=["']${name}["']`,
+    `<meta[^>]*${attrPattern("content")}[^>]*${namedAttr("name", name)}`,
     "i",
   );
   const m = html.match(nameFirst) || html.match(contentFirst);
-  return m ? decodeEntities(m[1]) : "";
+  return m ? decodeEntities(valueAt(m, 1)) : "";
 }
 
 function extractCanonical(html) {
-  const relFirst =
-    /<link[^>]*\brel=["']canonical["'][^>]*\bhref=["']([^"']*)["']/i;
-  const hrefFirst =
-    /<link[^>]*\bhref=["']([^"']*)["'][^>]*\brel=["']canonical["']/i;
+  const relFirst = new RegExp(
+    `<link[^>]*${namedAttr("rel", "canonical")}[^>]*${attrPattern("href")}`,
+    "i",
+  );
+  const hrefFirst = new RegExp(
+    `<link[^>]*${attrPattern("href")}[^>]*${namedAttr("rel", "canonical")}`,
+    "i",
+  );
   const m = html.match(relFirst) || html.match(hrefFirst);
-  return m ? m[1] : "";
+  return m ? valueAt(m, 1) : "";
 }
 
 // Decode the HTML entities that appear in titles/descriptions. "&amp;" is
@@ -342,8 +398,16 @@ async function resolveArticleImage(canonical, url, outDir) {
   let rel = fallbackRel;
   if (canonical) {
     try {
+      // Relative to the site's public root, not to the origin: under a subpath
+      // deploy the canonical pathname opens with `/<repo>/`, which is not part
+      // of any card's slug.
       const pathname = new URL(canonical).pathname;
-      let slug = pathname.replace(/^\/+/, "").replace(/\/+$/, "");
+      const basePath = new URL(`${url}/`).pathname;
+      let slug = (
+        pathname.startsWith(basePath) ? pathname.slice(basePath.length) : pathname
+      )
+        .replace(/^\/+/, "")
+        .replace(/\/+$/, "");
       if (slug.startsWith("docs/")) slug = slug.slice("docs/".length);
       if (slug) rel = `img/og/${slug.replace(/\//g, "-")}.png`;
     } catch {

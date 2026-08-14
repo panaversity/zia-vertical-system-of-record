@@ -77,6 +77,12 @@ evidence, recorded here with a revision note.
    guides, the ~60 others) stay behind — copying those into a tax-law SoR would re-import the
    product layer through the side door. The five deferred vsor skills are unaffected: they are
    *verbs we have not built*, not documents we can copy.
+   *Revision 2026-08-14: `deploy` ships in the kit — the first of those five to land, and it landed
+   as a **document, not a verb**. It needed no code: `vsor build` already emits an ordinary static
+   directory, so the missing thing was the knowledge of what to do with it (the two `url`/`baseUrl`
+   values baked into the output, the two deploy shapes, how to verify a URL rather than trust it) —
+   exactly the shape a SKILL.md holds. It arrives with `vercel.json` and `netlify.toml` at the
+   scaffold root, where each host looks. The remaining four stay deferred and stay verbs.*
 6. **The governance level is derived, never declared.** `vsor check` (post-v0) reports the level the
    `governance/` directory achieves; there is no `governance:` key on the instance. `instance.md`
    describes the *deployment*; `governance/` describes the *knowledge*.
@@ -153,12 +159,12 @@ my-sor/                        ← created by `vsor init my-sor`; yours, your li
 ├── instance.md                  frontmatter = machine config; body = the MCP server's prompt
 ├── knowledge/
 │   └── example.md               ONE real example document — never empty directories
-├── .agents/skills/<name>/SKILL.md   the agent kit (decision 5's revision) — 13 skills:
+├── .agents/skills/<name>/SKILL.md   the agent kit (decision 5's revision) — 14 skills:
 │                                add-sources · docx · pptx · fetch-library-docs ·
 │                                knowledge-extraction-method · technical-clarity ·
 │                                content-refiner · canonical-format-checker ·
 │                                summary-generator · quiz-generator · generate-flashcards ·
-│                                skill-creator · find-skills
+│                                deploy · skill-creator · find-skills
 ├── .claude/
 │   ├── settings.json            the vsor verbs pre-permitted; no hooks, nothing phones out
 │   └── rules/                   provenance · abstention · review · repository-map
@@ -167,16 +173,22 @@ my-sor/                        ← created by `vsor init my-sor`; yours, your li
 │   └── src/
 │       ├── css/custom.css         the design tokens, including --ifm-color-primary
 │       └── pages/index.tsx        the homepage
+├── vercel.json                  the git-connected deploy: build command + output directory
+├── netlify.toml                 the same, for the other host — delete whichever you do not use
 ├── AGENTS.md                    how an agent works in the scaffolded project
 ├── CLAUDE.md                    one line: `@AGENTS.md`
 ├── .env                         the two things the user supplies: DATABASE_URL + embedding key
-├── .gitignore                   ignores .vsor/, build/ — and .env (a bare .env leaks on deploy)
+├── .gitignore                   ignores .vsor/, build/, .vercel/, .netlify/ — and .env
+│                                (a bare .env leaks on deploy; the two host CLIs write
+│                                 project and org ids into their own directories)
 └── (a git repository — init runs `git init` unless one exists)
 ```
 
 **Byte-exact, in two places, neither of them here:** `tests/acceptance/init.sh` diffs the real
-output against the full 27-line file list, and `packages/vsor/tests/test_init.py`'s
-`EXPECTED_FILES` pins the same set. This tree is the map; those two are the contract.
+output against the full file list, and `packages/vsor/tests/test_init.py`'s `EXPECTED_FILES` pins
+the same set. This tree is the map; those two are the contract — and neither this sentence nor
+`docs/status.md` states the count any more: both said 30 while the list was 31, having already
+carried 27-versus-28 forward once. A number with two homes is a number that drifts.
 
 **Ownership destinations — one rule (settled 2026-08-13):** anything you take ownership of lands
 where its *home system* already puts it, never in an invented location. When swizzling arrives, a
@@ -262,6 +274,7 @@ scaffolded projects.
 | Composition smoke | `tests/test_*_smoke.py` | real composition root; fake pool that *raises if touched* | ✅ |
 | Scaffold | one job | runs `vsor init` and builds the output | ✅ |
 | Surface | `make surface` (Playwright over the built fixture site, B5–B13 + B15–B16 of `specs/sor-site/surface`; B14 retired 2026-08-14 with the stock configuration it named — B15 is the design-system tier: the utilities compute *and only the scanned ones*, the shadcn sheet is the mobile menu, lucide is inline SVG, a CSS-module primitive keeps its own box, code is legible in light mode; B16 is admonitions in both the v2 and v3 syntaxes) | Node + pinned Chromium; static server on 127.0.0.1; deterministic by construction — DOM-state waits only, no screenshots | own job (needs Node) |
+| Hosting | `make deploy-acceptance` (`tests/acceptance/deploy.sh`) — the two shapes a static host has, build-as-docroot and build-under-a-subpath, through the real wheel and a real browser. It is the only tier that reads `vsor build`'s own output rather than an assembled fixture, and the only one that ever serves at a prefix; both of those gaps hid real defects | Node + pinned Chromium; two static servers on 127.0.0.1 | own job |
 | Database | `skipif` on an env pair | disposable local Postgres | opt-in |
 | Eval | console scripts, not pytest | live provider | release gate |
 

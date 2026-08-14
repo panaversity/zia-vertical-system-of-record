@@ -2,12 +2,16 @@
 # humans and agents type these targets — so the three can never drift.
 # Contributor-facing only: users see the vsor verbs, never this file.
 
-# The dev/CI stamp for `vsor init` (specs/vsor/init): the workspace package version is a
-# 0.0.0 placeholder until publish, and init refuses placeholders unless the harness names
-# the version to pin. Exported so test/acceptance/gate inherit it; `?=` lets a caller win.
+# The dev/CI stamp for `vsor init` (specs/vsor/init): init refuses a version that is
+# missing, `0.0.0`, or dev/pre-release, unless the harness names the version to pin.
+# Exported so test/acceptance/gate inherit it; `?=` lets a caller win.
+# Since the 0.1.0 release, packages/vsor/pyproject.toml carries a real version and
+# importlib.metadata answers with it, so this stamp is a belt-and-braces default rather
+# than the only thing standing between the suite and `error: unstamped` — it still matters
+# for the pre-release of the NEXT version, and for any run against an uninstalled tree.
 export VSOR_DEV_VERSION ?= 0.1.0
 
-.PHONY: lock lint fmt typecheck test boundary acceptance build-acceptance gate surface wheel
+.PHONY: lock lint fmt typecheck test boundary acceptance build-acceptance deploy-acceptance gate surface wheel
 
 # Where `make wheel` stages the four site-runtime artifacts (specs/vsor/build).
 # Gitignored — generated, never committed; hatchling ships them via its artifacts field.
@@ -48,6 +52,33 @@ gate: lint typecheck test boundary acceptance
 # `gate`: the python gate stays node-free (settled 2026-08-13).
 build-acceptance:
 	bash tests/acceptance/build.sh
+
+# The hosting-layout acceptance (tests/acceptance/deploy.sh): the two shapes a
+# static host actually has — the build AS the document root, and the build under
+# a `/<name>/` subpath — proved through the real `vsor build` and a real browser,
+# because they fail differently. The root shape fails QUIETLY (the placeholder
+# `url` ships in sitemap.xml, the canonical links and og:url while every page
+# still renders); the subpath shape fails LOUDLY (a wrong baseUrl 404s every
+# asset).
+#
+# Its own target, deliberately NOT chained into `surface`: it stages the same
+# shared paths those targets stage ($(runtime_dir) and packages/sor-site's
+# node_modules), so the two cannot run concurrently, and it costs the node lane
+# again in full — measured 2026-08-14 (Node 22.15, Apple Silicon, warm npm cache):
+# 2m56s including its own `make wheel`, against `make surface` 4m34s and
+# `make build-acceptance` 4m13s. Run it when the deploy story, the scaffold's host
+# configs, or `url`/`baseUrl` handling changes — and before a release.
+# It accepts VSOR_WHEEL=<path> to reuse an already-built wheel.
+#
+# Its first honest run against a real `vsor build` was RED on three defects that no
+# other tier could see (the surface tier builds an assembled fixture, not the shipped
+# output, and it only ever serves at "/"): an unclickable first sidebar link in every
+# build, a favicon 404 on every page of a subpath deploy, and a sitemap whose route set
+# changed with the deploy shape. All three were fixed in the product, not in the test,
+# and it has been green since 2026-08-14. It runs in CI (`hosting` job) and again on the
+# release path, against the very wheel about to be uploaded.
+deploy-acceptance:
+	bash tests/acceptance/deploy.sh
 
 # The packages `make wheel` packs into the shell. The FIRST is the forked app — the
 # runtime shell itself, unpacked over .vsor/site-runtime rather than installed into

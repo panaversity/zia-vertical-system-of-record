@@ -47,6 +47,25 @@ _NODE_FLOOR = 20
 
 _INSTALL_NOTICE = "installing site runtime — one time, ~1–2 minutes"
 
+# npm's own output streams through unmodified (specs/vsor/build), which means its audit
+# summary — "25 vulnerabilities (6 moderate, 19 high)" — is among the first things a new
+# user ever sees from this product. Suppressing it would be dishonest; leaving it
+# unanswered lets an alarm stand in for a fact. So it is answered, once, by us.
+#
+# Measured 2026-08-14 against the shipped shell lockfile (`npm audit --json` in
+# packages/vsor/src/vsor/_site_runtime): 25 advisories, all transitive, from exactly
+# THREE roots — serialize-javascript (via copy-webpack-plugin and
+# css-minimizer-webpack-plugin, both Docusaurus's bundler), image-size (Docusaurus's
+# image handling) and uuid (via sockjs, via webpack-dev-server). Every one of them is
+# build-time toolchain: none is in the built site, which ships static HTML, CSS, JS and
+# a search index and executes no npm package at serve time. Recorded, with the date and
+# the method, in SECURITY.md; recheck when the Docusaurus pin moves.
+_AUDIT_NOTICE = (
+    "note: npm's audit summary above is the site TOOLCHAIN, not your site — the "
+    "advisories are\n  build-time only and none ships in build/. Reviewed 2026-08-14; "
+    "see SECURITY.md."
+)
+
 # Where the shell finds the project's two authored trees. `copy_authored` puts them
 # inside the shell (the spec's layout); the app defaults to siblings, because that is
 # what it has when it is developed in its own workspace — so the verbs say which.
@@ -329,6 +348,7 @@ def ensure_runtime(project_root: Path) -> Path:
             "peer conflict; npm knows, we do not guess). Fix that and rerun; the install "
             "restarts cleanly.",
         )
+    print(_AUDIT_NOTICE, flush=True)
     write_stamp(
         runtime_dir, vsor_version=vsor_version, package_json=package_json, lock=lockfile, app=app
     )

@@ -1,0 +1,16 @@
+usage: vsor init <name>
+       vsor init .
+
+Scaffold a vertical system of record into a project of your own: the corpus
+directory, instance.md, a real Docusaurus site/, an agent kit, host configs for
+two static hosts, and a first git commit. Nothing is installed into the project.
+
+  <name>   one path segment: lowercase letters, digits and hyphens
+           (^[a-z0-9][a-z0-9-]{0,62}$). A new directory of that name is created.
+  .        scaffold into the current directory, which must be empty of anything
+           but a git repository and the usual editor files. The directory's own
+           name has to satisfy the same rule.
+
+Next: cd into it and run `vsor dev` (the live site) or `vsor build` (the
+deployable one). Both install a site runtime under .vsor/ on first use — one
+time, a couple of minutes, network required.

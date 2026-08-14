@@ -1,0 +1,71 @@
+vsor — Vertical System of Record framework
+Copyright 2026 Panaversity
+
+This product includes software developed at Panaversity, licensed under the
+Apache License, Version 2.0 (see LICENSE).
+
+It also includes third-party material, redistributed under the licences below.
+A copy of each licence travels with the code that needs it, in the artifact that
+ships it.
+
+------------------------------------------------------------------------------
+1. Panaversity Agent Factory learn-app  —  Apache-2.0
+------------------------------------------------------------------------------
+`packages/sor-site/app/` is a fork of the Agent Factory learn-app, and
+`packages/sor-site/lib/*` are forks of its Docusaurus content-pipeline packages,
+both taken at the pinned survey SHA recorded in `docs/extraction.md`. Copy
+authorization was granted by the copyright holder on 2026-08-13. The fork was
+stripped of the product layer and de-branded; the copyright and the licence are
+unchanged.
+
+These forks ship inside the `vsor` wheel as npm tarballs under
+`vsor/_site_runtime/`, and are unpacked into a user's `.vsor/site-runtime/`.
+
+------------------------------------------------------------------------------
+2. shadcn/ui  —  MIT
+------------------------------------------------------------------------------
+`packages/sor-site/app/src/components/ui/{button,dialog,sheet}.tsx` are
+components from the shadcn/ui registry, used essentially as published.
+
+    MIT License
+    Copyright (c) 2023 shadcn
+
+    Permission is hereby granted, free of charge, to any person obtaining a copy
+    of this software and associated documentation files (the "Software"), to deal
+    in the Software without restriction, including without limitation the rights
+    to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+    copies of the Software, and to permit persons to whom the Software is
+    furnished to do so, subject to the following conditions:
+
+    The above copyright notice and this permission notice shall be included in
+    all copies or substantial portions of the Software.
+
+    THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+    IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+    FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+    AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+    LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+    OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+    SOFTWARE.
+
+------------------------------------------------------------------------------
+3. Inter and JetBrains Mono  —  SIL Open Font License 1.1
+------------------------------------------------------------------------------
+The two typefaces are vendored as woff2 and self-hosted (the built site makes no
+off-origin request). Each family's full OFL text ships beside the faces, inside
+the same artifact:
+
+    packages/sor-site/app/src/css/fonts/LICENSE-Inter.txt
+    packages/sor-site/app/src/css/fonts/LICENSE-JetBrainsMono.txt
+
+`packages/vsor/tests/test_wheel_contents.py` asserts by content that both are in
+every wheel — a font redistributed without its licence is a defect that no other
+tier can see.
+
+------------------------------------------------------------------------------
+4. Docusaurus, React, Tailwind CSS, Radix UI, lucide, and the rest
+------------------------------------------------------------------------------
+Ordinary npm and PyPI dependencies. They are installed from their registries at
+build time, not vendored, and each carries its own licence in its own package.
+The exact set and versions are pinned in the shipped
+`vsor/_site_runtime/package-lock.json` and in `uv.lock`.

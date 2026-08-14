@@ -8,8 +8,18 @@ these SHAs**; re-verify before relying on a citation if either repo has moved.
 | `~/Documents/code/sor-agentfactory` | `ac5ebf7259fad71de6ac4a20db1ecb7da7aa1a79` |
 | `~/Documents/code/panaversity-official/tutorsgpt/ag2` | `d764f334fc4da19edd7e2531a86fdc234f1a366c` |
 
-> ⚠️ **Copy permission is not yet granted** — see the blocker table in `status.md`. Read and cite
-> freely; do not move code until it is.
+> ⚠️ **Copy permission is granted for one side only.**
+>
+> - **JS side (`ag2/apps/learn-app`, `ag2/libs/docusaurus/*`) — granted 2026-08-13** by the owner
+>   ("copy and then rework"). `packages/sor-site/app/` is that fork and has shipped since v0.1.0;
+>   the attribution is in the repository's root `NOTICE`.
+> - **Python side (`sor-agentfactory/packages/*`) — still not granted.** Read and cite freely; do
+>   not move code until it is. This gates slice 2's kernel extraction and nothing else.
+>
+> Corrected 2026-08-14: this banner still said permission was ungranted for everything, four days
+> after the JS half was authorized and after that half had already been tagged and packed into a
+> published wheel — the provenance document contradicting the shipped artifact. See the blocker
+> table in `status.md`, which had the right answer all along.
 
 ## The thesis
 

@@ -10,6 +10,15 @@ descendant survives (the group gets a final SIGKILL sweep). Ctrl-C is a decided 
 The port is pre-bound (SO_REUSEADDR probe, closed before spawn): occupied is a refusal,
 never a prompt, never a silent auto-increment — an agent that printed "localhost:3000"
 must not be wrong.
+
+**dev does not warn about the placeholder `url`, and that is decided, not an omission**
+(2026-08-14). `vsor build` warns when the site it just emitted carries a placeholder origin
+(`build_cmd._warn_placeholder_url`). Here the same condition is *correct*: the site really is
+at http://127.0.0.1:<port>, the dev server emits no sitemap, no canonical link and no JSON-LD
+— nothing carries an origin off this machine — and this verb runs dozens of times a day. A
+warning on every dev start would be a warning about nothing, printed so often that the one on
+`vsor build`, where it names a real defect in a real artifact, gets read as noise. One warning,
+on the verb that produces the thing you upload.
 """
 
 import contextlib

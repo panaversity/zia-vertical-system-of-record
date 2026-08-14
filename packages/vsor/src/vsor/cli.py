@@ -18,7 +18,16 @@ import sys
 from vsor import __version__
 from vsor.errors import CommandError
 
-_VERBS = ("init", "dev", "build", "serve")
+# One line per verb, because a wheel is the only documentation a user is guaranteed to
+# have (found live 2026-08-14: `vsor --help` listed `{init,dev,build,serve}` and nothing
+# else, and `vsor build --help` listed no flags at all — a stranger with the package and
+# no network could not learn what any verb does or where its output goes).
+_VERBS = {
+    "init": "scaffold a project into a directory of your own (run `vsor init --help`)",
+    "dev": "serve the site locally on 127.0.0.1, hot-reloading from knowledge/",
+    "build": "write build/ — the deployable static site — and the build.lock.json record",
+    "serve": "the MCP surface for AI assistants — not in this release",
+}
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -33,13 +42,22 @@ def main(argv: list[str] | None = None) -> int:
         description="Compile a folder of governed markdown into a website and an MCP server.",
     )
     parser.add_argument("--version", action="version", version=f"vsor {__version__}")
-    sub = parser.add_subparsers(dest="verb")
-    for verb in _VERBS:
-        verb_parser = sub.add_parser(verb)
+    sub = parser.add_subparsers(dest="verb", metavar="<verb>")
+    for verb, summary in _VERBS.items():
+        verb_parser = sub.add_parser(verb, help=summary, description=summary)
         if verb == "dev":
             # A string on purpose: the range check belongs to validate_port, whose
             # refusal is exit 1 `error: bad-port` — never argparse's exit-2 usage error.
-            verb_parser.add_argument("--port", default="3000")
+            verb_parser.add_argument(
+                "--port",
+                default="3000",
+                help="the port to listen on, 1024-65535 (default: 3000)",
+            )
+        if verb == "build":
+            verb_parser.epilog = (
+                "Output: build/ at the project root (replaced atomically), and "
+                "build.lock.json beside it. Both paths are fixed in this release."
+            )
 
     args = parser.parse_args(arg_list)
     if args.verb is None:
@@ -68,10 +86,18 @@ def main(argv: list[str] | None = None) -> int:
 
 
 def verb_status(verb: str) -> str:
+    """The honest refusal for a verb this release does not implement.
+
+    It names only paths that EXIST where the reader is standing. It used to point at
+    `specs/vsor/<verb>/spec.md` and `docs/status.md` — found live 2026-08-14: neither is
+    in the wheel, neither is in a scaffolded project, and `specs/vsor/serve/spec.md` has
+    not been written at all. The repo's own detail-pass rule is that every printed path
+    is real, so this names the scaffold's own command table and the release notes."""
     return (
-        f"{verb}: not implemented in this build. "
-        f"The contract is specs/vsor/{verb}/spec.md; "
-        "current state is docs/status.md."
+        f"{verb}: not implemented in this build — it arrives in a later release. "
+        f"What this release does implement is the command table in your project's "
+        f"AGENTS.md ({', '.join(v for v in _VERBS if v != verb)}); what is in the "
+        f"release is the framework's CHANGELOG.md."
     )
 
 

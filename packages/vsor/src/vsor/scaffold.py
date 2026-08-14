@@ -115,7 +115,15 @@ def _scaffold_entries() -> list[tuple[str, bytes]]:
 
 
 def _slugged(raw: str) -> str:
-    """The deterministic slug suggested by the bad-name error."""
+    """The deterministic slug suggested by the bad-name error, or "" when there is
+    nothing honest to suggest.
+
+    A string starting with `-` is a mistyped FLAG, never a project name — suggesting
+    `vsor init help` for `--help` was how a stranger's first exploratory keystroke
+    could scaffold a project called `help` (found live 2026-08-14; `-h`/`--help`
+    itself is now answered before this is reached, but any other flag lands here)."""
+    if raw.startswith("-"):
+        return ""
     slug = re.sub(r"[^a-z0-9]+", "-", raw.lower()).strip("-")
     return slug[:63].strip("-")
 
@@ -345,6 +353,16 @@ def run_init(args: list[str]) -> int:
             "vsor v0 runs on macOS and Linux. On Windows, install WSL"
             " (https://learn.microsoft.com/windows/wsl/) and run vsor inside it.",
         )
+
+    # `-h`/`--help` is answered BEFORE the name rule, because `init` is the one verb
+    # argparse never sees (see the module note in cli.py) and it therefore has to own
+    # the flag argparse owns for `dev`, `build` and `serve`. found live 2026-08-14:
+    # without this, a stranger's first exploratory keystroke — `vsor init --help` —
+    # exited 1 with `error: bad-name` and suggested `vsor init help`, which scaffolds a
+    # 31-file project called `help`.
+    if any(arg in {"-h", "--help"} for arg in args):
+        sys.stdout.write(_stdout_text("init-help.txt"))
+        return 0
 
     if not args:  # the bare form never scaffolds — one instructional screen, exit 0
         sys.stdout.write(_stdout_text("bare.txt"))

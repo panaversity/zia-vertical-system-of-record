@@ -5,12 +5,52 @@ description = "Compile a folder of governed markdown into a website and an MCP s
 readme = "README.md"
 requires-python = ">=3.14"
 license = "Apache-2.0"
+# A byte-identical copy of the repo-root LICENSE. PEP 639 globs cannot escape the
+# project root, so the file has to live here.
+# found live 2026-08-14: a SYMLINK to ../../LICENSE looks like the "one fact, one file"
+# answer and builds a wheel fine — `uv build --wheel` reads the source tree directly.
+# It then fails the sdist→wheel path that `make wheel` actually runs (`uv build`, no
+# --wheel): the symlink is packed into the sdist still pointing outside it, and
+# unpacking dies with "symlink destination for ../../LICENSE is outside of the target
+# directory". A `pip install --no-binary vsor` would hit the same wall. So: a copy, and
+# the drift risk is nil — the Apache-2.0 text is immutable boilerplate.
+# NOTICE rides with LICENSE for the same reason and by the same copy rule: it is the
+# attribution for the forked upstream app, the shadcn/ui components and the two vendored
+# OFL typefaces, and a wheel is the only artifact a lawyer reading PyPI can open.
+license-files = ["LICENSE", "NOTICE"]
+authors = [{ name = "Panaversity" }]
+keywords = ["mcp", "docusaurus", "knowledge-base", "citations", "abstention", "markdown", "static-site"]
+# No `License ::` trove classifier: PyPI rejects a distribution that carries both a
+# license expression (above) and a license classifier — they are mutually exclusive
+# since PEP 639. The expression is the one that ships.
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Environment :: Console",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Education",
+    "Intended Audience :: Legal Industry",
+    "Operating System :: MacOS",
+    "Operating System :: POSIX :: Linux",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.14",
+    "Programming Language :: Python :: 3 :: Only",
+    "Topic :: Documentation",
+    "Topic :: Software Development :: Documentation",
+    "Topic :: Text Processing :: Markup :: Markdown",
+    "Typing :: Typed",
+]
 # Exactly two runtime deps (specs/vsor/build): pyyaml parses the instance.md frontmatter
 # block (safe_load of the block only), packaging evaluates vsor.requires SpecifierSets.
 dependencies = [
     "packaging>=24.0",
     "pyyaml>=6.0",
 ]
+
+[project.urls]
+Homepage = "https://github.com/panaversity/zia-vertical-system-of-record-framework"
+Repository = "https://github.com/panaversity/zia-vertical-system-of-record-framework"
+Changelog = "https://github.com/panaversity/zia-vertical-system-of-record-framework/blob/main/CHANGELOG.md"
+Issues = "https://github.com/panaversity/zia-vertical-system-of-record-framework/issues"
 
 [project.scripts]
 vsor = "vsor.cli:main"

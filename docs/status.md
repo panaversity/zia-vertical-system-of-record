@@ -14,9 +14,15 @@ working as intended). Exists and runs: the uv workspace (`packages/vsor`, Python
 Makefile vocabulary, CI (SHA-pinned actions, `make gate`), AST boundary guards at **baseline zero**,
 `fixtures/tiny/` — the book's own `/vsor` example made real: ten Pakistani-dish documents, ten gold
 rows, five OOC probes (three scope-adjacent) — docker-compose for CI, and the supply-chain cooldown
-(`exclude-newer`). The CLI is an honest stub: every verb exits 2 and names its spec. **No verb is
-implemented.** The kernel being extracted runs in production upstream (SHAs in
-`docs/extraction.md`).
+(`exclude-newer`).
+
+**Three of the four verbs are implemented** and each has been walked live, like a user:
+`vsor init` against its **ratified** spec, `vsor dev` and `vsor build` against `specs/vsor/build`.
+`vsor serve` — the MCP surface and the Postgres half behind it — is the one that remains, and it
+exits 2 saying so. (This paragraph read "the CLI is an honest stub · **no verb is implemented**"
+until 2026-08-14, four commits and one tag after it stopped being true, in the file AGENTS.md names
+as the only authority on what is built.) The kernel being extracted runs in production upstream
+(SHAs in `docs/extraction.md`).
 
 The doc set was consolidated 2026-08-12 from seven files to four after a repeatable cold-read test
 returned **converging** — the earlier tarball false-mechanism is dead, both readers "mostly-clear" —
@@ -31,13 +37,16 @@ history (the root commit), not the tree.
   entirely.
 - **A real agent kit, not one skill** (AGENTS.md decision 5's revision, owner 2026-08-13): the
   scaffold writes `.claude/settings.json` (the vsor verbs pre-permitted, no hooks), four
-  `.claude/rules/` (provenance · abstention · review · repository-map) and **13 skills** —
+  `.claude/rules/` (provenance · abstention · review · repository-map) and **14 skills** —
   `add-sources` (the one the five-minute claim rests on) plus the corpus-generic set copied from
   upstream and de-branded: source conversion (`docx`, `pptx`, `fetch-library-docs`), knowledge work
   (`knowledge-extraction-method`, `technical-clarity`, `content-refiner`,
   `canonical-format-checker`), the shipped primitives (`summary-generator`, `quiz-generator`,
-  `generate-flashcards`), and the meta pair (`skill-creator`, `find-skills`). The exact 27-file
-  output is pinned byte-for-byte by `tests/acceptance/init.sh` and `test_init.py`.
+  `generate-flashcards`), and the meta pair (`skill-creator`, `find-skills`) — plus `deploy`, the
+  first of the five deferred vsor skills to land (2026-08-14, with `vercel.json` and `netlify.toml`:
+  publishing was the one thing a finished build told the user nothing about). The exact file
+  list is pinned byte-for-byte by `tests/acceptance/init.sh` and `test_init.py` — those two are
+  the count, and no prose here carries a copy of it to drift.
 - **De-branding is done and CI-enforced, not deferred.** Zero upstream brand strings in shipped
   source, in built bundles, or in the scaffold's prose — the last of those became a test on
   2026-08-14 (`test_surface_contract.py`'s markdown tier, which also bars curriculum vocabulary:
@@ -169,6 +178,37 @@ post-v0 answer; the ceiling is recorded rather than guessed.
 past that, organize `knowledge/` into folders. A build-time warning enforces the advice rather
 than leaving it in a document nobody reads.
 
+## Found by the hosting acceptance (2026-08-14) — three defects, all closed
+
+`tests/acceptance/deploy.sh` (`make deploy-acceptance`) builds a scaffolded project with a real
+`vsor build` twice — once for a root host, once for a subpath host — and serves each in the shape
+its host would have. Its first honest run was **red on three defects, all real, none visible to any
+other tier**: `make surface` builds an *assembled* fixture rather than the shipped output, and it
+only ever serves at `/`. Each was fixed in the product, not in the test; the target has been green
+since 2026-08-14 (23 passed, 1 skipped — D9 has no meaning in the root shape).
+
+| Defect | Fix, and how it was measured | Where |
+| :--- | :--- | :--- |
+| **The first sidebar link was unclickable** — `document.elementFromPoint` at the first document's centre returned the navbar. Docusaurus tucks the container under the navbar (`margin-top: calc(-1 * navbar-height)`) and pays it back with `padding-top` on the inner `.sidebar_*`; this file deleted that padding and compensated with `position: sticky; top: navbar-height` on the viewport instead. **That substitution is conditional and the original was not:** sticky only honours `top` while it has slack inside its container, and the viewport's `height: calc(100vh - navbar)` equals the container's height on any page no taller than the window. So the compensation worked on long pages and silently did nothing on short ones. Fixed by cancelling the negative margin — one compensation, unconditional. Measured on a real build at 1280x900: before, aside top 1px / first link y=21..57 / elementFromPoint returns the navbar; after, aside top 65px / first link y=85 / elementFromPoint returns the link. Identical at 1280x400, where the page scrolls; restoring the padding instead measured y=148 there, a 64px gap, because both compensations then apply. | D4 + D7, both shapes | `packages/sor-site/app/src/css/sidebar.css` |
+| **The favicon head tag ignored the project's `baseUrl`** — `headTags` composed `href` from the shell's own `BASE_URL` constant rather than the merged config, so every GitHub Pages project site shipped `<link rel=icon href="/img/favicon.svg">` pointing above its own site, while the theme's react-helmet icon link (which does read the merged value) was correct: the two disagreed inside one `<head>`. Fixed by a post-merge backfill, `followBaseUrl()`, narrow in the same way `followTitle()` is — it rewrites only the shell's own untouched tag. | S2 + D8, subpath shape | `packages/sor-site/app/docusaurus.config.ts` |
+| **The sitemap's ignore pattern was `baseUrl`-naive** — a route path carries `baseUrl`, so the absolute `/search` stopped matching `/repo/search` and a subpath deploy advertised its search page to crawlers while a root deploy did not. Rebased by the same backfill; the relative `**/tags/**` is left alone because it is already correct in both shapes. | the driver's cross-shape route-set row | `packages/sor-site/app/docusaurus.config.ts` |
+
+**Two more the same run found, in the same class — right in a browser, wrong for machines, under a
+green build tick.** The shipped structured-data plugin extracted `<meta name=description>` and
+`<link rel=canonical>` with quotes-required regexes while Docusaurus's production minifier emits
+both unquoted, so every doc page's Article node carried the site tagline as its description and
+dropped `mainEntityOfPage` entirely; and every id and url in the graph was built from
+`siteConfig.url` with no `baseUrl` join, so a subpath site announced its identity and its search
+endpoint at the origin root. Both fixed in `packages/sor-site/lib/plugin-structured-data/index.js`,
+and both are now a row — **S3**, which runs in both shapes and asserts that the two documents carry
+*different* descriptions, because one value across every page is exactly what a failed extraction
+looks like.
+
+Measured wall clock (Node 22.15, Apple Silicon, warm npm cache): `deploy-acceptance` 2m56s
+including its own `make wheel` — against `surface` 4m34s and `build-acceptance` 4m13s. It stages
+the same shared paths those targets stage, so it is a separate target rather than a link in that
+chain, and the three cannot run concurrently on one checkout.
+
 ## Ship order — two slices (decided 2026-08-13)
 
 **Slice 1 — the site surface.** `learn-app` extraction → `sor-site`; `vsor init` + `vsor build`
@@ -219,7 +259,7 @@ place to edit a Navbar; **both were deleted** (63 source files) and Phase A's tw
 pointers at them — A3's designated token file, A4's frozen prop baseline — were repointed at
 `app/src` in the same change. Phase A runs inside `make gate` (allowlist +
 denylist backstop, exclusion boundary scan from the one committed `exclusions.json`, token lint at
-baseline zero, prop baseline); the browser tier is `make surface` — 29 Playwright checks (B5–B13,
+baseline zero, prop baseline); the browser tier is `make surface` (B5–B13,
 B15, B16; B14 retired 2026-08-14) against one configuration built twice, normally and with B12's
 sentinels. The live walk caught what suites alone would have shipped:
 React #418 hydration on every themed doc page for Mac readers (Node ≥21's global `navigator` made
@@ -256,12 +296,43 @@ builds" while stock was the live control; with one configuration the control mov
 — see the B14/B15 note above.)
 
 **CI is red for a non-code reason:** GitHub Actions reports "account payments have failed or your
-spending limit needs to be increased" — jobs never start. Owner action; local `make gate` and
-`make surface` are the same checks and are green.
+spending limit needs to be increased" — jobs never start. Owner action; local `make gate`,
+`make surface` and `make deploy-acceptance` are the same checks and are green. A third job,
+`hosting`, was added 2026-08-14 and has therefore also never started.
 
 **0.1.0 tagged (2026-08-14) — the site half ships.** `vsor init` → markdown → `vsor dev` →
 `vsor build` → a deployable site, with `serve` still honestly exiting 2. See `CHANGELOG.md`.
 Not published: `vsor` is unclaimed on PyPI, so the release is a tag and a wheel.
+
+## Publishability (2026-08-14) — what the base needed, and what is left
+
+The owner asked for the current thing to be made publishable and for a straight answer to "how does
+a user deploy this?". Both were answered by finding out that the answer was missing: nothing in the
+product said a word about deploying beyond the build's own "serve it from any static host", and the
+scaffold shipped `url: "http://localhost:3000"` with no warning anywhere, so a build uploaded as-is
+publishes a sitemap pointing at the author's laptop.
+
+**Closed in this pass:** the placeholder warning · the deploy skill, `vercel.json` and
+`netlify.toml` · the hosting acceptance and its three defects (above) · the two structured-data
+defects · `vsor init --help` · the `serve` refusal's unreal paths · per-verb CLI help · `NOTICE`
+and a licence file inside every shipped npm tarball · `SECURITY.md`, `CONTRIBUTING.md`,
+`CODE_OF_CONDUCT.md` · the npm-audit summary answered with an owned line and a dated review ·
+`docs/extraction.md`'s contradiction with the shipped artifact · a `hosting` CI job and the same
+tier on the release path, against the wheel about to be uploaded.
+
+**Still required before `uv publish`, and none of it is code:**
+
+| Blocker | Why it blocks | Whose |
+| :--- | :--- | :--- |
+| **The GitHub repository is private.** It is the wheel METADATA's Homepage, Repository, Changelog and Issues links — four dead links on the PyPI page the moment it is published. Verified: `curl` → 404, `gh api … --jq .visibility` → `private` | Publishing four 404s as a package's canonical links | owner: make it public, or strike the URLs from `pyproject.toml` |
+| **The PyPI name is unclaimed** | `uv publish` has nothing to publish to; Trusted Publishing needs the project to exist first | owner |
+| **A Trusted Publisher entry** for `release.yml` on this repository | `release.yml` mints its token from OIDC and stores no API token, by design | owner |
+| **`release.yml` has never run** — no job in this repository has ever started (the billing state above) | A first run is still a first run. Every step has been walked by hand; the workflow itself has not | owner (billing), then watched |
+
+The deploy story itself no longer depends on any of them: the host-command table, the two
+`url`/`baseUrl` shapes and the verification recipe all ship inside the wheel — in
+`packages/vsor/README.md` (which is the PyPI page) and in `.agents/skills/deploy/SKILL.md` (which
+lands in every scaffolded project and works offline).
 
 **The website surface is now a FORK of learn-app, not an extraction (2026-08-14, owner decision).**
 Shown the extracted build the owner said: "why not full copy… we lose all value like this." They
@@ -396,8 +467,14 @@ near-misses.
 - [ ] Docs shipped inside the package (offline ground truth for agents)
 - [ ] Scaffold runs on the very next command with zero edits
 - [ ] CI green: lint · typecheck · unit · boundary · smoke · scaffold-builds
-- [ ] LICENSE · CONTRIBUTING · CODE_OF_CONDUCT · **SECURITY.md as a normative triage boundary** (operator trust model, itemized out-of-scope, pre-answered false-positive patterns) + a short THREAT_MODEL.md for the write door and MCP surface
-- [ ] CHANGELOG with breaking changes in prose, from release one
+- [x] LICENSE · NOTICE · CONTRIBUTING · CODE_OF_CONDUCT · **SECURITY.md as a normative triage
+      boundary** — all landed 2026-08-14. SECURITY.md carries the operator trust model, an itemized
+      out-of-scope list, and the two pre-answered patterns this scaffold will attract (the
+      `curl … | sh` in the host configs, and the floating `uvx vsor` that `build.lock.json`
+      records). **THREAT_MODEL.md is still open** and stays open: it is for the write door and the
+      MCP surface, and neither exists in this release
+- [x] CHANGELOG with breaking changes in prose, from release one — the scaffold's 28→31 file
+      change is recorded under Unreleased as breaking, because the file list is a contract
 - [ ] Publish **0.1.0 quietly**; let usage move the number; announce at whatever it reaches. State
       the 0.x contract (minor may break, patch does not) and a 1.0 *condition*, not a date
 

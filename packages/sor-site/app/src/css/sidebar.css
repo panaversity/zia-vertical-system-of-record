@@ -44,6 +44,39 @@ div[class*='sidebar_'] {
   border-right: 1px solid var(--sidebar-border) !important;
 }
 
+/* found live 2026-08-14, in `vsor build` output and nowhere else — the fix for
+   the hosting acceptance's D4/D7 red, measured before it was written.
+ *
+ * Docusaurus tucks the sidebar container UNDER the navbar
+ * (`.docSidebarContainer { margin-top: calc(-1 * var(--ifm-navbar-height)) }`)
+ * and pays it back with `padding-top: var(--ifm-navbar-height)` on the inner
+ * `.sidebar_*` module class. The rule directly above deletes that padding, and
+ * this file compensates on `.sidebarViewport` instead, with `position: sticky;
+ * top: var(--ifm-navbar-height)`.
+ *
+ * That substitution is CONDITIONAL and the original was not. A sticky element
+ * can only be shifted by its `top` while it has slack inside its containing
+ * block, and the viewport's own `height: calc(100vh - navbar)` equals the
+ * container's height whenever the page is no taller than the window. Measured on
+ * a real `vsor build` at 1280x900, first document open:
+ *
+ *   before   aside top 1px · viewport top 1px (sticky inert, zero slack) ·
+ *            first sidebar link box y=21..57 · document.elementFromPoint at its
+ *            centre returns <div class="flex shrink-0 items-center gap-3"> —
+ *            the navbar. The first document in the tree cannot be clicked.
+ *   after    aside top 65px · viewport top 65px · first link y=85 ·
+ *            elementFromPoint returns the link. Identical at 1280x400, where the
+ *            page DOES scroll and the sticky compensation was already working —
+ *            which is why this had to cancel the margin rather than restore the
+ *            padding: restoring the padding measured link y=148 on that page, a
+ *            64px gap, because both compensations then apply at once.
+ *
+ * So: no negative margin, one compensation, unconditional. `make surface` never
+ * saw it — its assembled fixture already computes margin-top 0. */
+.theme-doc-sidebar-container {
+  margin-top: 0 !important;
+}
+
 /* Sticky positioning below navbar */
 @media (min-width: 997px) {
   .theme-doc-sidebar-container [class*='sidebarViewport'] {
