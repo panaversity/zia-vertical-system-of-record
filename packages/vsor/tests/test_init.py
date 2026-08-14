@@ -325,25 +325,30 @@ def test_instance_md_roundtrip(sandbox: Path, capsys: pytest.CaptureFixture[str]
 # scaffold templates — the config's themes seam and AGENTS.md's verb honesty.
 
 
-def test_scaffold_config_declares_themes_seam(sandbox: Path, capsys: pytest.CaptureFixture[str]) -> None:
-    """specs/vsor/build: the scaffold's docusaurus.config.ts declares its themes as a
-    visible, deletable block — assemble.mjs (e2e) and the site shell both depend on this
-    exact spelling, so it is pinned here.
+def test_scaffold_config_is_an_override_not_a_whole_site(
+    sandbox: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """The scaffolded config is loaded BY the runtime shell and merged over it, so it
+    carries identity and nothing else.
 
-    Amended 2026-08-14 with specs/sor-site/surface's "the scaffold ships the full theme on
-    by default": the block gained @vsor/sor-site-theme, listed last so its search box
-    shadows the search plugin's own.
+    Replaced the themes-seam pin on 2026-08-14, when the shell became the forked app
+    (the owner's fork-and-delete decision). The shell now supplies the MDX vocabulary,
+    the search index and the design system as itself rather than as three installed
+    packages a scaffold declares, so there is no themes block left to pin. What is
+    pinned instead is the shape the merge depends on: exactly one top-level `title`
+    (the acceptance edits that line to prove the seam is live), a themeConfig, and none
+    of the six keys the runtime owns — a scaffold that shipped one would be scaffolding
+    a warning.
     """
     assert run_init(["demo"]) == 0
     config = (sandbox / "demo" / "site" / "docusaurus.config.ts").read_text(encoding="utf-8")
-    assert (
-        '  themes: [\n'
-        '    "@vsor/sor-site-mdx",\n'
-        '    "@easyops-cn/docusaurus-search-local",\n'
-        "    // last, so its search box shadows the search plugin's own\n"
-        '    "@vsor/sor-site-theme",\n'
-        "  ],"
-    ) in config
+    lines = config.splitlines()
+    assert lines.count('  title: "demo",') == 1, "expected exactly one top-level title line"
+    assert "  themeConfig: {" in lines
+    for owned in ("presets", "plugins", "themes", "markdown", "future", "staticDirectories"):
+        assert f"  {owned}:" not in lines, (
+            f"the scaffold sets `{owned}`, which the runtime shell owns and ignores"
+        )
 
 
 def test_scaffold_homepage_renders_the_theme_landing(

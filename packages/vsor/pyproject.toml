@@ -1,6 +1,6 @@
 [project]
 name = "vsor"
-version = "0.0.0"
+version = "0.1.0"
 description = "Compile a folder of governed markdown into a website and an MCP server, with cited answers and honest abstention."
 readme = "README.md"
 requires-python = ">=3.14"
@@ -30,15 +30,18 @@ dev = [
 requires = ["hatchling"]
 build-backend = "hatchling.build"
 
-# The wheel transport (specs/vsor/build): `make wheel` stages these four files into
+# The wheel transport (specs/vsor/build): `make wheel` stages the shell into
 # src/vsor/_site_runtime/ (gitignored — generated, never committed) before `uv build`;
-# hatchling's `artifacts` includes VCS-ignored files, named one by one so a partial
-# staging can never ship silently. The wheel-content test asserts all four are present
-# and that the mdx tgz carries lib/theme/MDXComponents.js — the gate on the ordering.
+# hatchling's `artifacts` includes VCS-ignored files. The tarballs are a glob rather
+# than a list of names on purpose: the shell's package.json is the one place that says
+# which packages exist, and the wheel-content test enumerates the expectation FROM that
+# file — so a partial staging still cannot ship silently, while adding a library needs
+# no edit here. That test also asserts the app tarball carries the config, the MDX
+# vocabulary and the token stylesheet — the gate on the make-wheel-before-uv-build
+# ordering.
 [tool.hatch.build]
 artifacts = [
-    "/src/vsor/_site_runtime/sor-site-mdx.tgz",
-    "/src/vsor/_site_runtime/sor-site-theme.tgz",
+    "/src/vsor/_site_runtime/*.tgz",
     "/src/vsor/_site_runtime/package.json",
     "/src/vsor/_site_runtime/package-lock.json",
 ]

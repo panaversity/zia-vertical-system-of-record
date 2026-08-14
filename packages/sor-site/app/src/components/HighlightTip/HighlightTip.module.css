@@ -1,0 +1,76 @@
+/**
+ * HighlightTip Styles — Subtle inline hint
+ * Muted text with blue accent icon, minimal spacing
+ */
+
+.highlightTip {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+
+    /* Pull up into tabNav margin, reduce gap below */
+    margin: -1.25rem 0 0.5rem 0;
+    padding: 0;
+
+    background: transparent;
+}
+
+.tipIcon {
+    width: 12px;
+    height: 12px;
+    color: var(--vsor-accent-text);
+    flex-shrink: 0;
+}
+
+.tipText {
+    font-family: system-ui, -apple-system, 'SF Pro Text', sans-serif;
+    font-size: 11px;
+    /* Muted gray instead of blue - less distracting */
+    color: var(--vsor-neutral-l50);
+}
+
+.tipText strong {
+    font-weight: 600;
+    color: var(--vsor-neutral-l35);
+}
+
+.dismissButton {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    width: 14px;
+    height: 14px;
+    padding: 0;
+    margin-left: 2px;
+
+    background: transparent;
+    border: none;
+    border-radius: 2px;
+
+    color: var(--vsor-neutral-l55);
+    opacity: 0.5;
+    cursor: pointer;
+    transition: opacity 0.12s ease;
+}
+
+.dismissButton:hover {
+    opacity: 1;
+}
+
+/* Dark mode */
+:global(html[data-theme='dark']) .tipIcon {
+    color: var(--vsor-accent-text-dark);
+}
+
+:global(html[data-theme='dark']) .tipText {
+    color: var(--vsor-neutral-l60);
+}
+
+:global(html[data-theme='dark']) .tipText strong {
+    color: var(--vsor-neutral-l75);
+}
+
+:global(html[data-theme='dark']) .dismissButton {
+    color: var(--vsor-neutral-l55);
+}

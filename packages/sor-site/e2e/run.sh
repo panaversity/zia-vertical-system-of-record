@@ -1,12 +1,19 @@
 #!/usr/bin/env bash
-# Browser-tier driver for specs/sor-site/surface/spec.md (B5–B14).
+# Browser-tier driver for specs/sor-site/surface/spec.md (B5–B15).
 # Invoked by `make surface`; CI runs it after `npm ci` + `npx playwright install chromium`.
 #
-# Flow: assemble four fixture sites (stock/themed × normal/sentinel) from the
-# vsor init scaffold + fixtures/tiny → `docusaurus build` each → serve each build
-# with `python3 -m http.server` on an ephemeral 127.0.0.1 port → run the single
-# Playwright suite once, with a project per variant (B14: identical suite, both
-# configs; each project also gets its sentinel server for B12).
+# Flow: assemble two fixture sites (normal + sentinel) in the MATERIALIZED shape —
+# the forked shell as siteDir, the init scaffold as its `site/`, fixtures/tiny as
+# its `knowledge/` → `docusaurus build` each with the shell's own env seams pointed
+# at those trees → serve each build with `python3 -m http.server` on an ephemeral
+# 127.0.0.1 port → run the single Playwright suite.
+#
+# Two builds, not four: the stock/themed axis died with the fork. "Stock
+# preset-classic" meant a scaffold that deleted @vsor/sor-site-theme from its own
+# `themes` array; `themes` is now a key the shell owns and drops from a project's
+# config, and the design system lives inside the shell itself. There is no
+# configuration a vsor project can produce that lacks it, so there is none to
+# build here. Recorded against B14/B15 for the lead.
 #
 # Determinism notes:
 #   - ports are ephemeral (http.server binds port 0 and reports what it got; we
@@ -31,17 +38,20 @@ if [ ! -x "$site_ws/node_modules/.bin/playwright" ]; then
 fi
 command -v python3 >/dev/null 2>&1 || { echo "error: python3 not found — it serves the built sites (python3 -m http.server)" >&2; exit 1; }
 
-builds=(stock stock-sentinel themed themed-sentinel)
+builds=(site site-sentinel)
 
 rm -rf "$scratch"
-node "$here/scripts/assemble.mjs" --variant stock  --out "$scratch/stock"
-node "$here/scripts/assemble.mjs" --variant stock  --sentinel --out "$scratch/stock-sentinel"
-node "$here/scripts/assemble.mjs" --variant themed --out "$scratch/themed"
-node "$here/scripts/assemble.mjs" --variant themed --sentinel --out "$scratch/themed-sentinel"
+node "$here/scripts/assemble.mjs" --out "$scratch/site"
+node "$here/scripts/assemble.mjs" --sentinel --out "$scratch/site-sentinel"
 
+# The two env seams site_runtime.runtime_env() sets for `vsor build`, set here for
+# the same reason: the shell defaults to SIBLING ../site and ../knowledge (what it
+# has in its own workspace) and the materialized layout puts both INSIDE it.
 for b in "${builds[@]}"; do
   echo "surface: building $b"
-  (cd "$scratch/$b/site" && "$site_ws/node_modules/.bin/docusaurus" build)
+  (cd "$scratch/$b/site-runtime" \
+     && VSOR_SITE_DIR=./site VSOR_KNOWLEDGE_DIR=./knowledge \
+        "$site_ws/node_modules/.bin/docusaurus" build)
 done
 
 pids=()
@@ -71,15 +81,13 @@ serve() {
 }
 
 for b in "${builds[@]}"; do
-  build_dir="$scratch/$b/site/build"
+  build_dir="$scratch/$b/site-runtime/build"
   [ -f "$build_dir/index.html" ] || { echo "error: $build_dir has no index.html — docusaurus build produced nothing" >&2; exit 1; }
   serve "$build_dir" "$scratch/$b.server.log"
   echo "surface: serving $b at $SERVED_URL"
   case "$b" in
-    stock)            export VSOR_E2E_STOCK_URL="$SERVED_URL"           VSOR_E2E_STOCK_DIR="$scratch/$b" ;;
-    stock-sentinel)   export VSOR_E2E_STOCK_SENTINEL_URL="$SERVED_URL"  VSOR_E2E_STOCK_SENTINEL_DIR="$scratch/$b" ;;
-    themed)           export VSOR_E2E_THEMED_URL="$SERVED_URL"          VSOR_E2E_THEMED_DIR="$scratch/$b" ;;
-    themed-sentinel)  export VSOR_E2E_THEMED_SENTINEL_URL="$SERVED_URL" VSOR_E2E_THEMED_SENTINEL_DIR="$scratch/$b" ;;
+    site)           export VSOR_E2E_SITE_URL="$SERVED_URL"          VSOR_E2E_SITE_DIR="$scratch/$b" ;;
+    site-sentinel)  export VSOR_E2E_SITE_SENTINEL_URL="$SERVED_URL" VSOR_E2E_SITE_SENTINEL_DIR="$scratch/$b" ;;
   esac
 done
 

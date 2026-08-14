@@ -10,11 +10,11 @@
  * component mode:
  *
  *   remarkTabs({
- *     directive: "tool-tabs",
- *     component: "MyToolTabs",
+ *     directive: "editor-tabs",
+ *     component: "MyEditorTabs",
  *     tabs: {
- *       "tool-a": { tag: "ToolAContent" },
- *       "tool-b": { tag: "ToolBContent" },
+ *       "editor-a": { tag: "EditorAContent" },
+ *       "editor-b": { tag: "EditorBContent" },
  *     },
  *   })
  */

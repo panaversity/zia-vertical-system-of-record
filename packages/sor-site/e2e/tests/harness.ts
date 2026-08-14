@@ -22,7 +22,7 @@ export interface SentinelColor {
 }
 
 export interface Manifest {
-  variant: "stock" | "themed";
+  variant: "site";
   sentinel: boolean;
   instanceName: string;
   year: string;
@@ -73,11 +73,32 @@ export function envFor(projectName: string): VariantEnv {
     variant: projectName,
     url: need(`VSOR_E2E_${V}_URL`),
     sentinelUrl: need(`VSOR_E2E_${V}_SENTINEL_URL`),
-    buildDir: path.join(dir, "site", "build"),
-    sentinelBuildDir: path.join(sentinelDir, "site", "build"),
+    // The materialized shape: the shell IS the siteDir, so the build lands at
+    // <out>/site-runtime/build. (It was <out>/site/build while the scaffold's
+    // own site/ was the siteDir — see scripts/assemble.mjs.)
+    buildDir: path.join(dir, "site-runtime", "build"),
+    sentinelBuildDir: path.join(sentinelDir, "site-runtime", "build"),
     manifest: readManifest(dir),
     sentinelManifest: readManifest(sentinelDir),
   };
+}
+
+/**
+ * A URL that loads in a named color mode, deterministically.
+ *
+ * found live 2026-08-14 (the fork, docusaurus 3.10.2): the suite used to force a
+ * mode by writing `localStorage.theme` and reloading. The shell enables
+ * `future.v4`, which NAMESPACES Docusaurus's storage keys — the built bootstrap
+ * script reads `theme-aae`, a suffix derived from the site url/baseUrl — so the
+ * write landed on a key nothing reads and every dark assertion measured a light
+ * page. The same bootstrap reads `?docusaurus-theme` FIRST, before storage and
+ * before prefers-color-scheme, and it runs before first paint. That is the seam
+ * to use: no key to guess, no reload, no hydration race.
+ */
+export function inMode(url: string, mode: "light" | "dark"): string {
+  const u = new URL(url);
+  u.searchParams.set("docusaurus-theme", mode);
+  return u.toString();
 }
 
 /** Recursively list files under dir whose name passes the filter. */

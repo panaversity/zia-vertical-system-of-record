@@ -8,9 +8,10 @@ is true, and that is on purpose.
 | :--- | :--- | :--- |
 | `knowledge/` | the corpus — governed markdown, the single source of truth for every surface | you and the owner, carefully |
 | `instance.md` | frontmatter is machine config; the body is the prompt the MCP surface serves | the owner, rarely |
-| `site/docusaurus.config.ts` | title, navbar, footer, which themes are on — all live seams | freely |
-| `site/src/css/custom.css` | the design tokens, including `--ifm-color-primary` | freely |
+| `site/docusaurus.config.ts` | title, navbar, footer, prism — merged over the runtime's own config, your value winning | freely |
+| `site/src/css/custom.css` | design tokens, loaded after the runtime's — anything you redeclare wins | freely |
 | `site/src/pages/index.tsx` | the homepage | freely |
+| `site/sidebars.ts` | the sidebar, generated from the `knowledge/` tree | freely |
 | `.agents/skills/` | how to do a job here — loaded by reading the `SKILL.md` | when a job repeats |
 | `.claude/rules/` | how to work in this project at all | rarely, and with the owner |
 | `.env` | `DATABASE_URL` and the embedding key — git-ignored | the owner only |
@@ -20,9 +21,13 @@ is true, and that is on purpose.
 
 - **`knowledge/` is the input to everything.** The website and the MCP surface are both compiled
   from it. There is no second place to fix a fact, and no surface-specific copy of the content.
-- **`site/` is a real Docusaurus site**, not a vsor invention. `docusaurus.config.ts`, the
-  `--ifm-*` tokens and `docusaurus swizzle` work the way they do everywhere else — which is the
-  point: nothing here needs a framework-specific manual.
+- **`site/` is Docusaurus, not a vsor invention.** `docusaurus.config.ts` takes the keys the
+  Docusaurus documentation describes, `sidebars.ts` is the documented sidebar format, and pages
+  are ordinary React — which is the point: nothing here needs a framework-specific manual. What
+  vsor adds is the merge: `vsor dev` and `vsor build` install a complete Docusaurus site under
+  `.vsor/` and load your files over it, so you write the part that is yours and inherit the rest.
+  Six config keys stay the runtime's (`presets`, `plugins`, `themes`, `markdown`, `future`,
+  `staticDirectories`); setting one here prints a warning and is ignored.
 - **The machinery is installed, not copied.** The site runtime lands under `.vsor/` on the first
   `vsor dev` or `vsor build`, and is replaced on every later invoke — so an edit made there is
   gone by the next command. Everything the project owns is already in the tree above.

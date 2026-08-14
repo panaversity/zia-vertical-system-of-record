@@ -1,0 +1,13 @@
+{
+  // Editor-experience only; the build transpiles through Docusaurus.
+  "extends": "@docusaurus/tsconfig",
+  "compilerOptions": {
+    "baseUrl": ".",
+    "jsx": "react-jsx",
+    "moduleResolution": "bundler",
+    "paths": {
+      "@/*": ["src/*"]
+    }
+  },
+  "exclude": [".docusaurus", "build"]
+}

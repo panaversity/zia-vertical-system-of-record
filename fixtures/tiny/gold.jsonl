@@ -1,10 +1,10 @@
-{"q": "What is nihari and when is it traditionally eaten?", "expect": "nihari", "source": "curated", "kind": "factual"}
-{"q": "What makes Sindhi biryani different from other styles?", "expect": "biryani", "source": "curated", "kind": "factual"}
-{"q": "Does karahi have onions in it?", "expect": "karahi", "source": "curated", "kind": "factual"}
-{"q": "What is the resha test for haleem?", "expect": "haleem", "source": "curated", "kind": "factual"}
-{"q": "Which city is chapli kabab from?", "expect": "chapli-kabab", "source": "curated", "kind": "factual"}
-{"q": "How is seekh kabab cooked?", "expect": "seekh-kabab", "source": "curated", "kind": "factual"}
-{"q": "Why is paya gravy so sticky?", "expect": "paya", "source": "curated", "kind": "factual"}
-{"q": "What comes with halwa puri?", "expect": "halwa-puri", "source": "curated", "kind": "factual"}
-{"q": "What is namkeen lassi?", "expect": "lassi", "source": "curated", "kind": "factual"}
-{"q": "Where did the samosa originally come from?", "expect": "samosa", "source": "curated", "kind": "factual"}
+{"q": "What is a system of record?", "expect": "system-of-record", "source": "curated", "kind": "factual"}
+{"q": "What are the two surfaces a governed corpus is compiled into?", "expect": "one-source-two-surfaces", "source": "curated", "kind": "factual"}
+{"q": "Why must an abstention floor be measured per corpus rather than inherited?", "expect": "vertical-sor", "source": "curated", "kind": "factual"}
+{"q": "What does provenance prove, and what does it not prove?", "expect": "system-of-record", "source": "curated", "kind": "factual"}
+{"q": "What does a project supply, and what stays installed machinery?", "expect": "vertical-sor", "source": "curated", "kind": "factual"}
+{"q": "Why is generic AI insufficient without a governed source?", "expect": "one-source-two-surfaces", "source": "curated", "kind": "factual"}
+{"q": "What happens at governance level 0?", "expect": "system-of-record", "source": "curated", "kind": "factual"}
+{"q": "What makes a vertical system of record repeatable across professions?", "expect": "vertical-sor", "source": "curated", "kind": "factual"}
+{"q": "When two versions of a document disagree, which one wins?", "expect": "system-of-record", "source": "curated", "kind": "factual"}
+{"q": "Why does adding a surface not require editing the corpus?", "expect": "one-source-two-surfaces", "source": "curated", "kind": "factual"}

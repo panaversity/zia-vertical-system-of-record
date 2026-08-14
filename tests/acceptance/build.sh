@@ -61,26 +61,55 @@ VSOR() { uvx --from "$WHEEL" vsor "$@"; }
 
 # --- wheel-content row (re-asserted; also unit-tested in packages/vsor) -------------
 
-python3 - "$WHEEL" <<'PY' || fail "wheel content: _site_runtime artifacts missing or mdx tgz lacks lib/theme/MDXComponents.js"
-import io, sys, tarfile, zipfile
+python3 - "$WHEEL" <<'PY' || fail "wheel content: _site_runtime artifacts missing, or the app tgz is not a whole site"
+import io, json, sys, tarfile, zipfile
 
 wheel = zipfile.ZipFile(sys.argv[1])
 names = set(wheel.namelist())
-needed = [
-    "vsor/_site_runtime/sor-site-mdx.tgz",
-    "vsor/_site_runtime/sor-site-theme.tgz",
-    "vsor/_site_runtime/package.json",
-    "vsor/_site_runtime/package-lock.json",
+root = "vsor/_site_runtime/"
+
+# The expected set is derived, never restated: the shell manifest's own file: deps say
+# which library tarballs exist, and the app tarball is the shell itself.
+shell = json.loads(wheel.read(root + "package.json"))
+libraries = [
+    spec[len("file:./"):]
+    for spec in shell["dependencies"].values()
+    if isinstance(spec, str) and spec.startswith("file:./") and spec.endswith(".tgz")
 ]
+needed = [root + n for n in ("sor-site-app.tgz", "package.json", "package-lock.json", *libraries)]
 missing = [n for n in needed if n not in names]
 if missing:
     print(f"missing from wheel: {missing}", file=sys.stderr)
     sys.exit(1)
-with tarfile.open(fileobj=io.BytesIO(wheel.read(needed[0])), mode="r:gz") as tgz:
-    members = tgz.getnames()
-# npm pack prefixes every member with "package/".
-if "package/lib/theme/MDXComponents.js" not in members:
-    print("mdx tgz does not contain lib/theme/MDXComponents.js (prebuilt lib/ missing)", file=sys.stderr)
+
+with tarfile.open(fileobj=io.BytesIO(wheel.read(root + "sor-site-app.tgz")), mode="r:gz") as tgz:
+    members = set(tgz.getnames())
+# npm pack prefixes every member with "package/". The app is unpacked over the shell and
+# BECOMES the siteDir, so the config and the MDX vocabulary have to be inside it.
+for required in ("package/docusaurus.config.ts", "package/src/theme/MDXComponents.tsx"):
+    if required not in members:
+        print(f"app tgz does not contain {required}", file=sys.stderr)
+        sys.exit(1)
+
+# A1's denylist, over the lockfile a USER installs. The workspace lockfile is
+# scanned in the python gate (tests/test_surface_contract.py); this one is a
+# `make wheel` product, regenerated against the registry and never committed, so
+# it can only be scanned where the wheel is guaranteed to exist — here. Added
+# 2026-08-14: a transitive product dep arriving in the shipped lock was
+# unenforced in either direction.
+DENYLIST = (
+    "better-auth", "@openai/chatkit", "monaco-editor", "@monaco-editor/react",
+    "pyodide", "posthog-js", "@vercel/analytics", "ts-fsrs", "recharts",
+    "framer-motion", "cmdk", "next-themes", "sonner",
+)
+lock = json.loads(wheel.read(root + "package-lock.json"))
+hits = sorted(
+    {name for name in DENYLIST
+     for key in lock.get("packages", {})
+     if key == f"node_modules/{name}" or key.endswith(f"/node_modules/{name}")}
+)
+if hits:
+    print(f"denylisted packages in the SHIPPED lockfile: {hits}", file=sys.stderr)
     sys.exit(1)
 PY
 
@@ -180,25 +209,26 @@ curl -fsS "$SERVED_URL/" | grep -q 'sitedemo' \
 curl -fsS "$SERVED_URL/docs/example/" | grep -q 'Start here' \
   || fail "served example doc does not render its title"
 
-# --- the design system reached the INSTALLED layout ---------------------------------
+# --- the design system reached the MATERIALIZED layout ------------------------------
 #
-# The only tier that can prove this. `make surface` builds its fixture inside the
-# packages/sor-site npm workspace, where @vsor/sor-site-theme is a SYMLINK — a
-# layout no user ever has, and the one where the two known traps do not bite:
-# Tailwind v4 does not scan node_modules (so a broken `@source` in the theme's
-# css entry emits nothing), and Docusaurus's own JS rule skips node_modules (so
-# a broken configureWebpack cannot compile the theme's .tsx at all). Here the
-# theme is really installed under .vsor/site-runtime/node_modules/, so a
-# regression in either shows up as an unstyled site — exactly the failure the
-# owner rejected — while gate, build-acceptance and surface all stayed green.
-# Two markers, both absent from a stock build: Tailwind's own custom properties,
-# and the 997px responsive variant the navbar compiles for its mobile switch.
+# The only tier that can prove this. The shell is the forked app, unpacked under
+# `.vsor/site-runtime/` inside the project's OWN git repository — where `.vsor/`
+# is gitignored, and Tailwind v4's automatic source detection honours gitignore.
+# A design system that compiles in the packages/sor-site workspace can therefore
+# emit nothing at all once materialized, and the site arrives unstyled — exactly
+# the failure the owner rejected — while gate and surface both stay green.
+# Two markers, both absent from a stock Docusaurus build: Tailwind's own custom
+# properties, and the arbitrary `min-[997px]` variant, which exists in exactly
+# one place — the shell's src/theme/Navbar/index.tsx. The second is the real
+# scan proof. It matches the compiled UTILITY, not the media query around it:
+# lightningcss (the faster minimizer the shell enables) rewrites
+# `min-width:997px` into `width>=997px`, so the old query pattern proved nothing.
 STYLES="$(cat build/assets/css/styles.*.css 2>/dev/null)"
 test -n "$STYLES" || fail "no built stylesheet at build/assets/css/styles.*.css"
 grep -q -- '--tw-' <<<"$STYLES" \
-  || fail "the built CSS carries no --tw- properties: Tailwind emitted nothing. Tailwind v4 does not scan node_modules — check the @source globs in the theme's src/css/tailwind.css against the INSTALLED layout"
-grep -q 'min-width:997px' <<<"$STYLES" \
-  || fail "the built CSS carries no 997px media query: the navbar's min-[997px] variants did not compile, so the theme's own source was not scanned (same @source trap)"
+  || fail "the built CSS carries no --tw- properties: Tailwind emitted nothing at all"
+grep -qF 'min-\[997px\]\:flex' <<<"$STYLES" \
+  || fail "the built CSS carries no min-[997px] utility: Tailwind never scanned the shell's own src/, so the site is unstyled. Check the @source globs in the shell's src/css/custom.css against the MATERIALIZED layout — .vsor/ is gitignored, and automatic detection skips gitignored paths"
 
 # --- second build with package networking disabled: reuse, identical build_id -------
 # No install may run, so a dead registry + offline npm + offline uv turn any

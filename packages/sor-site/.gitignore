@@ -7,3 +7,9 @@ e2e/.scratch/
 e2e/test-results/
 e2e/playwright-report/
 e2e/blob-report/
+# the forked runtime shell's own build output
+app/build/
+app/.docusaurus/
+# a corpus placed beside app/ for a local build (the sibling ../knowledge the
+# shell reads). Real corpora live in the consuming project, never here.
+knowledge/

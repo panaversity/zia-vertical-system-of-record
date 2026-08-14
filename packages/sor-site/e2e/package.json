@@ -3,18 +3,9 @@
   "version": "0.0.0",
   "private": true,
   "license": "Apache-2.0",
-  "description": "The browser tier of specs/sor-site/surface/spec.md (B5-B14). Assembles fixture sites from the vsor init scaffold + fixtures/tiny, builds them stock and themed, serves them statically, and runs the Playwright acceptance. Driver: run.sh (invoked by `make surface`). Deliberately has no `test` script: the suite only makes sense against the servers run.sh starts.",
+  "description": "The browser tier of specs/sor-site/surface/spec.md (B5-B15). Assembles the materialized shape — the forked shell (packages/sor-site/app) as siteDir, the vsor init scaffold as its site/, fixtures/tiny as its knowledge/ — builds it normally and with B12 sentinels, serves both statically, and runs the Playwright acceptance. Driver: run.sh (invoked by `make surface`). It declares no runtime dependency of its own: everything the assembled site imports is declared by ../app and hoisted into the workspace's node_modules, so this file cannot drift from what the shell actually needs. Deliberately has no `test` script: the suite only makes sense against the servers run.sh starts.",
   "engines": {
     "node": ">=20"
-  },
-  "dependencies": {
-    "@docusaurus/core": "^3.10.2",
-    "@docusaurus/preset-classic": "^3.10.2",
-    "@easyops-cn/docusaurus-search-local": "^0.55.3",
-    "@vsor/sor-site-mdx": "*",
-    "@vsor/sor-site-theme": "*",
-    "react": "^19.2.8",
-    "react-dom": "^19.2.8"
   },
   "devDependencies": {
     "@playwright/test": "1.62.1",

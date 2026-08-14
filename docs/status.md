@@ -207,6 +207,30 @@ and that fenced code clears 4.5:1 in light mode — the two assertions that woul
 spending limit needs to be increased" — jobs never start. Owner action; local `make gate` and
 `make surface` are the same checks and are green.
 
+**0.1.0 tagged (2026-08-14) — the site half ships.** `vsor init` → markdown → `vsor dev` →
+`vsor build` → a deployable site, with `serve` still honestly exiting 2. See `CHANGELOG.md`.
+Not published: `vsor` is unclaimed on PyPI, so the release is a tag and a wheel.
+
+**The website surface is now a FORK of learn-app, not an extraction (2026-08-14, owner decision).**
+Shown the extracted build the owner said: "why not full copy… we lose all value like this." They
+were right — upstream's styling is 5,733 lines and the extraction had carried 1,836; much of that
+68% was polish, not product. `packages/sor-site/app/` is the forked app (1,498 files copied → 68
+kept, 82.5k → 12.2k lines of src, 57 → 30 runtime deps), and it is the shell `vsor build`
+materializes. Fidelity is measured, not asserted: paragraph rhythm, search field, mobile type scale
+and fonts now match the AF build's computed values. The `mdx` and `theme` packages it supersedes
+are still in the tree and are the lead's consolidation call.
+
+**Found live on real content, all fixed and guarded:** Docusaurus 3 requires `:::tip[Title]` and
+silently renders the v2 form `:::tip Title` as literal text — the shell now migrates it in
+`markdown.preprocessor`, since importing existing markdown is the promise (upstream's own corpus
+has 429 of them); the scaffold shipped no `sidebars.ts`, so an imported corpus referencing
+`tutorialSidebar` failed to build; Tailwind's preflight was un-styling the primitives the design
+system exists to dress.
+
+**Fixtures retired the dish corpus** for three pages on this framework's own subject — and they are
+deliberately free of the words the brand and exclusion scans reserve, because those scans cannot
+tell corpus prose from machinery. Demos use real content; fixtures stay boring on purpose.
+
 **The AF design system landed whole (2026-08-14).** Tailwind v4 + shadcn/ui + OKLCH tokens +
 lucide crossed the seam intact rather than being re-implemented — the owner rejected the first
 stripped build as "simple Docusaurus, not specialized", and the root cause was pass 1 substituting

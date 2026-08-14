@@ -5,11 +5,13 @@
 Ordering is part of the contract: node precondition → instance validation → runtime
 materialization → build. Validation failure costs seconds, never a ~2-minute npm install.
 
-Docusaurus runs with `siteDir = .vsor/site-runtime/site` — a copy-on-invoke of the
-authored `site/` (found live: Docusaurus realpaths siteDir, so the spec's symlink
-experiment failed and its recorded fallback applies — see site_runtime._copy_site).
-Preset resolution walks up into the shell's node_modules; `knowledge/` stays a symlink,
-so the authored corpus is read live and an edit is what the next build sees.
+Docusaurus runs with `siteDir = .vsor/site-runtime` — the shell itself, because the shell
+IS the forked app (see site_runtime). The authored `site/` and `knowledge/` are
+copy-on-invoke mirrors inside it (found live: Docusaurus realpaths siteDir and webpack
+realpaths md resources, so the spec's symlink experiment failed and its recorded fallback
+applies — see site_runtime.copy_authored), and `site_runtime.runtime_env` points the app's
+own seams at them. The project's `site/docusaurus.config.ts` is loaded by the shell's
+config and merged over it, so an edit there is what the next build renders.
 """
 
 import hashlib
@@ -83,12 +85,14 @@ def _recover_interrupted_swap(project_root: Path) -> None:
 
 
 def _run_docusaurus_build(runtime_dir: Path, staging: Path) -> None:
-    """Build via the shell's docusaurus binary, siteDir = the shell's copied `site/`
-    (refreshed this invoke); output streams unmodified."""
+    """Build via the shell's docusaurus binary, siteDir = the shell itself (the forked
+    app, with this invoke's fresh copies of the authored trees inside it); output
+    streams unmodified."""
     binary = runtime_dir / "node_modules" / ".bin" / "docusaurus"
     proc = subprocess.run(
-        [str(binary), "build", "site", "--out-dir", str(staging)],
+        [str(binary), "build", ".", "--out-dir", str(staging)],
         cwd=runtime_dir,
+        env=site_runtime.runtime_env(),
         stdin=subprocess.DEVNULL,
         check=False,
     )

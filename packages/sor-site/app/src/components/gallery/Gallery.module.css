@@ -1,0 +1,379 @@
+/*
+ * Gallery styles — reworked from upstream Gallery.module.css (d764f334, 487
+ * lines, 26 raw color literals) per the surface spec's token discipline:
+ * zero raw color literals; every color consumes a --ifm-* token. Class names
+ * are upstream's. The expand animation replaces the stripped framer-motion
+ * height transition.
+ */
+
+.galleryRoot {
+  margin: 1.5rem 0;
+  border: 1px solid var(--ifm-color-emphasis-300);
+  border-radius: var(--ifm-global-radius);
+  background: var(--ifm-background-surface-color);
+  overflow: hidden;
+}
+
+.galleryTrigger {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  width: 100%;
+  padding: 0.75rem 1rem;
+  border: none;
+  background: none;
+  color: var(--ifm-font-color-base);
+  font-size: 0.95rem;
+  text-align: left;
+  cursor: pointer;
+}
+
+.galleryTrigger:hover {
+  background: var(--ifm-hover-overlay);
+}
+
+.galleryTriggerIcon {
+  font-size: 0.7rem;
+  color: var(--ifm-color-emphasis-600);
+}
+
+.galleryTriggerText {
+  flex: 1;
+  font-weight: 600;
+}
+
+.galleryCount {
+  font-size: 0.8rem;
+  color: var(--ifm-color-emphasis-600);
+  white-space: nowrap;
+}
+
+.galleryContent {
+  padding: 0 1rem 1rem;
+  animation: galleryExpand 0.25s ease;
+}
+
+@keyframes galleryExpand {
+  from {
+    opacity: 0;
+    transform: translateY(-0.5rem);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .galleryContent {
+    animation: none;
+  }
+}
+
+/* ---------- view tabs ---------- */
+
+.viewTabs {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+}
+
+.viewTab {
+  padding: 0.35rem 0.9rem;
+  border: 1px solid var(--ifm-color-emphasis-300);
+  border-radius: 999px;
+  background: var(--ifm-background-color);
+  color: var(--ifm-color-emphasis-700);
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
+.viewTabActive {
+  border-color: var(--ifm-color-primary);
+  background: var(--ifm-color-primary-contrast-background);
+  color: var(--ifm-color-primary-darkest);
+  font-weight: 600;
+}
+
+/* ---------- conversation cards ---------- */
+
+.cardList {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.convCard {
+  border: 1px solid var(--ifm-color-emphasis-300);
+  border-radius: var(--ifm-global-radius);
+  background: var(--ifm-background-color);
+  overflow: hidden;
+}
+
+.convCard_strong {
+  border-left: 4px solid var(--ifm-color-success);
+}
+
+.convCard_weak {
+  border-left: 4px solid var(--ifm-color-danger);
+}
+
+.convCard_neutral {
+  border-left: 4px solid var(--ifm-color-emphasis-400);
+}
+
+.convCardHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  width: 100%;
+  padding: 0.6rem 0.9rem;
+  border: none;
+  background: none;
+  cursor: pointer;
+}
+
+.convCardHeader:hover {
+  background: var(--ifm-hover-overlay);
+}
+
+.convCardBadges {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.qualityBadge {
+  font-size: 0.8rem;
+  font-weight: 600;
+  padding: 0.15rem 0.6rem;
+  border-radius: 999px;
+}
+
+.badge_strong {
+  background: var(--ifm-color-success-contrast-background);
+  color: var(--ifm-color-success-darkest);
+}
+
+.badge_weak {
+  background: var(--ifm-color-danger-contrast-background);
+  color: var(--ifm-color-danger-darkest);
+}
+
+.badge_neutral {
+  background: var(--ifm-color-emphasis-200);
+  color: var(--ifm-color-emphasis-700);
+}
+
+.providerBadge {
+  font-size: 0.75rem;
+  padding: 0.15rem 0.5rem;
+  border: 1px solid var(--ifm-color-emphasis-300);
+  border-radius: 999px;
+  color: var(--ifm-color-emphasis-600);
+}
+
+.convCardChevron {
+  font-size: 0.7rem;
+  color: var(--ifm-color-emphasis-600);
+}
+
+.convCardBody {
+  padding: 0.75rem 0.9rem 1rem;
+  border-top: 1px solid var(--ifm-color-emphasis-200);
+}
+
+.convSection {
+  margin-bottom: 0.9rem;
+}
+
+.convSectionLabel {
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--ifm-color-emphasis-600);
+  margin-bottom: 0.3rem;
+}
+
+.convSectionContent {
+  font-size: 0.9rem;
+  line-height: 1.55;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.studentHighlight {
+  display: inline-block;
+  position: relative;
+  padding: 0.1rem 0.3rem;
+  border-radius: 4px;
+  background: var(--ifm-color-primary-contrast-background);
+}
+
+.studentHighlightLabel {
+  display: block;
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: var(--ifm-color-primary-darkest);
+}
+
+.commentary {
+  margin-top: 0.75rem;
+  padding: 0.6rem 0.9rem;
+  border-left: 3px solid var(--ifm-color-primary);
+  border-radius: 0 var(--ifm-global-radius) var(--ifm-global-radius) 0;
+  background: var(--ifm-color-primary-contrast-background);
+}
+
+.commentaryLabel {
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--ifm-color-primary-darkest);
+  margin-bottom: 0.25rem;
+}
+
+.commentaryText {
+  margin: 0;
+  font-size: 0.9rem;
+}
+
+/* ---------- score visualization ---------- */
+
+.scoreViz {
+  margin-top: 0.75rem;
+  padding: 0.75rem 0.9rem;
+  border: 1px solid var(--ifm-color-emphasis-200);
+  border-radius: var(--ifm-global-radius);
+  background: var(--ifm-background-surface-color);
+}
+
+.scoreVizCompact {
+  padding: 0.5rem 0.6rem;
+}
+
+.scoreVizTitle {
+  font-size: 0.8rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--ifm-color-emphasis-600);
+  margin-bottom: 0.5rem;
+}
+
+.scoreVizList {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.scoreVizRow {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.scoreVizDim {
+  flex: 0 0 10rem;
+  font-size: 0.8rem;
+  color: var(--ifm-color-emphasis-700);
+}
+
+.scoreVizCompact .scoreVizDim {
+  flex-basis: 8rem;
+}
+
+.scoreVizBar {
+  flex: 1;
+  height: 8px;
+  border-radius: 4px;
+  background: var(--ifm-color-emphasis-200);
+  overflow: hidden;
+}
+
+.scoreVizBarFill {
+  height: 100%;
+  border-radius: 4px;
+}
+
+.scoreVizVal {
+  flex-shrink: 0;
+  font-size: 0.8rem;
+  color: var(--ifm-color-emphasis-600);
+  min-width: 2.6rem;
+  text-align: right;
+}
+
+.scoreVizAvg {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 0.5rem;
+  padding-top: 0.5rem;
+  border-top: 1px solid var(--ifm-color-emphasis-200);
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.scoreVizAvgVal {
+  color: var(--ifm-color-primary);
+}
+
+/* ---------- comparison view ---------- */
+
+.comparison {
+  margin-top: 0.25rem;
+}
+
+.comparisonHeader {
+  font-size: 0.9rem;
+  font-weight: 700;
+  margin-bottom: 0.6rem;
+}
+
+.comparisonGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem;
+}
+
+@media (max-width: 768px) {
+  .comparisonGrid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.comparisonCol {
+  border: 1px solid var(--ifm-color-emphasis-300);
+  border-radius: var(--ifm-global-radius);
+  background: var(--ifm-background-color);
+  padding: 0.75rem;
+}
+
+.comparisonColLabel {
+  display: inline-block;
+  font-size: 0.8rem;
+  font-weight: 700;
+  padding: 0.15rem 0.6rem;
+  border-radius: 999px;
+  margin-bottom: 0.5rem;
+}
+
+.comparisonPrompt {
+  font-size: 0.85rem;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  margin-bottom: 0.5rem;
+}
+
+.comparisonNote {
+  margin-top: 0.5rem;
+  font-size: 0.8rem;
+  color: var(--ifm-color-emphasis-700);
+  border-top: 1px solid var(--ifm-color-emphasis-200);
+  padding-top: 0.5rem;
+}

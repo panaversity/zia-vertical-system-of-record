@@ -1,0 +1,76 @@
+{
+  "name": "@vsor/sor-site-app",
+  "version": "0.1.0",
+  "private": true,
+  "license": "Apache-2.0",
+  "description": "The runtime site shell: ag2 apps/learn-app forked at d764f334 with the product layer deleted per specs/sor-site/surface/spec.md. The corpus is a sibling ../knowledge directory.",
+  "scripts": {
+    "start": "docusaurus start",
+    "build": "docusaurus build",
+    "serve": "docusaurus serve",
+    "swizzle": "docusaurus swizzle",
+    "clear": "docusaurus clear",
+    "typecheck": "tsc"
+  },
+  "dependencies": {
+    "@docusaurus/core": "^3.10.2",
+    "@docusaurus/plugin-content-docs": "^3.10.2",
+    "@docusaurus/preset-classic": "^3.10.2",
+    "@docusaurus/theme-common": "^3.10.2",
+    "@docusaurus/theme-mermaid": "^3.10.2",
+    "@easyops-cn/docusaurus-search-local": "^0.55.3",
+    "@mdx-js/react": "^3.0.0",
+    "@radix-ui/react-dialog": "^1.1.15",
+    "@radix-ui/react-slot": "^1.2.4",
+    "@vsor/lib-chapter-manifest-plugin": "0.1.0",
+    "@vsor/lib-plugin-structured-data": "0.1.0",
+    "@vsor/lib-remark-content-enhancements": "0.1.0",
+    "@vsor/lib-remark-flashcards": "0.1.0",
+    "@vsor/lib-remark-gallery": "0.1.0",
+    "@vsor/lib-remark-normalize-relative-links": "0.1.0",
+    "@vsor/lib-remark-tabs": "0.1.0",
+    "@vsor/lib-summaries-plugin": "0.1.0",
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
+    "lucide-react": "^0.554.0",
+    "lunr": "^2.3.9",
+    "photoswipe": "^5.4.4",
+    "prism-react-renderer": "^2.3.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "react-markdown": "^10.1.0",
+    "tailwind-merge": "^3.4.0",
+    "turndown": "^7.2.2"
+  },
+  "devDependencies": {
+    "@docusaurus/faster": "^3.10.2",
+    "@docusaurus/module-type-aliases": "^3.10.2",
+    "@docusaurus/tsconfig": "^3.10.2",
+    "@docusaurus/types": "^3.10.2",
+    "@tailwindcss/postcss": "^4.1.18",
+    "@types/lunr": "^2.3.7",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "@types/turndown": "^5.0.6",
+    "autoprefixer": "^10.4.21",
+    "postcss": "^8.5.6",
+    "tailwindcss": "^4.0.0",
+    "tailwindcss-animate": "^1.0.7",
+    "typescript": "~5.6.2"
+  },
+  "browserslist": {
+    "production": [
+      ">0.5%",
+      "not dead",
+      "not op_mini all"
+    ],
+    "development": [
+      "last 3 chrome version",
+      "last 3 firefox version",
+      "last 5 safari version"
+    ]
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

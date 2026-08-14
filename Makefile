@@ -49,10 +49,31 @@ gate: lint typecheck test boundary acceptance
 build-acceptance:
 	bash tests/acceptance/build.sh
 
-# The wheel transport (specs/vsor/build): pack the prebuilt mdx/theme packages and
-# stage them + the shell package.json + a freshly generated shell package-lock.json
-# into $(runtime_dir), then `uv build`. MUST precede `uv build` anywhere; the
-# wheel-content test (packages/vsor/tests/test_wheel_contents.py) gates the ordering.
+# The packages `make wheel` packs into the shell. The FIRST is the forked app — the
+# runtime shell itself, unpacked over .vsor/site-runtime rather than installed into
+# node_modules. The rest are the workspace libraries it depends on, shipped as
+# tarballs because the versions they declare (0.1.0) exist on no registry;
+# lib/shared is here even though the app never imports it directly — three of the
+# libraries do, and a nested `@vsor/lib-shared@0.1.0` is satisfied by the hoisted
+# tarball. lib/plugin-og-image is deliberately absent: nothing depends on it, and it
+# would drag satori + sharp into every user's install.
+packed := ./app \
+  ./lib/chapter-manifest-plugin \
+  ./lib/plugin-structured-data \
+  ./lib/remark-content-enhancements \
+  ./lib/remark-flashcards \
+  ./lib/remark-gallery \
+  ./lib/remark-normalize-relative-links \
+  ./lib/remark-tabs \
+  ./lib/shared \
+  ./lib/summaries-plugin
+
+# The wheel transport (specs/vsor/build): pack the forked app and the workspace
+# libraries and stage them + the shell package.json + a freshly generated shell
+# package-lock.json into $(runtime_dir), then `uv build`. MUST precede `uv build`
+# anywhere; the wheel-content test (packages/vsor/tests/test_wheel_contents.py)
+# gates the ordering — it enumerates what to expect from the template's own
+# `file:` deps, so adding a library needs no edit there.
 #
 # found live 2026-08-13 (npm 11.16.0, node 24.18.0): the shell package-lock.json
 # records sha512 integrity for the file: tarballs, so it is regenerated here
@@ -68,11 +89,21 @@ build-acceptance:
 # transitively (5.109.2 today). The shell template pins the same direct-dep set;
 # its one home is packages/vsor/src/vsor/templates/site_runtime/package.json.
 wheel:
-	cd packages/sor-site && npm ci && npm run build
+	cd packages/sor-site && npm ci
+	# mdx/theme are neither shipped nor compiled here any more: the forked app
+	# supersedes both, and as of 2026-08-14 the browser tier builds the fork too,
+	# which was the last consumer of their compiled lib/. They stay in the
+	# workspace because Phase A still points at them (A3 designates
+	# theme/src/css/tokens.css, A4 baselines mdx/src/types.ts) — removing them is
+	# a spec-touching change, not a green-driver one.
 	rm -rf $(runtime_dir)
 	mkdir -p $(runtime_dir)
-	cd packages/sor-site && npm pack ./mdx ./theme --pack-destination "$(CURDIR)/$(runtime_dir)"
-	cd $(runtime_dir) && mv vsor-sor-site-mdx-*.tgz sor-site-mdx.tgz && mv vsor-sor-site-theme-*.tgz sor-site-theme.tgz
+	cd packages/sor-site && npm pack $(packed) --pack-destination "$(CURDIR)/$(runtime_dir)"
+	# npm pack names a tarball <scope>-<name>-<version>.tgz; the shell references
+	# stable names, so strip the scope prefix and the version suffix.
+	cd $(runtime_dir) && for f in vsor-*.tgz; do \
+	  mv "$$f" "$$(printf '%s' "$$f" | sed -E 's/^vsor-(.*)-[0-9]+\.[0-9]+\.[0-9]+\.tgz$$/\1.tgz/')"; \
+	done
 	cp packages/vsor/src/vsor/templates/site_runtime/package.json $(runtime_dir)/package.json
 	cd $(runtime_dir) && npm install --package-lock-only
 	uv build --package vsor

@@ -49,11 +49,15 @@ const siteId = (url) => `${url}/#website`;
 function resolveOrganization(siteConfig, options) {
   const org = options.organization || {};
   const siteUrl = siteConfig.url;
+  // No default logo. The old fallback pointed every site at /img/logo.svg,
+  // which this framework ships on no build — a structured-data node that names
+  // a 404 is worse than one that omits an optional field (found live
+  // 2026-08-14: the only image under build/img/ is favicon.svg).
   const logo = org.logo
     ? org.logo.startsWith("http")
       ? org.logo
       : `${siteUrl}${org.logo}`
-    : `${siteUrl}/img/logo.svg`;
+    : undefined;
   return {
     name: org.name || siteConfig.title,
     url: org.url || siteUrl,
@@ -63,18 +67,19 @@ function resolveOrganization(siteConfig, options) {
 }
 
 // Slim Organization reference: @id (for cross-page merge) plus the minimum
-// fields that keep an individual page valid (name, url, logo).
+// fields that keep an individual page valid (name, url, and logo when one
+// actually exists).
 function organizationRef(url, org) {
-  return {
+  const ref = {
     "@type": "Organization",
     "@id": orgId(url),
     name: org.name,
     url: org.url,
-    logo: {
-      "@type": "ImageObject",
-      url: org.logo,
-    },
   };
+  if (org.logo) {
+    ref.logo = { "@type": "ImageObject", url: org.logo };
+  }
+  return ref;
 }
 
 // Full Organization node (adds sameAs for entity disambiguation). Homepage only.
@@ -120,7 +125,12 @@ module.exports = function structuredDataPlugin(context, options = {}) {
 
       // 2. Article schema for every doc page
       try {
-        await processDocsDirectory(path.join(outDir, "docs"), siteConfig, org);
+        await processDocsDirectory(
+          path.join(outDir, "docs"),
+          siteConfig,
+          org,
+          outDir,
+        );
         docsSuccess = true;
       } catch (error) {
         console.warn("⚠ Failed to inject docs schemas:", error.message);
@@ -184,7 +194,7 @@ async function injectHomepageSchemas(filePath, siteConfig, org) {
   await fs.writeFile(filePath, injectBeforeHead(html, scripts), "utf-8");
 }
 
-async function processDocsDirectory(dirPath, siteConfig, org) {
+async function processDocsDirectory(dirPath, siteConfig, org, outDir) {
   let entries;
   try {
     entries = await fs.readdir(dirPath, { withFileTypes: true });
@@ -197,14 +207,14 @@ async function processDocsDirectory(dirPath, siteConfig, org) {
     const fullPath = path.join(dirPath, entry.name);
 
     if (entry.isDirectory()) {
-      await processDocsDirectory(fullPath, siteConfig, org);
+      await processDocsDirectory(fullPath, siteConfig, org, outDir);
     } else if (entry.isFile() && entry.name.endsWith(".html")) {
-      await injectArticleSchema(fullPath, siteConfig, org);
+      await injectArticleSchema(fullPath, siteConfig, org, outDir);
     }
   }
 }
 
-async function injectArticleSchema(filePath, siteConfig, org) {
+async function injectArticleSchema(filePath, siteConfig, org, outDir) {
   try {
     const html = await fs.readFile(filePath, "utf-8");
 
@@ -220,7 +230,7 @@ async function injectArticleSchema(filePath, siteConfig, org) {
       "@type": "Article",
       headline: cleanHeadline(rawTitle, siteTitle),
       description,
-      image: resolveArticleImage(canonical, url),
+      image: await resolveArticleImage(canonical, url, outDir),
       inLanguage: resolveInLanguage(siteConfig),
       author: organizationRef(url, org),
       publisher: organizationRef(url, org),
@@ -317,18 +327,33 @@ function resolveInLanguage(siteConfig) {
 }
 
 // Compute the per-page OG image URL deterministically, matching the slug rule
-// in @vsor/lib-plugin-og-image; pages without a generated card fall back to
-// the static social card at img/og-image.jpg.
-function resolveArticleImage(canonical, url) {
-  const fallback = `${url}/img/og-image.jpg`;
-  if (!canonical) return fallback;
-  try {
-    const pathname = new URL(canonical).pathname;
-    let slug = pathname.replace(/^\/+/, "").replace(/\/+$/, "");
-    if (slug.startsWith("docs/")) slug = slug.slice("docs/".length);
-    if (!slug) return fallback;
-    return `${url}/img/og/${slug.replace(/\//g, "-")}.png`;
-  } catch {
-    return fallback;
+// in @vsor/lib-plugin-og-image; pages without a generated card fall back to the
+// static social card at img/og-image.jpg.
+//
+// Both candidates are then CHECKED AGAINST THE BUILD before being named. The
+// og-image plugin does not ship in this framework's shell and no static social
+// card is shipped either, so the unconditional fallback used to put a URL that
+// 404s into every doc page's Article node (found live 2026-08-14). `image` is
+// optional on Article; a missing field beats a broken one. Returns undefined
+// when neither file was actually built, which JSON.stringify then drops.
+async function resolveArticleImage(canonical, url, outDir) {
+  const fallbackRel = "img/og-image.jpg";
+  let rel = fallbackRel;
+  if (canonical) {
+    try {
+      const pathname = new URL(canonical).pathname;
+      let slug = pathname.replace(/^\/+/, "").replace(/\/+$/, "");
+      if (slug.startsWith("docs/")) slug = slug.slice("docs/".length);
+      if (slug) rel = `img/og/${slug.replace(/\//g, "-")}.png`;
+    } catch {
+      rel = fallbackRel;
+    }
   }
+  for (const candidate of rel === fallbackRel ? [rel] : [rel, fallbackRel]) {
+    if (!outDir || (await fileExists(path.join(outDir, candidate)))) {
+      if (!outDir) return undefined;
+      return `${url}/${candidate}`;
+    }
+  }
+  return undefined;
 }

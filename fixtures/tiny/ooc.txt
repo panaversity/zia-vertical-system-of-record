@@ -1,8 +1,8 @@
-# Out-of-corpus probes. The first three are SCOPE-ADJACENT — plausible cuisine questions this
-# corpus does not cover — because those are the cases abstention exists for. Far-domain probes
-# alone would flatter the gate.
-What is butter chicken and where is it from?
-How do you make sushi rice?
-What is the recipe for pad thai?
-What is the best laptop in 2026?
-How do I register a limited company?
+# Out-of-corpus probes. The first three are SCOPE-ADJACENT — plausible questions about governed
+# knowledge and AI systems that this corpus does not cover — because those are the cases abstention
+# exists for. Far-domain probes alone would flatter the gate.
+Which embedding model should I use for a legal corpus?
+How do I calibrate a similarity threshold in practice, step by step?
+What does the EU AI Act require of a professional knowledge system?
+What is the boiling point of water at sea level?
+Who won the 1998 football World Cup?

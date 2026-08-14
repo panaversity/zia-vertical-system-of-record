@@ -1,8 +1,10 @@
 /**
  * Static tier over the built output — Acceptance B5, B6, B7 of
  * specs/sor-site/surface/spec.md. Pure filesystem checks (no browser); they run
- * inside the Playwright suite so B14 applies to them too: the identical
- * assertions run against the stock and themed build directories.
+ * inside the Playwright suite so they scan the same build the browser half
+ * drives — and, since the fork, that build is the materialized shell: the forked
+ * app as siteDir with the init scaffold as its site/. B14's second
+ * configuration is gone with the stock/themed axis (see playwright.config.ts).
  *
  * Uses the plain Playwright `test` (not the guarded harness one) because the
  * B8/B11 guard fixture would launch a browser these tests never use.
@@ -162,5 +164,48 @@ test.describe("static tier", () => {
       }
     }
     expect(offenders, "the built site contains none of the excluded product layer").toEqual([]);
+  });
+
+  // Added 2026-08-14. B7 above reads build/assets/js only, and every defect the
+  // fidelity/contract audit of that date found in built output was CSS-resident:
+  // 45 lines of `.tool-tabs` (the kebab form of an excluded component), eight
+  // `:not(.project-card)` guards, and `.doc-actions-item--locked` — the
+  // signed-out lock state of a gate whose code was deliberately removed. All
+  // three reached every user's stylesheet unchallenged because no tier looked
+  // at CSS. Stylesheets carry no corpus prose, so this half needs no carve-outs
+  // and runs the brand pattern too.
+  test("B7 exclusion list: zero matches in built CSS", ({}, testInfo) => {
+    const env = envFor(testInfo.project.name);
+    const cssDir = path.join(env.buildDir, "assets", "css");
+    expect(fs.existsSync(cssDir), `no stylesheets at ${cssDir} — build layout changed?`).toBe(true);
+    const sheets = filesUnder(cssDir, (p) => p.endsWith(".css"));
+    expect(sheets.length).toBeGreaterThan(0);
+    const offenders: string[] = [];
+    for (const file of sheets) {
+      let text = fs.readFileSync(file, "utf8");
+      for (const token of exclusions.carveOuts.tokens) text = text.replaceAll(token, "");
+      for (const { row, re } of bundlePatterns) {
+        const m = text.match(re);
+        if (m)
+          offenders.push(
+            `${path.relative(env.buildDir, file)}: /${re.source}/${re.flags} (${row}) matched ${JSON.stringify(m[0])}`,
+          );
+      }
+    }
+    expect(offenders, "the built stylesheets contain none of the excluded product layer").toEqual([]);
+  });
+
+  // The brand half over built HTML. HTML does carry corpus prose, so this is
+  // scoped to the fixture build, whose corpus Phase A asserts is brand-free —
+  // anything found is therefore theme-introduced, the same argument B8 makes.
+  test("B7 brand scan: no upstream brand strings in built HTML", ({}, testInfo) => {
+    const env = envFor(testInfo.project.name);
+    const brandRe = new RegExp(exclusions.brand.pattern, exclusions.brand.flags ?? "");
+    const offenders: string[] = [];
+    for (const file of filesUnder(env.buildDir, (p) => p.endsWith(".html"))) {
+      const m = fs.readFileSync(file, "utf8").match(brandRe);
+      if (m) offenders.push(`${path.relative(env.buildDir, file)}: matched ${JSON.stringify(m[0])}`);
+    }
+    expect(offenders, "no upstream brand strings in built HTML").toEqual([]);
   });
 });

@@ -1,6 +1,6 @@
 // Tests for the five-into-one tabs collapse. The AST expectations here were
 // verified against the original plugins at ag2 d764f334 by running
-// remark-os-tabs, remark-channel-tabs and remark-tool-tabs on the same input
+// remark-os-tabs, remark-channel-tabs and the component-mode plugin on the same input
 // trees and deep-comparing outputs (see the extraction report, 2026-08-13):
 // with the matching preset/config, output is identical node-for-node.
 
@@ -125,35 +125,35 @@ test("deploy preset carries the deploy vocabulary", () => {
   });
 });
 
-test("component mode reproduces remark-tool-tabs output shape", () => {
+test("component mode reproduces the upstream component-mode output shape", () => {
   const t = tree([
-    container("tool-tabs", [
-      leaf("tool-a"),
+    container("editor-tabs", [
+      leaf("editor-a"),
       para("a content"),
-      leaf("tool-b"),
+      leaf("editor-b"),
       para("b content"),
     ]),
   ]);
 
   remarkTabs({
-    directive: "tool-tabs",
-    component: "MyToolTabs",
+    directive: "editor-tabs",
+    component: "MyEditorTabs",
     tabs: {
-      "tool-a": { tag: "ToolAContent" },
-      "tool-b": { tag: "ToolBContent" },
+      "editor-a": { tag: "EditorAContent" },
+      "editor-b": { tag: "EditorBContent" },
     },
   })(t);
 
   const wrapper = t.children[0];
   assert.equal(wrapper.type, "mdxJsxFlowElement");
-  assert.equal(wrapper.name, "MyToolTabs");
+  assert.equal(wrapper.name, "MyEditorTabs");
   assert.deepEqual(wrapper.attributes, []);
 
   assert.equal(wrapper.children.length, 2);
-  assert.equal(wrapper.children[0].name, "ToolAContent");
+  assert.equal(wrapper.children[0].name, "EditorAContent");
   assert.deepEqual(wrapper.children[0].attributes, []);
   assert.deepEqual(wrapper.children[0].children, [para("a content")]);
-  assert.equal(wrapper.children[1].name, "ToolBContent");
+  assert.equal(wrapper.children[1].name, "EditorBContent");
 });
 
 test("content before the first marker is dropped (upstream quirk kept)", () => {

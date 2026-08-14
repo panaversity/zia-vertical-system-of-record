@@ -1,33 +1,57 @@
 """The site-runtime shell — materialization and staleness (specs/vsor/build).
 
-Both site verbs materialize `.vsor/site-runtime/`: the two prebuilt npm-pack tarballs and
-the shell package.json + package-lock.json copied out of the wheel's `vsor/_site_runtime/`
-data, plus copy-on-invoke mirrors of the authored `site/` and `knowledge/` (see
-`copy_authored` — the spec's recorded fallback, taken after the symlink experiment
-failed live twice: Docusaurus realpaths siteDir, webpack realpaths md resources). `npm ci`
-installs the shell; `.materialized.json` is written only AFTER a successful install, and
-each run reuses the shell iff the stamp matches the freshly shipped bytes — that is what
-keeps an upgraded vsor from silently building with old JS. The shell is scratch: deleting
-`.vsor/` costs a re-install, never work.
+**The shell IS the site.** `sor-site-app.tgz` — the forked Docusaurus app shipped as wheel
+data — is unpacked over `.vsor/site-runtime/`, so that directory is the siteDir Docusaurus
+builds: its `docusaurus.config.ts`, its `src/`, its `static/`. Beside it land the workspace
+library tarballs it depends on, the shell `package.json` (which replaces the app's own — it
+is the one home of the exact versions) and the shell `package-lock.json`; `npm ci` installs
+them into `.vsor/site-runtime/node_modules/`. Then `copy_authored` mirrors the project's
+`site/` and `knowledge/` INTO the shell, and the two verbs point the app's own env seams at
+those copies (`runtime_env`) — the app reads `./site` and `./knowledge` instead of the
+sibling directories it uses when it is developed in its own workspace.
+
+The copies are the spec's recorded fallback, taken after the symlink experiment failed live
+twice (Docusaurus realpaths siteDir; webpack realpaths md resources) — see `copy_authored`.
+
+`.materialized.json` is written only AFTER a successful install, and each run reuses the
+shell iff the stamp matches the freshly shipped bytes — that is what keeps an upgraded vsor
+from silently building with old JS. The stamp hashes the app tarball as well as the
+manifest and the lockfile: the app is unpacked, not installed, so a shell rebuilt from a
+changed fork with an unchanged dependency set would otherwise be reused as current. The
+library tarballs need no hash of their own — their sha512 is recorded in the lockfile, so
+changing one changes `lock_sha256`.
+
+The shell is scratch: deleting `.vsor/` costs a re-install, never work.
 
 The command layer reaches `probe_node_version` and `ensure_runtime` as module attributes —
 the unit tier's monkeypatch seam; keep them that way.
 """
 
 import hashlib
+import io
 import json
 import os
 import shutil
 import subprocess
+import tarfile
+from collections.abc import Mapping
 from importlib import resources
 from pathlib import Path
 
 from vsor.errors import CommandError
 
-_RUNTIME_FILES = ("sor-site-mdx.tgz", "sor-site-theme.tgz", "package.json", "package-lock.json")
+# The app tarball is unpacked over the shell; the other two are written as files.
+APP_TARBALL = "sor-site-app.tgz"
+_SHELL_MANIFESTS = ("package.json", "package-lock.json")
 _NODE_FLOOR = 20
 
 _INSTALL_NOTICE = "installing site runtime — one time, ~1–2 minutes"
+
+# Where the shell finds the project's two authored trees. `copy_authored` puts them
+# inside the shell (the spec's layout); the app defaults to siblings, because that is
+# what it has when it is developed in its own workspace — so the verbs say which.
+_KNOWLEDGE_ENV = "VSOR_KNOWLEDGE_DIR"
+_SITE_ENV = "VSOR_SITE_DIR"
 
 
 def probe_node_version() -> str | None:
@@ -92,20 +116,47 @@ def runtime_file(name: str) -> bytes:
     return resources.files("vsor").joinpath("_site_runtime", name).read_bytes()
 
 
-def write_stamp(runtime_dir: Path, *, vsor_version: str, package_json: bytes, lock: bytes) -> None:
-    """Write `.materialized.json` — only ever called AFTER a successful `npm ci`
-    (an interrupted install never writes it)."""
-    stamp = {
+def library_tarballs(package_json: bytes) -> tuple[str, ...]:
+    """The tarball filenames the shell manifest names as `file:./…tgz` dependencies.
+
+    The manifest is the single source of truth for which libraries ship, so adding one
+    is a one-line edit there plus a line in `make wheel`'s `packed` list — never a code
+    change here, and never a hatchling artifacts entry (that side is a glob, gated by
+    the wheel-content test which reads this same list)."""
+    prefix, suffix = "file:./", ".tgz"
+    data = json.loads(package_json)
+    return tuple(
+        sorted(
+            spec[len(prefix) :]
+            for spec in data.get("dependencies", {}).values()
+            if isinstance(spec, str) and spec.startswith(prefix) and spec.endswith(suffix)
+        )
+    )
+
+
+def _stamp_contents(*, vsor_version: str, package_json: bytes, lock: bytes, app: bytes) -> dict[str, str]:
+    return {
         "vsor": vsor_version,
         "package_json_sha256": hashlib.sha256(package_json).hexdigest(),
         "lock_sha256": hashlib.sha256(lock).hexdigest(),
+        "app_sha256": hashlib.sha256(app).hexdigest(),
     }
+
+
+def write_stamp(
+    runtime_dir: Path, *, vsor_version: str, package_json: bytes, lock: bytes, app: bytes
+) -> None:
+    """Write `.materialized.json` — only ever called AFTER a successful `npm ci`
+    (an interrupted install never writes it)."""
+    stamp = _stamp_contents(vsor_version=vsor_version, package_json=package_json, lock=lock, app=app)
     (runtime_dir / ".materialized.json").write_text(
         json.dumps(stamp, indent=2) + "\n", encoding="utf-8"
     )
 
 
-def stamp_is_current(runtime_dir: Path, *, vsor_version: str, package_json: bytes, lock: bytes) -> bool:
+def stamp_is_current(
+    runtime_dir: Path, *, vsor_version: str, package_json: bytes, lock: bytes, app: bytes
+) -> bool:
     """Reuse the shell iff the stamp matches the freshly generated bytes; absence,
     mismatch, or a corrupt stamp all mean wipe-and-rematerialize — never a crash."""
     stamp_path = runtime_dir / ".materialized.json"
@@ -115,12 +166,47 @@ def stamp_is_current(runtime_dir: Path, *, vsor_version: str, package_json: byte
         return False
     if not isinstance(stored, dict):
         return False
-    expected = {
-        "vsor": vsor_version,
-        "package_json_sha256": hashlib.sha256(package_json).hexdigest(),
-        "lock_sha256": hashlib.sha256(lock).hexdigest(),
-    }
-    return stored == expected
+    return stored == _stamp_contents(
+        vsor_version=vsor_version, package_json=package_json, lock=lock, app=app
+    )
+
+
+def unpack_app(app_tarball: bytes, runtime_dir: Path) -> None:
+    """Unpack the forked app over `runtime_dir`, stripping npm pack's `package/` prefix.
+
+    Every member is checked to land inside the destination before anything is written:
+    the tarball is ours, but a path-traversal entry must fail loudly rather than write
+    outside `.vsor/`, which is the one directory these verbs are allowed to own."""
+    prefix = "package/"
+    with tarfile.open(fileobj=io.BytesIO(app_tarball), mode="r:gz") as tar:
+        members = []
+        for member in tar.getmembers():
+            if not member.name.startswith(prefix):
+                continue
+            relative = member.name[len(prefix) :]
+            if not relative:
+                continue
+            destination = (runtime_dir / relative).resolve()
+            if not destination.is_relative_to(runtime_dir.resolve()):
+                raise CommandError(
+                    "install-failed",
+                    f"the shipped site runtime contains a path that escapes its own "
+                    f"directory ({member.name!r}) — the wheel is damaged; reinstall vsor.",
+                )
+            member.name = relative
+            members.append(member)
+        tar.extractall(runtime_dir, members=members, filter="data")
+
+
+def runtime_env(base: Mapping[str, str] | None = None) -> dict[str, str]:
+    """The environment Docusaurus runs under: the app's own corpus/site seams pointed
+    at the copies `copy_authored` made inside the shell. Set here rather than baked
+    into the app, because the app keeps working standalone — sibling `../knowledge`
+    and `../site` — when it is developed in its own workspace."""
+    env = dict(os.environ if base is None else base)
+    env[_KNOWLEDGE_ENV] = "./knowledge"
+    env[_SITE_ENV] = "./site"
+    return env
 
 
 _AUTHORED_TREES = ("site", "knowledge")
@@ -205,10 +291,11 @@ def ensure_runtime(project_root: Path) -> Path:
     runtime_dir = project_root / ".vsor" / "site-runtime"
     package_json = runtime_file("package.json")
     lockfile = runtime_file("package-lock.json")
+    app = runtime_file(APP_TARBALL)
     vsor_version = running_vsor_version()
 
     current = stamp_is_current(
-        runtime_dir, vsor_version=vsor_version, package_json=package_json, lock=lockfile
+        runtime_dir, vsor_version=vsor_version, package_json=package_json, lock=lockfile, app=app
     )
     if current and (runtime_dir / "node_modules" / ".bin" / "docusaurus").exists():
         copy_authored(project_root, runtime_dir)
@@ -217,7 +304,11 @@ def ensure_runtime(project_root: Path) -> Path:
     if runtime_dir.exists():
         shutil.rmtree(runtime_dir)
     runtime_dir.mkdir(parents=True)
-    for name in _RUNTIME_FILES:
+    # The app first, then the shell manifests OVER it: the tarball carries the app's own
+    # package.json (workspace ranges, versions no registry has), and the shipped one is
+    # the manifest that must survive.
+    unpack_app(app, runtime_dir)
+    for name in (*_SHELL_MANIFESTS, *library_tarballs(package_json)):
         (runtime_dir / name).write_bytes(runtime_file(name))
     copy_authored(project_root, runtime_dir)
 
@@ -238,5 +329,7 @@ def ensure_runtime(project_root: Path) -> Path:
             "peer conflict; npm knows, we do not guess). Fix that and rerun; the install "
             "restarts cleanly.",
         )
-    write_stamp(runtime_dir, vsor_version=vsor_version, package_json=package_json, lock=lockfile)
+    write_stamp(
+        runtime_dir, vsor_version=vsor_version, package_json=package_json, lock=lockfile, app=app
+    )
     return runtime_dir

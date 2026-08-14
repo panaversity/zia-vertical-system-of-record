@@ -1,0 +1,422 @@
+/**
+ * THE TOKEN LAYER — the one file in this shell that names a colour.
+ *
+ * Everything else (custom.css, doc-pages.css, sidebar.css, and the component
+ * stylesheets) consumes `var(--…)` and names no literal. That is enforced, not
+ * aspirational: tests/test_surface_contract.py::test_a3 fails the build on a raw
+ * colour anywhere outside this file.
+ *
+ * ── How a consuming project re-brands ────────────────────────────────────────
+ * A project never edits this file. It writes `site/src/css/custom.css`, which
+ * docusaurus.config.ts appends AFTER this one, so any token it redeclares wins:
+ *
+ *     :root {
+ *       --vsor-accent-rgb: 124 58 237;      … your brand hue, as an R G B triple
+ *       --primary: oklch(0.55 0.21 292);
+ *     }
+ *     html[data-theme="dark"] {
+ *       --vsor-accent-dark-rgb: 167 139 250;
+ *       --primary: oklch(0.72 0.17 292);
+ *     }
+ *
+ * ── Why the brand hues are R G B triples ─────────────────────────────────────
+ * The chrome needs the accent at eight opacities (hairlines, washes, focus
+ * rings, glows). Storing the hue as a bare `R G B` triple and composing
+ * `rgb(var(--…-rgb) / 0.15)` means a project overrides ONE value and all eight
+ * tints follow. Overriding eight separate rgba() tokens by hand is the thing
+ * this avoids.
+ *
+ * ── The three layers below ───────────────────────────────────────────────────
+ *  1. IDENTITY   — the type stack and the brand channels. What a project changes.
+ *  2. SYSTEM     — the shadcn/Docusaurus palette the components are written against.
+ *  3. DERIVED    — the composed tints. Follow (1); rarely overridden directly.
+ *
+ * Colour values are inherited from the upstream design system verbatim; the
+ * 2026-08-14 tokenization pass changed names and indirection only, never a
+ * rendered colour (246 substitutions, each re-resolved and diffed).
+ */
+
+/* ══════════════════════════════════════════════════════════════════════════
+   0. THE TYPEFACES — self-hosted, never fetched
+
+   The surface contract forbids the shell from initiating ANY off-origin
+   request, which rules out the Google Fonts <link> the upstream app used —
+   but it does not rule out the typefaces themselves. The woff2 files sit in
+   ./fonts/ beside this stylesheet and are referenced RELATIVELY so webpack
+   emits them into the build and rewrites the URL under whatever baseUrl the
+   project configures. Same-origin, so the no-external-request assertion
+   stays green and the chrome matches upstream.
+
+   Latin subsets only (the i18n families upstream also loaded are excluded by
+   contract). Licences ship beside the files: fonts/LICENSE-Inter.txt and
+   fonts/LICENSE-JetBrainsMono.txt, both SIL OFL 1.1.
+   ═════════════════════════════════════════════════════════════════════════ */
+
+@font-face {
+    font-family: "Inter";
+    font-style: normal;
+    font-weight: 400;
+    font-display: swap;
+    src: url("./fonts/inter-latin-400-normal.woff2") format("woff2");
+}
+
+@font-face {
+    font-family: "Inter";
+    font-style: normal;
+    font-weight: 500;
+    font-display: swap;
+    src: url("./fonts/inter-latin-500-normal.woff2") format("woff2");
+}
+
+@font-face {
+    font-family: "Inter";
+    font-style: normal;
+    font-weight: 600;
+    font-display: swap;
+    src: url("./fonts/inter-latin-600-normal.woff2") format("woff2");
+}
+
+@font-face {
+    font-family: "Inter";
+    font-style: normal;
+    font-weight: 700;
+    font-display: swap;
+    src: url("./fonts/inter-latin-700-normal.woff2") format("woff2");
+}
+
+@font-face {
+    font-family: "JetBrains Mono";
+    font-style: normal;
+    font-weight: 400;
+    font-display: swap;
+    src: url("./fonts/jetbrains-mono-latin-400-normal.woff2") format("woff2");
+}
+
+@font-face {
+    font-family: "JetBrains Mono";
+    font-style: normal;
+    font-weight: 500;
+    font-display: swap;
+    src: url("./fonts/jetbrains-mono-latin-500-normal.woff2") format("woff2");
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   1. IDENTITY — what a consuming project overrides
+   ═════════════════════════════════════════════════════════════════════════ */
+
+:root {
+    /* Navbar height. Declared (Infima's default is 3.75rem) so the swizzled
+       header's inner row is 4rem tall — the upstream bar's height — while the
+       sidebar/TOC/ReadingProgress sticky offsets, which all read this same
+       variable, stay exactly correct. Upstream hard-coded `h-16` on the row
+       and left this at 3.75rem, so its own offsets overhung by 5px. */
+    --ifm-navbar-height: 4rem;
+
+    /* Type. Self-hosted only (see section 0) — a project that wants a
+       different face adds its own @font-face over files it ships in its own
+       static/ and redeclares these two tokens. */
+    --font-sans: "Inter", system-ui, -apple-system, "Segoe UI", Roboto,
+        "Helvetica Neue", Arial, "Noto Sans", sans-serif;
+    --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, "SF Mono",
+        Menlo, Consolas, "Liberation Mono", monospace;
+
+    /* Brand channels, as `R G B` triples — see the header. */
+    /* the brand accent — override this triple and every tint below follows */
+    --vsor-accent-rgb: 0 77 153;
+    /* the brand accent as it appears on dark surfaces */
+    --vsor-accent-dark-rgb: 123 164 196;
+    /* negative state (an incorrect answer, a failing check) */
+    --vsor-danger-rgb: 239 68 68;
+    /* inset highlights and light-on-dark washes */
+    --vsor-highlight-rgb: 255 255 255;
+    /* deep ink used for hairlines and wash backgrounds */
+    --vsor-ink-rgb: 3 24 17;
+    /* dark-theme neutral chrome */
+    --vsor-neutral-dark-rgb: 170 170 170;
+    /* elevation */
+    --vsor-shadow-rgb: 0 0 0;
+    /* the same slate, inverted for dark */
+    --vsor-slate-dark-rgb: 226 232 240;
+    /* the quiet slate used by nested tab chrome */
+    --vsor-slate-ink-rgb: 15 23 42;
+    /* affirmative state (a correct answer, a passing check) */
+    --vsor-success-rgb: 16 185 129;
+    /* dark component surfaces */
+    --vsor-surface-dark-rgb: 17 17 17;
+
+    --vsor-accent-deep: #002952;
+    /* Accent TEXT/ICON colour. Bridged to the site's primary — the literal
+       carried from upstream was a fixed navy, which painted brand-coloured
+       chrome the project never chose. First declaration is the pre-color-mix
+       fallback; the second wins wherever color-mix is supported. */
+    --vsor-accent-text: oklch(0.50 0.14 255);
+    --vsor-accent-text: color-mix(in oklab, var(--ifm-color-primary) 92%, black);
+    --vsor-accent-text-dark: oklch(0.60 0.14 255);
+    --vsor-accent-text-dark: color-mix(in oklab, var(--ifm-color-primary) 92%, white);
+    --vsor-accent-strong: #003366;
+    --vsor-danger-solid: #ef4444;
+    --vsor-danger-solid-deep: #dc2626;
+    --vsor-grey-666: #666;
+    --vsor-grey-777: #777;
+    --vsor-grey-888: #888;
+    --vsor-grey-8a: #8a8a8a;
+    --vsor-grey-9c: #9ca3af;
+    --vsor-link: #2f5fd0;
+    --vsor-link-dark: #7aa2ff;
+    --vsor-neutral-l15: oklch(0.15 0 0);
+    --vsor-neutral-l25: oklch(0.25 0 0);
+    --vsor-neutral-l35: oklch(0.35 0 0);
+    --vsor-neutral-l45: oklch(0.45 0 0);
+    --vsor-neutral-l50: oklch(0.50 0 0);
+    --vsor-neutral-l55: oklch(0.55 0 0);
+    --vsor-neutral-l56: oklch(0.556 0 0);
+    --vsor-neutral-l60: oklch(0.60 0 0);
+    --vsor-neutral-l65: oklch(0.65 0 0);
+    --vsor-neutral-l70: oklch(0.7 0 0);
+    --vsor-neutral-l75: oklch(0.75 0 0);
+    --vsor-neutral-l90: oklch(0.9 0 0);
+    --vsor-neutral-l95: oklch(0.95 0 0);
+    --vsor-neutral-dark-hi: #dddddd;
+    --vsor-neutral-dark-mid: #CCCCCC;
+    --vsor-neutral-dark-solid: #aaaaaa;
+    --vsor-success-solid: #10b981;
+    --vsor-success-solid-deep: #059669;
+    --vsor-success-vivid: oklch(0.723 0.219 149.579);
+    --vsor-success-vivid-a10: oklch(0.723 0.219 149.579 / 0.1);
+    --vsor-success-vivid-a15: oklch(0.723 0.219 149.579 / 0.15);
+    --vsor-success-vivid-deep: oklch(0.65 0.219 149.579);
+    --vsor-surface-dark-alt: #1b1b1d;
+    --vsor-surface-dark-hi: #2a2a2a;
+    --vsor-surface-dark-solid: #1a1a1a;
+    --vsor-tint-danger-dark: rgba(248, 113, 113, 0.08);
+    --vsor-tint-info: rgba(14, 165, 233, 0.05);
+    --vsor-tint-info-dark: rgba(56, 189, 248, 0.08);
+    --vsor-tint-success: rgba(34, 197, 94, 0.05);
+    --vsor-tint-success-dark: rgba(74, 222, 128, 0.08);
+    --vsor-tint-warning: rgba(245, 158, 11, 0.05);
+    --vsor-tint-warning-dark: rgba(251, 191, 36, 0.08);
+    --vsor-white: #fff;
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   2. SYSTEM — the palette the components are written against
+
+   Order is load-bearing: the sidebar block is declared first and the general
+   palette second, because that is the order the two stylesheets were imported
+   in before this file existed, and both declare --sidebar-border. Swapping
+   them changes which value wins.
+   ═════════════════════════════════════════════════════════════════════════ */
+
+:root {
+  --sidebar-bg: oklch(0.985 0 0);
+  --sidebar-text: oklch(0.22 0 0);
+  --sidebar-text-muted: oklch(0.32 0 0);
+  --sidebar-border: oklch(0.9 0 0);
+  --sidebar-hover-bg: oklch(0.95 0 0);
+  --sidebar-active-bg: var(--sidebar-primary);
+  --sidebar-active-text: var(--sidebar-primary-foreground);
+  /* The active sidebar pill. Bridged to the site's primary — the literal
+     carried from upstream was a fixed navy, so a rebranded site painted its
+     own primary text on an upstream-coloured pill. Fallback first. */
+  --sidebar-active-bg-subtle: oklch(0.45 0.11 255 / 0.1);
+  --sidebar-active-bg-subtle: color-mix(in srgb, var(--ifm-color-primary) 10%, transparent);
+}
+
+:root {
+    /* The type stack is declared once, in the IDENTITY block above. */
+    --background: oklch(1 0 0);
+    --foreground: oklch(0.145 0 0);
+    --card: oklch(1 0 0);
+    --card-foreground: oklch(0.145 0 0);
+    --popover: oklch(1 0 0);
+    --popover-foreground: oklch(0.145 0 0);
+    /* THE BRAND SEAM, and the one token here that is a var() read rather than a
+       literal. Upstream baked its own action blue in; carrying that across
+       verbatim (the 2026-08-14 tokenization pass preserved every rendered
+       colour, which is exactly how this got lost) leaves TWO unrelated
+       primaries in one site: Infima paints the sidebar highlight, the links and
+       the admonition stripes from --ifm-color-primary, while every shadcn
+       surface here paints from this one. A project redeclaring
+       --ifm-color-primary in its site/src/css/custom.css — the only rebrand path
+       the scaffold documents — then moves half the page and leaves the other
+       half on upstream's blue. Reading the Docusaurus token makes one colour,
+       set in one place, paint both; specs/sor-site/surface calls this the
+       bridge, and B12's filled-surface assertion is its enforcement.
+       Deliberately one-directional: this file never DECLARES the
+       --ifm-color-primary shade set (Infima supplies the fallback, the
+       consuming site owns the value), because a declaration here would load
+       after the site's custom.css and silently beat it. */
+    --primary: var(--ifm-color-primary);
+    /* Neutral, not hue-baked: this paints text ON the site's primary, so a
+       tinted white would carry upstream's hue onto every rebranded button. */
+    --primary-foreground: oklch(0.98 0 0);
+    --secondary: oklch(0.967 0.001 286.375);
+    --secondary-foreground: oklch(0.21 0.006 285.885);
+    --muted: oklch(0.97 0 0);
+    --muted-foreground: oklch(0.556 0 0);
+    --accent: oklch(0.97 0 0);
+    --accent-foreground: oklch(0.205 0 0);
+    --destructive: oklch(0.58 0.22 27);
+    --border: oklch(0.922 0 0);
+    --input: oklch(0.922 0 0);
+    --ring: oklch(0.708 0 0);
+    --chart-1: oklch(0.85 0.13 250);
+    --chart-2: oklch(0.77 0.15 255);
+    --chart-3: oklch(0.70 0.15 260);
+    --chart-4: oklch(0.60 0.13 255);
+    --chart-5: oklch(0.51 0.10 265);
+    --radius: 0px;
+    --sidebar: oklch(0.985 0 0);
+    --sidebar-foreground: oklch(0.145 0 0);
+    /* Same seam, sidebar family (see --primary above). */
+    --sidebar-primary: var(--ifm-color-primary);
+    --sidebar-primary-foreground: oklch(0.98 0 0);
+    --sidebar-accent: oklch(0.97 0 0);
+    --sidebar-accent-foreground: oklch(0.205 0 0);
+    --sidebar-border: oklch(0.922 0 0);
+    --sidebar-ring: oklch(0.708 0 0);
+    --native-tabs-border: rgba(100, 116, 139, 0.28);
+    --native-tabs-bg: rgba(100, 116, 139, 0.07);
+    --native-tabs-header-bg: rgba(100, 116, 139, 0.11);
+    --native-tabs-header-border: rgba(100, 116, 139, 0.18);
+    --info: oklch(0.704 0.14 240);
+    --success: oklch(0.68 0.16 142);
+    --warning: oklch(0.77 0.16 77);
+}
+
+html[data-theme="dark"] {
+  --sidebar-bg: oklch(0.15 0 0);
+  --sidebar-text: oklch(0.96 0 0);
+  --sidebar-text-muted: oklch(0.85 0 0);
+  --sidebar-border: oklch(0.25 0 0);
+  --sidebar-hover-bg: oklch(0.2 0 0);
+  --sidebar-active-bg: var(--sidebar-primary);
+  --sidebar-active-text: var(--sidebar-primary-foreground);
+  --sidebar-active-bg-subtle: oklch(0.72 0.11 255 / 0.16);
+  --sidebar-active-bg-subtle: color-mix(in srgb, var(--ifm-color-primary) 16%, transparent);
+}
+
+html[data-theme='dark'] {
+    --background: oklch(0.01 0 0);
+    --foreground: oklch(0.985 0 0);
+    --card: oklch(0.12 0 0);
+    --card-foreground: oklch(0.985 0 0);
+    --popover: oklch(0.12 0 0);
+    --popover-foreground: oklch(0.985 0 0);
+    /* The bridge again under dark: Infima redeclares --ifm-color-primary in
+       its own dark block, so reading it here is what makes the dark palette
+       follow the site's dark primary instead of upstream's. */
+    --primary: var(--ifm-color-primary);
+    /* Neutral, not hue-baked: this paints text ON the site's primary, so a
+       tinted white would carry upstream's hue onto every rebranded button. */
+    --primary-foreground: oklch(0.98 0 0);
+    --secondary: oklch(0.20 0.006 286);
+    --secondary-foreground: oklch(0.985 0 0);
+    --muted: oklch(0.20 0 0);
+    --muted-foreground: oklch(0.708 0 0);
+    --accent: oklch(0.25 0 0);
+    --accent-foreground: oklch(0.985 0 0);
+    --destructive: oklch(0.704 0.191 22.216);
+    --border: oklch(1 0 0 / 10%);
+    --input: oklch(1 0 0 / 15%);
+    --ring: oklch(0.556 0 0);
+    --chart-1: oklch(0.85 0.13 250);
+    --chart-2: oklch(0.77 0.15 255);
+    --chart-3: oklch(0.70 0.15 260);
+    --chart-4: oklch(0.60 0.13 255);
+    --chart-5: oklch(0.51 0.10 265);
+    --sidebar: oklch(0.205 0 0);
+    --sidebar-foreground: oklch(0.985 0 0);
+    /* Same seam, dark half. `.menu__link--active` in sidebar.css paints its
+       text from --sidebar-primary, so this is the token B12's sidebar
+       assertion actually reads under data-theme="dark". */
+    --sidebar-primary: var(--ifm-color-primary);
+    --sidebar-primary-foreground: oklch(0.26 0 0);
+    --sidebar-accent: oklch(0.269 0 0);
+    --sidebar-accent-foreground: oklch(0.985 0 0);
+    --sidebar-border: oklch(1 0 0 / 10%);
+    --sidebar-ring: oklch(0.556 0 0);
+    --native-tabs-border: rgba(148, 163, 184, 0.24);
+    --native-tabs-bg: rgba(148, 163, 184, 0.08);
+    --native-tabs-header-bg: rgba(148, 163, 184, 0.11);
+    --native-tabs-header-border: rgba(148, 163, 184, 0.18);
+    --info: oklch(0.65 0.14 240);
+    --success: oklch(0.65 0.16 142);
+    --warning: oklch(0.75 0.16 77);
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   3. DERIVED — composed tints. These follow the channels above; a project
+   overrides a channel, not these.
+   ═════════════════════════════════════════════════════════════════════════ */
+
+:root {
+
+    --vsor-accent-a003: rgb(var(--vsor-accent-rgb) / 0.03);
+    --vsor-accent-a005: rgb(var(--vsor-accent-rgb) / 0.05);
+    --vsor-accent-a010: rgb(var(--vsor-accent-rgb) / 0.1);
+    --vsor-accent-a015: rgb(var(--vsor-accent-rgb) / 0.15);
+    --vsor-accent-a020: rgb(var(--vsor-accent-rgb) / 0.2);
+    --vsor-accent-a030: rgb(var(--vsor-accent-rgb) / 0.3);
+    --vsor-accent-a040: rgb(var(--vsor-accent-rgb) / 0.4);
+    --vsor-accent-dark-a005: rgb(var(--vsor-accent-dark-rgb) / 0.05);
+    --vsor-accent-dark-a010: rgb(var(--vsor-accent-dark-rgb) / 0.1);
+    --vsor-accent-dark-a015: rgb(var(--vsor-accent-dark-rgb) / 0.15);
+    --vsor-accent-dark-a030: rgb(var(--vsor-accent-dark-rgb) / 0.3);
+    --vsor-accent-dark-a040: rgb(var(--vsor-accent-dark-rgb) / 0.4);
+    --vsor-danger-a005: rgb(var(--vsor-danger-rgb) / 0.05);
+    --vsor-danger-a010: rgb(var(--vsor-danger-rgb) / 0.1);
+    --vsor-danger-a020: rgb(var(--vsor-danger-rgb) / 0.2);
+    --vsor-highlight-a002: rgb(var(--vsor-highlight-rgb) / 0.02);
+    --vsor-highlight-a003: rgb(var(--vsor-highlight-rgb) / 0.03);
+    --vsor-highlight-a005: rgb(var(--vsor-highlight-rgb) / 0.05);
+    --vsor-highlight-a010: rgb(var(--vsor-highlight-rgb) / 0.1);
+    --vsor-highlight-a015: rgb(var(--vsor-highlight-rgb) / 0.15);
+    --vsor-highlight-a020: rgb(var(--vsor-highlight-rgb) / 0.2);
+    --vsor-highlight-a030: rgb(var(--vsor-highlight-rgb) / 0.30);
+    --vsor-highlight-a088: rgb(var(--vsor-highlight-rgb) / 0.88);
+    --vsor-highlight-a090: rgb(var(--vsor-highlight-rgb) / 0.9);
+    --vsor-highlight-a100: rgb(var(--vsor-highlight-rgb) / 1);
+    --vsor-ink-a003: rgb(var(--vsor-ink-rgb) / 0.03);
+    --vsor-ink-a005: rgb(var(--vsor-ink-rgb) / 0.05);
+    --vsor-ink-a006: rgb(var(--vsor-ink-rgb) / 0.06);
+    --vsor-ink-a010: rgb(var(--vsor-ink-rgb) / 0.1);
+    --vsor-ink-a015: rgb(var(--vsor-ink-rgb) / 0.15);
+    --vsor-ink-a030: rgb(var(--vsor-ink-rgb) / 0.3);
+    --vsor-ink-a050: rgb(var(--vsor-ink-rgb) / 0.5);
+    --vsor-neutral-dark-a003: rgb(var(--vsor-neutral-dark-rgb) / 0.03);
+    --vsor-neutral-dark-a005: rgb(var(--vsor-neutral-dark-rgb) / 0.05);
+    --vsor-neutral-dark-a008: rgb(var(--vsor-neutral-dark-rgb) / 0.08);
+    --vsor-neutral-dark-a010: rgb(var(--vsor-neutral-dark-rgb) / 0.1);
+    --vsor-neutral-dark-a015: rgb(var(--vsor-neutral-dark-rgb) / 0.15);
+    --vsor-neutral-dark-a020: rgb(var(--vsor-neutral-dark-rgb) / 0.2);
+    --vsor-neutral-dark-a025: rgb(var(--vsor-neutral-dark-rgb) / 0.25);
+    --vsor-neutral-dark-a030: rgb(var(--vsor-neutral-dark-rgb) / 0.3);
+    --vsor-neutral-dark-a040: rgb(var(--vsor-neutral-dark-rgb) / 0.4);
+    --vsor-shadow-a004: rgb(var(--vsor-shadow-rgb) / 0.04);
+    --vsor-shadow-a005: rgb(var(--vsor-shadow-rgb) / 0.05);
+    --vsor-shadow-a006: rgb(var(--vsor-shadow-rgb) / 0.06);
+    --vsor-shadow-a008: rgb(var(--vsor-shadow-rgb) / 0.08);
+    --vsor-shadow-a012: rgb(var(--vsor-shadow-rgb) / 0.12);
+    --vsor-shadow-a015: rgb(var(--vsor-shadow-rgb) / 0.15);
+    --vsor-shadow-a020: rgb(var(--vsor-shadow-rgb) / 0.2);
+    --vsor-shadow-a028: rgb(var(--vsor-shadow-rgb) / 0.28);
+    --vsor-shadow-a030: rgb(var(--vsor-shadow-rgb) / 0.3);
+    --vsor-shadow-a040: rgb(var(--vsor-shadow-rgb) / 0.4);
+    --vsor-shadow-a050: rgb(var(--vsor-shadow-rgb) / 0.5);
+    --vsor-slate-dark-a012: rgb(var(--vsor-slate-dark-rgb) / 0.12);
+    --vsor-slate-dark-a014: rgb(var(--vsor-slate-dark-rgb) / 0.14);
+    --vsor-slate-ink-a008: rgb(var(--vsor-slate-ink-rgb) / 0.08);
+    --vsor-slate-ink-a012: rgb(var(--vsor-slate-ink-rgb) / 0.12);
+    --vsor-slate-ink-a014: rgb(var(--vsor-slate-ink-rgb) / 0.14);
+    --vsor-slate-ink-a022: rgb(var(--vsor-slate-ink-rgb) / 0.22);
+    --vsor-slate-ink-a024: rgb(var(--vsor-slate-ink-rgb) / 0.24);
+    --vsor-slate-ink-a072: rgb(var(--vsor-slate-ink-rgb) / 0.72);
+    --vsor-success-a005: rgb(var(--vsor-success-rgb) / 0.05);
+    --vsor-success-a010: rgb(var(--vsor-success-rgb) / 0.1);
+    --vsor-success-a020: rgb(var(--vsor-success-rgb) / 0.2);
+    --vsor-success-a030: rgb(var(--vsor-success-rgb) / 0.3);
+    --vsor-success-a040: rgb(var(--vsor-success-rgb) / 0.4);
+    --vsor-surface-dark-a050: rgb(var(--vsor-surface-dark-rgb) / 0.5);
+    --vsor-surface-dark-a060: rgb(var(--vsor-surface-dark-rgb) / 0.6);
+}

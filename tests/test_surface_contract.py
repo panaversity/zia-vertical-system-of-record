@@ -37,16 +37,30 @@ LOCKFILE = SOR_SITE / "package-lock.json"
 #     scaffold AGENTS.md names it "the design tokens". Designated here
 #     2026-08-13: the A3 scan previously covered packages/sor-site only, so a
 #     raw literal added to any other scaffold CSS would have passed unseen.
+#   - app/src/css/tokens.css: the RUNTIME SHELL's token file. Designated
+#     2026-08-14 with the brand-parameterization pass, which moved every colour
+#     the forked app carried (246 substitutions across five stylesheets) out of
+#     the rule bodies and into this one file, and expressed the brand hues as
+#     `R G B` channel triples so a consuming project re-brands by redeclaring
+#     one token rather than eight rgba() literals.
 TOKEN_FILE = SOR_SITE / "theme" / "src" / "css" / "tokens.css"
 TOKEN_FILES = (
     TOKEN_FILE,
     TEMPLATE_SITE / "src" / "css" / "custom.css",
+    SOR_SITE / "app" / "src" / "css" / "tokens.css",
 )
 
-# A4: the frozen prop baseline. packages/sor-site/mdx/src/types.ts is the single
-# public prop-type module; changing it means editing this baseline in the same
-# reviewed change — and the spec says changing a baseline requires touching the spec.
-PROP_MODULE = SOR_SITE / "mdx" / "src" / "types.ts"
+# A4: the frozen prop baseline. packages/sor-site/app/src/types.ts is the single
+# public prop-type module of the SHIPPED surface; changing it means editing this
+# baseline in the same reviewed change — and the spec says changing a baseline
+# requires touching the spec.
+#   Repointed 2026-08-14: it used to name packages/sor-site/mdx/src/types.ts,
+#   which the forked app superseded — `make wheel` stopped packing that package,
+#   so A4 was pinning a module that ships to nobody while the primitives users
+#   actually get (app/src/components/**, reached through the fork's own
+#   MDXComponents) were unpinned. The mdx module also still re-exported
+#   HighlightTipProps, a type the fork does not export at all.
+PROP_MODULE = SOR_SITE / "app" / "src" / "types.ts"
 BASELINE = REPO / "tests" / "baselines" / "sor-site-props.ts"
 
 SOURCE_EXTS = {".ts", ".tsx", ".js", ".css"}
@@ -121,6 +135,14 @@ ALLOWLIST_EXACT = {
     "tailwind-merge",  # theme: the other half of cn() — conflicting-class resolution
     "@radix-ui/react-slot",  # theme: ui/button's asChild
     "@radix-ui/react-dialog",  # theme: ui/sheet (the navbar's mobile menu) is built on it
+    # The fork (2026-08-14). The runtime shell is now a workspace package of its
+    # own (app/), so its direct deps face this gate for the first time. Every
+    # other name it declares was already allowlisted above; this is the one
+    # addition, and it is load-bearing rather than inherited: the collapsed tabs
+    # plugin matches on `containerDirective`/`leafDirective` nodes
+    # (lib/remark-tabs/index.js:108,121), which exist in the tree only because
+    # this parser put them there. Build-time only, no network, no product surface.
+    "remark-directive",  # app: parses the `:::` syntax @vsor/lib-remark-tabs consumes
 }
 
 # Known-bad names: product deps that must never appear, even transitively.
@@ -145,12 +167,24 @@ DENYLIST = (
 )
 
 
+# The manifest a user actually INSTALLS. `make wheel` copies it verbatim into
+# the wheel as _site_runtime/package.json and `vsor build` runs `npm ci` against
+# it — so it, not the workspace manifests, is the dependency set that reaches a
+# project. Added to A1's scan 2026-08-14: it promotes six of the fork's
+# devDependencies to runtime deps, and until now sat outside the allowlist
+# entirely, so a dep added there bypassed the gate.
+SHELL_MANIFEST = (
+    REPO / "packages" / "vsor" / "src" / "vsor" / "templates" / "site_runtime" / "package.json"
+)
+
+
 def _manifests() -> list[Path]:
-    return [
+    workspace = [
         p
         for p in sorted(SOR_SITE.rglob("package.json"))
         if "node_modules" not in p.parts and all(gen not in p.parents for gen in _GENERATED)
     ]
+    return workspace + ([SHELL_MANIFEST] if SHELL_MANIFEST.exists() else [])
 
 
 def test_a1_direct_runtime_deps_are_allowlisted() -> None:
@@ -310,11 +344,24 @@ _BRAND_CARVE_OUTS = _SCAFFOLD_MD["brandCarveOuts"]
 
 
 def _scaffold_prose_files() -> list[Path]:
-    return [
+    files = [p for p in sorted(SCAFFOLD.rglob("*")) if p.is_file() and p.suffix in {".md", ".json"}]
+    # The shell's own markdown, added 2026-08-14. The .ts/.tsx/.js/.css tier
+    # cannot see a README, so packages/sor-site/app/README.md — which ships
+    # inside the tarball unpacked into every user's .vsor/site-runtime — was
+    # the one shipped file no scan of any tier read.
+    # `knowledge/` is excluded for the reason the spec gives A2 generally: it is
+    # a CORPUS (a gitignored local one, placed beside the shell for a hand
+    # build), and the scan never reads a corpus.
+    corpus = SOR_SITE / "knowledge"
+    files += [
         p
-        for p in sorted(SCAFFOLD.rglob("*"))
-        if p.is_file() and p.suffix in {".md", ".json"}
+        for p in sorted(SOR_SITE.rglob("*.md"))
+        if "node_modules" not in p.parts
+        and corpus not in p.parents
+        and all(root not in p.parents for root in _OUT_OF_SCOPE)
+        and all(gen not in p.parents for gen in _GENERATED)
     ]
+    return files
 
 
 def _brand_carved_out(path: Path, line: str) -> bool:
@@ -398,7 +445,7 @@ def test_a4_prop_types_match_frozen_baseline() -> None:
 # of the corpus itself; both are pure source assertions, so they gate here.
 
 _EXTERNAL_RE = re.compile(r"https?://|\bwww\.")
-_SEARCH_PHRASE = "shorba-x7q1"  # B13 types this into SearchBar; unique to one doc
+_SEARCH_PHRASE = "abstention floor"  # B13 types this into SearchBar; unique to one doc
 
 
 def test_fixture_corpus_contains_no_external_references() -> None:

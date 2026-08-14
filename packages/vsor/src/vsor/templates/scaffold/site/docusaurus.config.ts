@@ -1,60 +1,48 @@
 // This site is yours. Every value here is a live seam — edit it and the built
 // site changes. The knowledge itself lives in ../knowledge; this file only
 // decides how it is presented.
-import type * as Preset from "@docusaurus/preset-classic";
+//
+// ── How this file is used ────────────────────────────────────────────────────
+// `vsor dev` and `vsor build` install a Docusaurus site under `.vsor/` — the
+// runtime shell — and load THIS file over it. The merge is one rule: your value
+// wins, at every depth. Objects merge key by key (setting `navbar.title` leaves
+// the rest of the navbar alone); arrays replace whole (writing `navbar.items`
+// gives you the entire list, including dropping what shipped).
+//
+// Six keys belong to the runtime and are ignored here, with a warning if you set
+// them: `presets`, `plugins`, `themes`, `markdown`, `future`, `staticDirectories`.
+// They are the machinery — the corpus pipeline, the search index, the build
+// flags, the asset layering — not your site's identity. That is the whole
+// bargain: the machinery is upgraded for you, and everything you author stays in
+// this directory.
+//
+// ── The other four seams are files, not values ───────────────────────────────
+//   src/css/custom.css   loaded AFTER the runtime's stylesheet — any design
+//                        token you redeclare wins on cascade order
+//   src/pages/           your pages replace the runtime's (so this project's
+//                        homepage is index.tsx beside this file)
+//   sidebars.ts          your sidebar file replaces the runtime's
+//   static/             your assets are copied over the runtime's, same path
+//
+// Nothing else is needed: `url`, `baseUrl` and the whole of `themeConfig` are
+// yours to set, exactly as the Docusaurus documentation describes them.
 import type { Config } from "@docusaurus/types";
 import { themes as prismThemes } from "prism-react-renderer";
 
-const config: Config = {
+const config: Partial<Config> = {
   title: "__VSOR_NAME__",
   // The sentence under the title on your homepage. Say what this covers.
   tagline: "The system of record for __VSOR_NAME__",
   url: "http://localhost:3000", // set to your real domain when you deploy
   baseUrl: "/",
-  i18n: { defaultLocale: "en", locales: ["en"] },
-
-  // Three packages, all shipped with vsor and resolved at build time. Each line
-  // is visible and deletable:
-  //   sor-site-mdx    the content vocabulary (Quiz, Flashcards, …)
-  //   search-local    the search index, built into the site — no service to call
-  //   sor-site-theme  the design system: the navigation, the doc pages, and the
-  //                   <Landing /> your homepage renders. Delete this line and the
-  //                   site falls back to stock Docusaurus styling with every
-  //                   content primitive intact — rewrite src/pages/index.tsx too,
-  //                   since it is the one file that uses the theme's <Landing />.
-  themes: [
-    "@vsor/sor-site-mdx",
-    "@easyops-cn/docusaurus-search-local",
-    // last, so its search box shadows the search plugin's own
-    "@vsor/sor-site-theme",
-  ],
-
-  presets: [
-    [
-      "classic",
-      {
-        docs: {
-          path: "../knowledge",
-          routeBasePath: "docs",
-          // ./sidebars.ts generates the sidebar from the folder tree and names it
-          // `tutorialSidebar` — the ecosystem's name, so imported documents build
-          sidebarPath: "./sidebars.ts",
-        },
-        blog: false,
-        theme: { customCss: "./src/css/custom.css" },
-      } satisfies Preset.Options,
-    ],
-  ],
 
   themeConfig: {
     navbar: {
       title: "__VSOR_NAME__",
       // Add your own entries here — anything Docusaurus documents works
       // ({to}/{href} links, dropdowns, doc links, position: "left" | "right").
-      // `icon` is this theme's one addition: the name of a lucide icon. It is
-      // consumed by @vsor/sor-site-theme's navbar and never forwarded; delete
-      // that theme and Docusaurus passes it through as an inert `icon=""`
-      // attribute on the link (measured — no warning, no error, no styling).
+      // `icon` is the runtime's one addition: the name of a lucide icon from its
+      // own allowlist. An unknown name renders no icon and never breaks a build.
       items: [
         {
           // "tutorialSidebar" is the sidebar ./sidebars.ts generates from the
@@ -74,7 +62,7 @@ const config: Config = {
     // every fenced block is pale-on-pale in light mode (measured 1.3:1). Pick
     // any pair from prism-react-renderer's `themes`.
     prism: { theme: prismThemes.github, darkTheme: prismThemes.dracula },
-  } satisfies Preset.ThemeConfig,
+  },
 };
 
 export default config;

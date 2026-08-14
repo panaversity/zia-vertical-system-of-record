@@ -1,8 +1,16 @@
 /**
  * Browser tier of specs/sor-site/surface/spec.md.
  *
- * One suite, two projects — B14 is structural: the identical spec files run
- * against the stock (preset-classic + mdx) and themed (+ theme package) builds.
+ * One suite, one project. It was two — `stock` and `themed`, B14's structural
+ * reading — until the fork made the shell the site: `themes` is a key the shell
+ * owns and drops from a project's config, and the design system is imported by
+ * the shell's own stylesheet, so "stock preset-classic" names a configuration a
+ * vsor project can no longer produce. The project list is the place that fact
+ * shows, so it is recorded here rather than papered over; B14/B15's stock half
+ * is queued for the lead. Adding a second configuration back is one entry here
+ * plus one `--out` in run.sh, because everything below the project name reads
+ * its URLs and dirs out of the environment.
+ *
  * URLs/dirs come from run.sh, which owns assembly, builds and static serving;
  * running `playwright test` without it fails fast with the remedy.
  *
@@ -33,12 +41,8 @@ export default defineConfig({
   },
   projects: [
     {
-      name: "stock",
-      use: { ...devices["Desktop Chrome"], baseURL: need("VSOR_E2E_STOCK_URL") },
-    },
-    {
-      name: "themed",
-      use: { ...devices["Desktop Chrome"], baseURL: need("VSOR_E2E_THEMED_URL") },
+      name: "site",
+      use: { ...devices["Desktop Chrome"], baseURL: need("VSOR_E2E_SITE_URL") },
     },
   ],
 });

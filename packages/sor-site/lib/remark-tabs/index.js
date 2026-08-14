@@ -3,7 +3,8 @@
  *
  * ONE configurable collapse of the five near-identical tab plugins that lived
  * in ag2 libs/docusaurus at d764f334 (remark-os-tabs, remark-channel-tabs,
- * remark-deploy-tabs, remark-tool-tabs, remark-cowork-tabs). Each of those
+ * remark-deploy-tabs, and two component-mode plugins whose wrapper components
+ * do not cross the seam). Each of those
  * hardcoded a directive name and a tab vocabulary around the same transform;
  * here the vocabulary is config and the transform is written once — known
  * duplication never crosses the seam.
@@ -29,11 +30,11 @@
  *    site provides itself.
  *
  *    remarkTabs({
- *      directive: "tool-tabs",
- *      component: "MyToolTabs",
+ *      directive: "editor-tabs",
+ *      component: "MyEditorTabs",
  *      tabs: {
- *        "tool-a": { tag: "ToolAContent" },
- *        "tool-b": { tag: "ToolBContent" },
+ *        "editor-a": { tag: "EditorAContent" },
+ *        "editor-b": { tag: "EditorBContent" },
  *      },
  *    })
  *

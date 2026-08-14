@@ -1,6 +1,7 @@
-"""`vsor dev` — specs/vsor/build. The Docusaurus dev server on 127.0.0.1 only, hot-reloading
-straight from the authored `knowledge/` through the runtime shell's symlink (the shell's
-`site/` is a copy refreshed on invoke — see site_runtime._copy_site).
+"""`vsor dev` — specs/vsor/build. The Docusaurus dev server on 127.0.0.1 only, serving the
+runtime shell (the forked app — see site_runtime) and hot-reloading from the authored
+`knowledge/` and `site/` through the copies inside it, which `sync_authored` mirrors every
+half second while the server runs.
 
 The process contract, exactly: the child runs in its own process group
 (start_new_session=True) with stdin closed — no prompt can ever reach it; SIGINT/SIGTERM
@@ -79,8 +80,9 @@ def _serve(project_root: Path, runtime_dir: Path, port: int) -> int:
     Returns the exit code for the vsor process."""
     binary = runtime_dir / "node_modules" / ".bin" / "docusaurus"
     child = subprocess.Popen(
-        [str(binary), "start", "site", "--port", str(port), "--host", "127.0.0.1", "--no-open"],
+        [str(binary), "start", ".", "--port", str(port), "--host", "127.0.0.1", "--no-open"],
         cwd=runtime_dir,
+        env=site_runtime.runtime_env(),
         stdin=subprocess.DEVNULL,
         start_new_session=True,
     )

@@ -114,7 +114,8 @@
         },
         "\\bRequireProfile\\b",
         "\\bCapstoneWorkbook\\b",
-        "\\bProjectCard\\b"
+        "\\bProjectCard\\b",
+        "\\bproject-card\\b"
       ]
     },
     {
@@ -142,11 +143,14 @@
     },
     {
       "row": "Tab-plugin companions",
-      "$comment": "Added 2026-08-14, closing the list against the spec table (it had 10 of the 12 rows since birth). The five duplicate tab plugins collapsed into lib/remark-tabs BEFORE crossing; the app components they wrapped did not cross at all. The names had survived in remark-tabs' own doc comments as examples of what a consuming site would write — scrubbed in the same change, which is why this row is green rather than carved out.",
+      "$comment": "Added 2026-08-14, closing the list against the spec table (it had 10 of the 12 rows since birth). The five duplicate tab plugins collapsed into lib/remark-tabs BEFORE crossing; the app components they wrapped did not cross at all. The names had survived in remark-tabs' own doc comments as examples of what a consuming site would write — scrubbed in the same change, which is why this row is green rather than carved out. The kebab alternates were added 2026-08-14 (second pass): the patterns are case-sensitive, so an excluded component that crossed in its CLASS-NAME form went unseen by both tiers — 45 lines of `.tool-tabs` styling had reached every built stylesheet. `os-tabs` is deliberately NOT listed: unlike the other three it is a live directive name this framework itself emits (lib/remark-tabs/presets.js osTabs, registered in the shell's own config), so it is vocabulary that crossed, not a component that did not. `OSTabs`, the component, stays excluded.",
       "patterns": [
         "\\bCoworkTabs\\b",
+        "\\bcowork-tabs\\b",
         "\\bToolTabs\\b",
+        "\\btool-tabs\\b",
         "\\bWebAgentTabs\\b",
+        "\\bweb-agent-tabs\\b",
         "\\bOSTabs\\b"
       ]
     },

@@ -1,0 +1,41 @@
+/*
+ * ExerciseCard styles — upstream styled this component through global
+ * doc-pages.css classes; per the surface spec ("do not copy doc-pages.css
+ * wholesale — take what the kept components need, tokenized") the rules the
+ * card needs live here, scoped and consuming only --ifm-* tokens.
+ */
+
+.exerciseCard {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin: 1.25rem 0;
+  padding: 0.75rem 1rem;
+  border: 1px solid var(--ifm-color-emphasis-300);
+  border-left: 4px solid var(--ifm-color-primary);
+  border-radius: var(--ifm-global-radius);
+  background: var(--ifm-background-surface-color);
+}
+
+.exerciseCardLeft {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  min-width: 0;
+}
+
+.exerciseCardBadge {
+  flex-shrink: 0;
+  font-size: 0.75rem;
+  font-weight: 700;
+  padding: 0.2rem 0.6rem;
+  border-radius: 999px;
+  background: var(--ifm-color-primary-contrast-background);
+  color: var(--ifm-color-primary-darkest);
+}
+
+.exerciseCardTitle {
+  font-weight: 600;
+  color: var(--ifm-font-color-base);
+}

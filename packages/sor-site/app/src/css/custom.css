@@ -1,0 +1,406 @@
+/**
+ * The design system: sharp corners, technical register, content first.
+ *
+ * This file wires the system together and styles the shared chrome. It names no
+ * colour — every one lives in ./tokens.css, which is imported first so both the
+ * palette and the brand channels are defined before anything consumes them.
+ * A consuming project re-brands by redeclaring tokens in its own
+ * `site/src/css/custom.css`, which the site config appends after this file.
+ */
+
+@import "./tokens.css";
+@import "./sidebar.css";
+@import "./doc-pages.css";
+
+@import "tailwindcss";
+@plugin "tailwindcss-animate";
+
+/* Docusaurus Dark Mode Integration */
+@custom-variant dark (&:is([data-theme='dark'] *));
+
+@theme inline {
+    /* Custom breakpoints */
+    --breakpoint-xs: 400px;
+    /* Match Docusaurus sidebar (997px) */
+    --breakpoint-docs: 997px;
+
+    --font-sans: var(--font-sans);
+    --font-mono: var(--font-mono);
+
+    --color-background: var(--background);
+    --color-foreground: var(--foreground);
+
+    --color-card: var(--card);
+    --color-card-foreground: var(--card-foreground);
+
+    --color-popover: var(--popover);
+    --color-popover-foreground: var(--popover-foreground);
+
+    --color-primary: var(--primary);
+    --color-primary-foreground: var(--primary-foreground);
+
+    --color-secondary: var(--secondary);
+    --color-secondary-foreground: var(--secondary-foreground);
+
+    --color-muted: var(--muted);
+    --color-muted-foreground: var(--muted-foreground);
+
+    --color-accent: var(--accent);
+    --color-accent-foreground: var(--accent-foreground);
+
+    --color-destructive: var(--destructive);
+    --color-destructive-foreground: var(--destructive-foreground);
+
+    --color-border: var(--border);
+    --color-input: var(--input);
+    --color-ring: var(--ring);
+
+    --color-chart-1: var(--chart-1);
+    --color-chart-2: var(--chart-2);
+    --color-chart-3: var(--chart-3);
+    --color-chart-4: var(--chart-4);
+    --color-chart-5: var(--chart-5);
+
+    --color-sidebar: var(--sidebar);
+    --color-sidebar-foreground: var(--sidebar-foreground);
+    --color-sidebar-primary: var(--sidebar-primary);
+    --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+    --color-sidebar-accent: var(--sidebar-accent);
+    --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+    --color-sidebar-border: var(--sidebar-border);
+    --color-sidebar-ring: var(--sidebar-ring);
+
+    /* Legacy Semantic Colors (Mapped for backward compatibility) */
+    --color-info: var(--info);
+    --color-success: var(--success);
+    --color-warning: var(--warning);
+    --color-danger: var(--destructive);
+    /* Map danger to destructive */
+
+    --radius-sm: calc(var(--radius) - 4px);
+    --radius-md: calc(var(--radius) - 2px);
+    --radius-lg: var(--radius);
+    --radius-xl: calc(var(--radius) + 4px);
+    --radius-2xl: calc(var(--radius) + 8px);
+    --radius-3xl: calc(var(--radius) + 12px);
+    --radius-4xl: calc(var(--radius) + 16px);
+}
+
+
+@layer base {
+    * {
+        @apply border-border outline-ring/50;
+        border-radius: 0px !important;
+        /* Strict Enforcement */
+    }
+
+    html,
+    body {
+        @apply bg-background text-foreground;
+        font-family: var(--font-sans);
+        /* Prevent elastic scrolling showing wrong background */
+        overscroll-behavior: none;
+    }
+
+    code {
+        font-family: var(--font-mono);
+    }
+
+    /* Exception class for components that need rounded corners (e.g., macOS simulations) */
+    /* These MUST be inside @layer base to override the * rule above with !important */
+    .allow-rounded,
+    .allow-rounded * {
+        border-radius: unset !important;
+    }
+
+    .allow-rounded .rounded-full {
+        border-radius: 9999px !important;
+    }
+
+    .allow-rounded .rounded-xl {
+        border-radius: 0.75rem !important;
+    }
+
+    .allow-rounded .rounded-t-xl {
+        border-top-left-radius: 0.75rem !important;
+        border-top-right-radius: 0.75rem !important;
+    }
+
+    .allow-rounded .rounded-b-2xl {
+        border-bottom-left-radius: 1rem !important;
+        border-bottom-right-radius: 1rem !important;
+    }
+
+    .allow-rounded .rounded-lg {
+        border-radius: 0.5rem !important;
+    }
+
+    .allow-rounded .rounded-md {
+        border-radius: 0.375rem !important;
+    }
+
+    .allow-rounded .rounded-t-md {
+        border-top-left-radius: 0.375rem !important;
+        border-top-right-radius: 0.375rem !important;
+    }
+}
+
+/* ============================================
+   Docusaurus Tabs - Shadcn-Inspired Styling
+   ============================================ */
+
+/* Full native Docusaurus tab block */
+.tabs-container {
+    overflow: hidden !important;
+    border: 1px solid var(--native-tabs-border) !important;
+    border-radius: 0.375rem !important;
+    background-color: var(--native-tabs-bg) !important;
+    box-shadow: 0 1px 2px 0 var(--vsor-shadow-a005) !important;
+    margin: 1.5rem 0 !important;
+}
+
+/* Tab list container - shadcn muted background */
+.tabs-container > ul.tabs[role="tablist"],
+ul.tabs[role="tablist"] {
+    display: flex !important;
+    min-height: 2.5rem !important;
+    align-items: center !important;
+    justify-content: flex-start !important;
+    background-color: var(--native-tabs-header-bg) !important;
+    padding: 0.5rem !important;
+    gap: 0.125rem !important;
+    margin: 0 !important;
+    list-style: none !important;
+    border: none !important;
+    border-bottom: 1px solid var(--native-tabs-header-border) !important;
+    overflow-x: auto !important;
+}
+
+.tabs-container > .margin-top--md {
+    margin-top: 0 !important;
+}
+
+.tabs-container [role="tabpanel"] {
+    margin-top: 0 !important;
+    padding: 1rem 1.25rem !important;
+}
+
+/* Prevent markdown list bullets from appearing inside Docusaurus tab buttons. */
+.theme-doc-markdown ul.tabs > li.tabs__item::before,
+.markdown ul.tabs > li.tabs__item::before {
+    content: none !important;
+    display: none !important;
+}
+
+/* Individual tab items */
+.tabs__item {
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    white-space: nowrap !important;
+    padding: 0.5rem 1rem !important;
+    font-size: 0.875rem !important;
+    font-weight: 500 !important;
+    line-height: 1 !important;
+    color: var(--muted-foreground) !important;
+    background: transparent !important;
+    border: none !important;
+    border-radius: 0.125rem !important;
+    cursor: pointer !important;
+    transition: all 150ms ease !important;
+    margin: 0 !important;
+}
+
+/* Tab hover state */
+.tabs__item:hover {
+    color: var(--foreground) !important;
+    background-color: transparent !important;
+}
+
+/* Active tab - shadcn active state */
+.tabs__item--active,
+.tabs__item--active:hover {
+    background-color: var(--background) !important;
+    color: var(--foreground) !important;
+    box-shadow: 0 1px 2px 0 var(--vsor-shadow-a005) !important;
+}
+
+/* Remove default Docusaurus underline */
+.tabs__item--active {
+    border-bottom: none !important;
+}
+
+/* Focus visible state for accessibility */
+.tabs__item:focus-visible {
+    outline: 2px solid var(--ring) !important;
+    outline-offset: 2px !important;
+}
+
+/* Dark mode adjustments */
+[data-theme='dark'] .tabs__item--active,
+[data-theme='dark'] .tabs__item--active:hover {
+    background-color: var(--card) !important;
+    box-shadow: 0 1px 3px 0 var(--vsor-shadow-a030) !important;
+}
+
+
+/* ============================================
+   Animations
+   ============================================ */
+
+@keyframes scale-in {
+  from {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.animate-scale-in {
+  animation: scale-in 0.3s ease-out forwards;
+}
+
+.delay-100 { animation-delay: 100ms; }
+.delay-200 { animation-delay: 200ms; }
+.delay-300 { animation-delay: 300ms; }
+.delay-400 { animation-delay: 400ms; }
+.delay-500 { animation-delay: 500ms; }
+
+/* An opt-out hook: a <details> the corpus author wants left bare, styled by the
+   document itself rather than by the global expander rules further down. */
+.vsor-bare-details {
+  display: block;
+}
+.vsor-bare-details > summary {
+  list-style: none;
+  cursor: pointer;
+}
+.vsor-bare-details > summary::-webkit-details-marker,
+.vsor-bare-details > summary::marker {
+  display: none;
+  content: "";
+}
+.vsor-bare-details > summary .chevron {
+  transition: transform 0.2s ease-in-out;
+  transform: rotate(0deg);
+  flex-shrink: 0;
+  will-change: transform;
+}
+.vsor-bare-details[open] > summary .chevron {
+  transform: rotate(180deg);
+}
+.vsor-bare-details > summary:hover {
+  opacity: 0.85;
+}
+
+/* ---------------------------------------------------------------------------
+   Global expandable <details> styling for docs content.
+   Applies to every <details> inside a .markdown body except one that opts out
+   with its own class (the corpus-authored expander above).
+   --------------------------------------------------------------------------- */
+.markdown details:not(.vsor-bare-details) {
+  border: 1px solid var(--ifm-color-emphasis-300);
+  border-radius: 10px;
+  padding: 1rem 1.25rem;
+  margin: 1.5rem 0;
+  background: var(--ifm-background-surface-color);
+  transition:
+    border-color 0.2s ease-in-out,
+    box-shadow 0.2s ease-in-out,
+    background-color 0.2s ease-in-out;
+}
+
+.markdown details:not(.vsor-bare-details):hover {
+  border-color: var(--ifm-color-primary-lighter);
+}
+
+.markdown details:not(.vsor-bare-details)[open] {
+  border-color: var(--ifm-color-primary);
+  box-shadow: 0 1px 3px var(--vsor-shadow-a006);
+}
+
+.markdown details:not(.vsor-bare-details) > summary {
+  cursor: pointer;
+  font-weight: 600;
+  color: var(--ifm-color-emphasis-900);
+  list-style: none;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  user-select: none;
+
+  /* Extend the summary across the full width of the details box so the
+     entire top strip (including padding regions) is part of the click target
+     and the hover background. */
+  margin: -1rem -1.25rem;
+  padding: 1rem 1.25rem;
+  border-radius: 9px;
+  transition: background-color 0.15s ease-in-out;
+}
+
+.markdown details:not(.vsor-bare-details) > summary::-webkit-details-marker,
+.markdown details:not(.vsor-bare-details) > summary::marker {
+  display: none;
+  content: "";
+}
+
+.markdown details:not(.vsor-bare-details) > summary::after {
+  content: "▸";
+  display: inline-block;
+  color: var(--ifm-color-primary);
+  font-size: 1.25em;
+  line-height: 1;
+  margin-left: auto;
+  padding-left: 0.75rem;
+  flex-shrink: 0;
+  transition: transform 0.2s ease-in-out;
+  transform-origin: 50% 50%;
+}
+
+.markdown details:not(.vsor-bare-details)[open] > summary::after {
+  transform: rotate(90deg);
+}
+
+.markdown details:not(.vsor-bare-details)[open] > summary {
+  border-radius: 9px 9px 0 0;
+  margin-bottom: 1rem;
+  border-bottom: 1px solid var(--ifm-color-emphasis-200);
+}
+
+.markdown details:not(.vsor-bare-details) > summary:hover {
+  background-color: var(--ifm-color-emphasis-100);
+}
+
+
+/* ==========================================================================
+   Image zoom (click-to-enlarge)
+   Driven by src/components/ImageZoom, which uses PhotoSwipe.
+   ========================================================================== */
+
+/* The backdrop stays dark in both themes: PhotoSwipe's close/zoom icons are
+   white, so a light backdrop would make the controls disappear.
+   Needs .pswp.vsor-image-zoom — photoswipe.css sets these vars on .pswp and loads
+   after this file, so a bare .vsor-image-zoom would be overridden. */
+.pswp.vsor-image-zoom {
+    --pswp-bg: var(--vsor-surface-darkest);
+    --pswp-placeholder-bg: var(--vsor-surface-dark-solid);
+}
+
+/* Affordance: content images open, but a linked image still follows its link. */
+.markdown img {
+    cursor: zoom-in;
+}
+
+.markdown a img,
+.markdown [data-no-zoom] img {
+    cursor: inherit;
+}
+
+.markdown img:focus-visible {
+    outline: 2px solid var(--ifm-color-primary);
+    outline-offset: 3px;
+}
+
