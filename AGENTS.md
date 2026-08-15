@@ -30,6 +30,41 @@ Two non-negotiable properties:
 - **Governance is a ladder, not a gate.** Level 0 works immediately; callers climb only as far as
   their domain needs. Demanding level 4 of a level-0 project is a bug, not rigour.
 
+## What we claim, and to whom
+
+The positioning, settled with the owner 2026-08-15. It is here rather than only in `README.md`
+because a session that re-derives it tends to describe the machinery instead of the value, and
+because two of these claims have a precise boundary that is easy to overstate.
+
+- **A system of record is the one place the official version lives.** When the ledger and a
+  spreadsheet disagree, the ledger wins. Businesses have had them for decades; **AI never did** —
+  it answers from everything it has ever read, which is exactly why it cannot tell you which of its
+  sentences were checked. A *vertical* system of record is that, for one profession.
+- **Vendor-free is the ownership argument.** The agent surface speaks MCP, an open standard, so one
+  corpus answers in Claude, in ChatGPT, inside an agent framework, or in a worker the owner wrote.
+  What a customer owns is the source; runtimes are interchangeable, so changing model or vendor does
+  not redo the work. Never position this as an integration with one assistant.
+- **The interesting problem is not retrieval.** Chunking, embedding and hybrid search are commodity.
+  Whether an agent can be *trusted* in a regulated field is decided by the governance of what it
+  reads — provenance, a numbered generation to cite, and a measured floor under which it declines.
+  Lead with that, not with the pipeline.
+- **Agents are the operator, not the audience for a manual.** The owner is not meant to run this
+  themselves; they tell the coding agent they already use. Every scaffolded project therefore ships
+  skills and rules — that is why settled decision 5 was revised, and why the kit is a product
+  surface rather than documentation.
+- **Out of the box the owner touches knowledge only** — plain markdown, in any language they write
+  in. (The *documents* are language-agnostic; the interface is not — i18n machinery is deferred
+  post-v0. Do not promise a translated UI.)
+
+**The customization boundary, stated exactly, because it has been got wrong in both directions:**
+`site/` is real, durable, editable Docusaurus — config, tokens, homepage, sidebar. After a build the
+*whole site application* is also present as readable source at `.vsor/site-runtime/src/`, so an
+agent can open the real Navbar rather than guess at it — but that tree is regenerated whenever the
+materialization stamp changes, so edits there do not survive. Durable ownership of a component is
+`vsor eject`, which is **designed and not built** (settled decision 11's correction). Say
+"readable today, durable when eject lands" — never "the source ships so you can change anything",
+and never "the machinery is hidden".
+
 ## Vocabulary
 
 Used precisely; do not repurpose. "Reader" is not a term here — say *surface* (software) or

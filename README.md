@@ -71,17 +71,21 @@ governance of what it reads.
 
 You are not meant to operate this yourself. Tell the coding agent you already use — Claude Code,
 Codex, Cursor, whichever — and it does the work. Every scaffolded project ships the instructions
-that agent needs: **14 skills** (adding sources, converting a Word document or a deck, checking
-format, writing a quiz, deploying) and **4 rules** for working a corpus somebody is accountable
-for — provenance, abstention, review, and what lives where.
+that agent needs: **skills** for the jobs that recur (adding sources, converting a Word document or
+a deck, checking format, writing a quiz, deploying) and **rules** for working a corpus somebody is
+accountable for — provenance, abstention, review, and what lives where.
 
 So out of the box, the only thing you touch is the knowledge itself. Documents are plain markdown,
 written in English or whatever language you work in.
 
-When configuration is not enough, nothing is hidden: `site/` is a real Docusaurus site — its
-config, design tokens, pages and sidebar are ordinary files your agent already knows how to edit,
-not an abstraction we invented. And the framework itself is Apache-2.0, so an agent can read the
-machinery, change it, and send the change back.
+**Nothing is hidden when you want to go further.** What you edit directly is `site/` — a real
+Docusaurus project, whose config, design tokens, homepage and sidebar are ordinary files your agent
+already knows. And the machinery is not a black box either: after a build, the entire site
+application sits in `.vsor/site-runtime/` as readable source — the actual navbar, footer and page
+components — so an agent can open the real thing to understand it before changing anything. That
+directory is regenerated on upgrade, so treat it as reference rather than as your copy; a verb to
+take durable ownership of a component is designed and named in the changelog, not yet built. The
+framework itself is Apache-2.0, so the machinery can also be forked and improved directly.
 
 ## Status
 
