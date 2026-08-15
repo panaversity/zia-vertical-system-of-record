@@ -244,7 +244,22 @@ test("design system: fenced code is legible in light mode", async ({ page }, tes
   // declared value would let a fully transparent code surface score against black and
   // pass. found live 2026-08-15 — this row died in the contrast helper on ubuntu-latest
   // while passing on macOS, so the value it was handed differed by platform.
-  const { color, background, rawColor, rawBackground } = await pre.evaluate((el) => {
+  //
+  // The element is re-queried INSIDE the page rather than measured through the locator
+  // above. found live 2026-08-15 on ubuntu-latest: `pre.evaluate(...)` handed back
+  // `getComputedStyle(el).color === ""`, which is what Chromium returns when an element's
+  // document has no view — i.e. the node had been detached between the visibility check
+  // and the measurement, as Docusaurus finished hydrating and replaced the server-rendered
+  // subtree. macOS never lost that race. A locator re-resolves on each use, but a handle
+  // passed INTO evaluate is pinned to the node it matched, so the fresh query is the fix.
+  await expect
+    .poll(
+      async () => page.evaluate(() => getComputedStyle(document.querySelector(".markdown pre")!).color),
+      { message: "the code block settles with a readable computed colour after hydration" },
+    )
+    .not.toBe("");
+  const { color, background, rawColor, rawBackground } = await page.evaluate(() => {
+    const el = document.querySelector(".markdown pre")!;
     const canvas = document.createElement("canvas").getContext("2d")!;
     // Assigning an unparseable value to fillStyle is a NO-OP — it silently keeps whatever
     // was there. A single-sentinel version of this therefore reports the sentinel's colour
