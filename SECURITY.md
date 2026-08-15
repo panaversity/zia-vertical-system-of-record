@@ -3,7 +3,7 @@
 ## Reporting
 
 Report privately, never as a public issue: open a [GitHub security
-advisory](https://github.com/panaversity/zia-vertical-system-of-record-framework/security/advisories/new)
+advisory](https://github.com/panaversity/zia-vertical-system-of-record/security/advisories/new)
 on this repository. If that is not available to you, email the address on the organisation's GitHub
 profile with `vsor security` in the subject.
 

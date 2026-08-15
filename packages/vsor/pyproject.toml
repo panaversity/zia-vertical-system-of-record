@@ -47,10 +47,10 @@ dependencies = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/panaversity/zia-vertical-system-of-record-framework"
-Repository = "https://github.com/panaversity/zia-vertical-system-of-record-framework"
-Changelog = "https://github.com/panaversity/zia-vertical-system-of-record-framework/blob/main/CHANGELOG.md"
-Issues = "https://github.com/panaversity/zia-vertical-system-of-record-framework/issues"
+Homepage = "https://github.com/panaversity/zia-vertical-system-of-record"
+Repository = "https://github.com/panaversity/zia-vertical-system-of-record"
+Changelog = "https://github.com/panaversity/zia-vertical-system-of-record/blob/main/CHANGELOG.md"
+Issues = "https://github.com/panaversity/zia-vertical-system-of-record/issues"
 
 [project.scripts]
 vsor = "vsor.cli:main"

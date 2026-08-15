@@ -11,7 +11,7 @@ name: release
 # Two owner-side prerequisites, neither of which a workflow can do for itself:
 #   1. claim `vsor` on PyPI;
 #   2. add a Trusted Publisher for it — repository
-#      panaversity/zia-vertical-system-of-record-framework, workflow `release.yml` —
+#      panaversity/zia-vertical-system-of-record, workflow `release.yml` —
 #      so `uv publish` can mint a short-lived token from the OIDC identity below.
 #      No API token is stored in this repository, which is the point.
 #

@@ -91,7 +91,7 @@ A scaffolded project carries all of this, plus the reasoning, at
 ## More
 
 - Repository, specs and CHANGELOG:
-  <https://github.com/panaversity/zia-vertical-system-of-record-framework>
+  <https://github.com/panaversity/zia-vertical-system-of-record>
 - Everything needed to *use* vsor ships in this package and in what `vsor init` writes; the
   repository is for how it is built.
 

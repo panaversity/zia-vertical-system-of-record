@@ -110,5 +110,5 @@ particular is complete here, in `.agents/skills/deploy/SKILL.md`, including the 
 host.
 
 Reference docs will ship inside the installed `vsor` package (`docs/`) in a later release. The
-framework's source repository is github.com/panaversity/zia-vertical-system-of-record-framework —
+framework's source repository is github.com/panaversity/zia-vertical-system-of-record —
 it is where the specs and the CHANGELOG live, and it is not needed to use what is here.

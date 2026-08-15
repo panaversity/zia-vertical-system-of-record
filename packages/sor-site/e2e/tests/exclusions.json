@@ -16,7 +16,7 @@
     "brandCarveOuts": [
       {
         "file": "AGENTS.md",
-        "contains": "github.com/panaversity/zia-vertical-system-of-record-framework",
+        "contains": "github.com/panaversity/zia-vertical-system-of-record",
         "why": "the framework's own repository URL — a factual pointer, verified against `git remote -v`, not corpus branding. Named as an exception in specs/sor-site/surface/spec.md's A2 clause. The line is exempted, not the file."
       }
     ]
