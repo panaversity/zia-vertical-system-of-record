@@ -336,7 +336,15 @@ test("B13: ImageZoom makes the figure focusable and opens it full-screen", async
       position: cs.position,
       width: rect.width,
       height: rect.height,
-      viewport: { width: window.innerWidth, height: window.innerHeight },
+      // documentElement.clientWidth, NOT window.innerWidth: a `position: fixed` box is
+      // laid out in the initial containing block, which excludes a classic scrollbar,
+      // while innerWidth includes it. found live 2026-08-15 on ubuntu-latest — 1265
+      // against 1280, exactly the GTK scrollbar — where macOS overlay scrollbars are
+      // 0px wide and the row had always passed.
+      viewport: {
+        width: document.documentElement.clientWidth,
+        height: document.documentElement.clientHeight,
+      },
     };
   });
   expect(overlay.position, "the lightbox is a fixed overlay").toBe("fixed");

@@ -203,7 +203,20 @@ test("design system: a CSS-module primitive keeps its own box", async ({ page },
  */
 function contrast(fg: string, bg: string): number {
   const lum = (css: string) => {
-    const [r, g, b] = css.match(/[\d.]+/g)!.slice(0, 3).map(Number);
+    const parts = css.match(/[\d.]+/g);
+    // found live 2026-08-15 on ubuntu-latest: this was `css.match(...)!.slice(0, 3)`, and
+    // the non-null assertion turned a colour this parser cannot read into
+    // `TypeError: Cannot read properties of null (reading 'slice')` — a stack trace in the
+    // helper, naming neither the value nor the element, for a row whose whole subject is a
+    // colour pair. The values are resolved through a canvas before they get here (see the
+    // test below), so reaching this branch means something upstream changed; say what was
+    // seen rather than dying on an assertion operator.
+    if (!parts || parts.length < 3) {
+      throw new Error(
+        `cannot read a colour from ${JSON.stringify(css)} — expected an rgb()/rgba() triple`,
+      );
+    }
+    const [r, g, b] = parts.slice(0, 3).map(Number);
     const ch = (v: number) => {
       const s = v / 255;
       return s <= 0.03928 ? s / 12.92 : ((s + 0.055) / 1.055) ** 2.4;
@@ -221,9 +234,38 @@ test("design system: fenced code is legible in light mode", async ({ page }, tes
 
   const pre = page.locator(".markdown pre").first();
   await expect(pre, "the fixture doc carries a fenced code block").toBeVisible();
+  // Both colours are normalised to an rgb() triple IN THE PAGE, through a canvas, because
+  // `getComputedStyle` is free to hand back anything CSS can express — a keyword, a
+  // system colour, `oklch()` (which this design system's tokens are authored in), or a
+  // relative-colour expression — and only some of those carry three numbers.
+  //
+  // The background also walks up: a `<pre>` whose own background is transparent has the
+  // contrast of whatever is BEHIND it, not of `rgba(0,0,0,0)`. Measuring the element's own
+  // declared value would let a fully transparent code surface score against black and
+  // pass. found live 2026-08-15 — this row died in the contrast helper on ubuntu-latest
+  // while passing on macOS, so the value it was handed differed by platform.
   const { color, background } = await pre.evaluate((el) => {
-    const cs = getComputedStyle(el);
-    return { color: cs.color, background: cs.backgroundColor };
+    const canvas = document.createElement("canvas").getContext("2d")!;
+    const norm = (css: string) => {
+      canvas.fillStyle = "#000";
+      canvas.fillStyle = css;
+      const out = canvas.fillStyle as string;
+      // Canvas gives "#rrggbb" for opaque colours and "rgba(...)" when alpha < 1.
+      if (out.startsWith("#")) {
+        const n = parseInt(out.slice(1), 16);
+        return `rgb(${(n >> 16) & 255}, ${(n >> 8) & 255}, ${n & 255})`;
+      }
+      return out;
+    };
+    const opaqueBehind = (node: Element | null): string => {
+      for (let cur = node; cur; cur = cur.parentElement) {
+        const value = norm(getComputedStyle(cur).backgroundColor);
+        const alpha = value.startsWith("rgba") ? Number(value.split(",")[3]) : 1;
+        if (alpha > 0) return value;
+      }
+      return "rgb(255, 255, 255)"; // the canvas the browser paints on
+    };
+    return { color: norm(getComputedStyle(el).color), background: opaqueBehind(el) };
   });
   expect(
     contrast(color, background),
@@ -504,7 +546,16 @@ test("design system: the search overlay covers the window, not the navbar", asyn
       parent: overlay.parentElement?.tagName ?? null,
       width: r.width,
       height: r.height,
-      viewport: { w: window.innerWidth, h: window.innerHeight },
+      // documentElement.clientWidth, NOT window.innerWidth. A `position: fixed` box is
+      // laid out in the initial containing block, which EXCLUDES a classic scrollbar,
+      // while innerWidth includes it. found live 2026-08-15 on ubuntu-latest: 1265 vs
+      // 1280 — a 15px gutter that is exactly the GTK scrollbar, and that measures as
+      // zero on the maintainer's macOS overlay scrollbars, so the row was green locally
+      // and red on the first CI run that ever reached it.
+      viewport: {
+        w: document.documentElement.clientWidth,
+        h: document.documentElement.clientHeight,
+      },
     };
   });
 
