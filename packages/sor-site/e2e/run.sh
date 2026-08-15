@@ -26,11 +26,23 @@ set -euo pipefail
 
 here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"     # packages/sor-site/e2e
 site_ws="$(dirname "$here")"                             # packages/sor-site
-scratch="$here/.scratch"
+repo_root="$(cd "$site_ws/../.." && pwd)"                # the repository
 
-# Preflight — this script installs nothing; errors carry the remedy.
-if [ ! -x "$site_ws/node_modules/.bin/docusaurus" ]; then
-  echo "error: workspace not installed — run: (cd packages/sor-site && npm ci && npx playwright install chromium)" >&2
+# OUTSIDE the repository, and that is the point. This used to be `$here/.scratch` —
+# under packages/sor-site — so Node's resolution walked up from the fixture into
+# packages/sor-site/node_modules for anything the fixture lacked. Installing the shipped
+# tree (below) fixes what the fixture HAS; it does not stop a missing module resolving
+# silently from the workspace, which is the same "the tier sees something the artifact
+# cannot" failure in its quietest form. A real `vsor build` runs under the user's project
+# with no such ancestor, and `tests/acceptance/build.sh` has always used mktemp for the
+# same reason. Set VSOR_E2E_KEEP=1 to leave the tree behind for a post-mortem.
+scratch="$(mktemp -d)"
+
+# Preflight. Playwright is a WORKSPACE tool — it drives the browser and is no part of
+# what ships — while the site under test is built by the shipped tree, installed below.
+if [ ! -f "$repo_root/packages/vsor/src/vsor/_site_runtime/package-lock.json" ]; then
+  echo "error: no staged site runtime — run: make wheel" >&2
+  echo "  (\`make surface\` does this for you via build-acceptance; a bare run.sh does not)" >&2
   exit 1
 fi
 if [ ! -x "$site_ws/node_modules/.bin/playwright" ]; then
@@ -41,9 +53,48 @@ command -v python3 >/dev/null 2>&1 || { echo "error: python3 not found — it se
 
 builds=(site site-sentinel)
 
-rm -rf "$scratch"
+pids=()
+cleanup() {
+  for p in ${pids[@]+"${pids[@]}"}; do kill "$p" 2>/dev/null || true; done
+  if [ -n "${VSOR_E2E_KEEP:-}" ]; then
+    echo "surface: fixture kept at $scratch (VSOR_E2E_KEEP)" >&2
+  else
+    rm -rf "$scratch"
+  fi
+}
+# Armed before anything is assembled, so a failure in the assemble or install steps
+# does not leave a ~1300-package tree in the system temp directory.
+trap cleanup EXIT INT TERM
+
+echo "surface: fixture root $scratch"
 node "$here/scripts/assemble.mjs" --out "$scratch/site"
 node "$here/scripts/assemble.mjs" --sentinel --out "$scratch/site-sentinel"
+
+# Environment parity with site_runtime.runtime_env(), which strips every VSOR_* before
+# handing the environment to Docusaurus. Six of them decide a site's published identity
+# (title, tagline, url, baseUrl, favicon, social image), so an ambient export in a
+# developer's shell or a CI job could steer this fixture in a way it can never steer a
+# real build — the tier would be measuring something no user can produce. The two seams
+# the materialized layout genuinely needs are set per-command below, as runtime_env sets
+# them, and VSOR_E2E_* are exported later for the harness rather than read by any build.
+while IFS= read -r stray; do unset "$stray"; done < <(
+  env | sed -n 's/^\(VSOR_[A-Za-z0-9_]*\)=.*/\1/p'
+)
+
+# The shipped tree, installed the way `vsor build` installs it: `npm ci` against the
+# lockfile the wheel carries, in the directory being built. Before 2026-08-15 this ran
+# the WORKSPACE's docusaurus against packages/sor-site/node_modules, and the two trees
+# disagreed on 65 packages — including lightningcss (the CSS minimizer) and @swc/core
+# (the JS loader and minifier). A tier that compiles with a different compiler than the
+# artifact cannot see a compiler defect, which is exactly how 0.1.2 shipped a flattened
+# design system through 42 green checks.
+#
+# It costs an npm ci per build. That is the price of the tier testing the artifact, and
+# the repo already pays it in build-acceptance; `npm ci` is offline once the cache is warm.
+for b in "${builds[@]}"; do
+  echo "surface: installing the shipped runtime for $b"
+  (cd "$scratch/$b/site-runtime" && npm ci --no-audit --no-fund)
+done
 
 # The two env seams site_runtime.runtime_env() sets for `vsor build`, set here for
 # the same reason: the shell defaults to SIBLING ../site and ../knowledge (what it
@@ -52,14 +103,8 @@ for b in "${builds[@]}"; do
   echo "surface: building $b"
   (cd "$scratch/$b/site-runtime" \
      && VSOR_SITE_DIR=./site VSOR_KNOWLEDGE_DIR=./knowledge \
-        "$site_ws/node_modules/.bin/docusaurus" build)
+        ./node_modules/.bin/docusaurus build)
 done
-
-pids=()
-cleanup() {
-  for p in ${pids[@]+"${pids[@]}"}; do kill "$p" 2>/dev/null || true; done
-}
-trap cleanup EXIT INT TERM
 
 # serve <build-dir> <log-file>; sets SERVED_URL. Ephemeral port: bind 0, parse
 # the port http.server reports once it is already listening.

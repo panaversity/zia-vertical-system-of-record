@@ -1,5 +1,49 @@
 # Changelog
 
+## 0.1.4 — 2026-08-15
+
+No user-visible behaviour changes. This closes the hole 0.1.3 was found through: the browser tier
+was compiling with a different compiler than the one that ships, so it could not have seen the
+defect it was supposed to catch. Nothing here is a fix to the product — it is the machinery that
+decides whether the next defect is caught or shipped.
+
+### Testing
+
+- **The browser tier now installs the shipped dependency tree.** It used to copy
+  `packages/sor-site/app` and let Node resolution walk up into the workspace's `node_modules`; a real
+  `vsor build` runs `npm ci` against the lockfile the wheel carries. The two disagreed on **65
+  packages**, and the disagreement landed on the compiler: `lightningcss` 1.32.0 against 1.33.0 (the
+  CSS minimizer — the organ that lowers `@layer` against browserslist targets, i.e. the exact organ
+  that shipped broken in 0.1.2), `@swc/core` and `@swc/html` 1.15.47 against 1.16.0 (the JS loader,
+  JS minifier and HTML minifier), and browserslist's own target data. The fixture now takes the
+  staged `package.json`, `package-lock.json` and nine library tarballs and `npm ci`s them in place —
+  the same files, in the same order, as `site_runtime.materialize()`. Verified after the change: the
+  fixture and a real build of the published 0.1.3 wheel agree on every one of those packages.
+- **The fixture is assembled under `mktemp`, outside the repository.** Installing the shipped tree
+  fixes what the fixture *has*; it does not stop a module the fixture *lacks* resolving silently from
+  the workspace above it, which is the same failure in its quietest form. There is no longer an
+  ancestor `node_modules` to fall through to. `VSOR_E2E_KEEP=1` preserves the tree for a post-mortem.
+- **The tier no longer inherits `VSOR_*` from the caller.** `runtime_env()` strips them for a real
+  build because six decide a site's published identity, so an ambient export could steer the fixture
+  in a way it can never steer a user's build.
+- `make surface` costs about four minutes more, and that is the price of testing the artifact.
+
+### Supply chain
+
+- **The shipped lockfile is committed and reviewed.** It was regenerated against the live registry on
+  every `make wheel` — so the tree every user installs was a fresh resolution taken at whatever
+  moment the wheel happened to be built, never committed, never read by anyone, and different on
+  every machine that ran the target. This repository's own rule calls the lockfile the dependency
+  review surface; this was the one dependency set nobody could review. `make wheel` now copies
+  `templates/site_runtime/package-lock.json` instead of resolving, so CI, a release and a laptop pack
+  the same tree. Safe because `npm pack` is byte-reproducible — verified by packing a library twice
+  and comparing sha512, and by checking a fresh pack against the integrity the lock already records.
+- **`make relock`** is the only way that tree changes: it re-resolves against the registry and leaves
+  the diff for a human. A test asserts the committed lock is the committed manifest resolved, so the
+  two cannot drift; it fails naming `make relock`.
+- The reviewed lockfile is excluded from the wheel — only the staged copy ships, rather than 834 KB
+  of the same JSON twice.
+
 ## 0.1.3 — 2026-08-15
 
 The design system reached the browser in pieces, and the test suite could not see it. Every entry

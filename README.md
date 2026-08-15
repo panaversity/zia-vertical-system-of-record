@@ -148,4 +148,9 @@ build acceptance and the browser tier. `make deploy-acceptance` runs the hosting
 a static host can have, through the real wheel and a real browser. The three node-lane targets
 stage the same paths, so they cannot run concurrently on one checkout.
 
+The shell's dependency tree is pinned in `packages/vsor/src/vsor/templates/site_runtime/package-lock.json`
+and every tier installs *that* tree, so the browser tests compile with the same compiler your
+`vsor build` will. To change it, edit the manifest beside it and run `make relock`, which
+re-resolves against the registry and leaves the diff for review.
+
 Apache-2.0.

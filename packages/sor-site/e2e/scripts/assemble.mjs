@@ -67,6 +67,25 @@ const scaffoldSite = path.join(
 );
 const fixtures = path.join(repoRoot, "tests", "fixtures", "tiny");
 
+/**
+ * What `make wheel` stages and the wheel then ships: the shell's own package.json,
+ * the lockfile npm resolved from it, and the nine workspace libraries as tarballs.
+ * `vsor build` lays exactly these over the unpacked app before running `npm ci`
+ * (site_runtime.py, _SHELL_MANIFESTS + library_tarballs), so copying them here is
+ * what makes this fixture the artifact rather than a lookalike of it.
+ *
+ * Before 2026-08-15 this directory was ignored entirely: the fixture kept the app's
+ * OWN package.json and resolved its modules by walking up into
+ * packages/sor-site/node_modules. The two trees then disagreed on 65 packages,
+ * lightningcss and @swc/core among them — the CSS minimizer and the JS loader, i.e.
+ * the compiler itself — so the browser tier certified a build no user could get.
+ * That is the same shape as the browserslist defect this repo shipped in 0.1.2, and
+ * it is why the 42 checks stayed green through it.
+ */
+const stagedRuntime = path.join(
+  repoRoot, "packages", "vsor", "src", "vsor", "_site_runtime",
+);
+
 const INSTANCE_NAME = "fixture";
 const YEAR = "2026";
 // B12 sentinels. Distinct light/dark primaries prove the painted color derives
@@ -132,9 +151,7 @@ function main() {
   fs.rmSync(out, { recursive: true, force: true });
   fs.mkdirSync(out, { recursive: true });
 
-  // 1 — the shell. Everything except install/build state; node module resolution
-  // walks up from here into the committed packages/sor-site/node_modules, which
-  // is where `npm ci` hoisted the shell's own dependencies and linked @vsor/lib-*.
+  // 1 — the shell. Everything except install/build state.
   const shellDir = path.join(out, "site-runtime");
   fs.cpSync(shellSource, shellDir, {
     recursive: true,
@@ -143,6 +160,32 @@ function main() {
   for (const required of ["docusaurus.config.ts", path.join("src", "css", "tokens.css")])
     if (!fs.existsSync(path.join(shellDir, required)))
       fail(`the copied shell has no ${required} — packages/sor-site/app changed shape`);
+
+  // 1a — the SHIPPED manifests over the app's own, and the library tarballs beside
+  // them. This is the order site_runtime.materialize() uses and for its stated
+  // reason: the app's package.json carries workspace ranges and versions no registry
+  // has, and the shipped one is the manifest that must survive. run.sh then runs
+  // `npm ci` here, against this lockfile, exactly as `vsor build` does.
+  if (!fs.existsSync(path.join(stagedRuntime, "package-lock.json")))
+    fail(
+      `no staged site runtime at ${stagedRuntime} — run \`make wheel\` first ` +
+        "(`make surface` does, via build-acceptance; a bare `node assemble.mjs` does not). " +
+        "Without it this fixture would fall back to the workspace's tree, which is the " +
+        "divergence this step exists to close.",
+    );
+  const shellManifest = JSON.parse(
+    fs.readFileSync(path.join(stagedRuntime, "package.json"), "utf8"),
+  );
+  const tarballs = Object.values(shellManifest.dependencies ?? {})
+    .filter((spec) => typeof spec === "string" && spec.startsWith("file:"))
+    .map((spec) => spec.replace(/^file:\.?\/?/, ""));
+  if (tarballs.length === 0)
+    fail("the shipped manifest declares no file: tarballs — the workspace libraries would be missing");
+  for (const name of ["package.json", "package-lock.json", ...tarballs]) {
+    const from = path.join(stagedRuntime, name);
+    if (!fs.existsSync(from)) fail(`the staged runtime has no ${name} — re-run \`make wheel\``);
+    fs.copyFileSync(from, path.join(shellDir, name));
+  }
 
   // 2 — the authored trees, INSIDE the shell (the layout copy_authored makes).
   const siteDir = path.join(shellDir, "site");

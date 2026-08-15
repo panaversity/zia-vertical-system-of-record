@@ -139,17 +139,44 @@ wheel:
 	  mv "$$f" "$$(printf '%s' "$$f" | sed -E 's/^vsor-(.*)-[0-9]+\.[0-9]+\.[0-9]+\.tgz$$/\1.tgz/')"; \
 	done
 	cp packages/vsor/src/vsor/templates/site_runtime/package.json $(runtime_dir)/package.json
-	# --prefer-online, found live 2026-08-14: this is a FRESH resolution against
-	# the registry, and npm answers it from its cached packuments unless told
-	# otherwise. On a machine whose cache predates a recent publish the two
-	# disagree — a package resolves to a new version whose peer range names a
-	# sibling version the stale packument does not list, and the step dies with
-	# `ETARGET ... No matching version found for X@^N` for a version that exists
-	# and that `npm view` prints happily. It failed twice in a row and passed on
-	# the third run only because `npm view` had refreshed the metadata in
-	# between. Revalidating makes the failure impossible instead of intermittent.
-	cd $(runtime_dir) && npm install --package-lock-only --prefer-online
+	# The lockfile is COPIED, not resolved. It used to be regenerated here with
+	# `npm install --package-lock-only --prefer-online`, which made the tree every user
+	# installs a fresh registry resolution taken at whatever moment the wheel was built —
+	# never committed, never reviewed, and different on every machine that ran this
+	# target. The repository's own supply-chain rule calls the lockfile the dependency
+	# review surface, and this one was the single dependency set nobody could read.
+	#
+	# It is also how a compiler can change under the tests: on 2026-08-15 the browser
+	# tier resolved lightningcss 1.32.0 and @swc/core 1.15.47 while the artifact carried
+	# 1.33.0 and 1.16.0. Pinning makes `make wheel` deterministic, so CI, a release and a
+	# maintainer's laptop all pack the same tree — and any change to it arrives as a diff
+	# in `make relock`, which someone has to look at.
+	#
+	# Safe because npm pack is byte-reproducible: verified 2026-08-15 by packing a library
+	# twice and comparing sha512, and by checking a fresh pack against the integrity the
+	# committed lock already records for it. If that ever stops holding, `npm ci` fails
+	# loudly with EINTEGRITY rather than installing something unexpected.
+	cp packages/vsor/src/vsor/templates/site_runtime/package-lock.json $(runtime_dir)/package-lock.json
 	uv build --package vsor
+
+# Re-resolve the shipped tree and leave the diff for review. The ONLY way the shell's
+# dependency set changes: edit templates/site_runtime/package.json, run this, read what
+# moved, commit both files together (`make gate` refuses a manifest the lock does not
+# match). Run it deliberately — on a dependency bump or a security advisory — not on a
+# schedule, because every run of it is a supply-chain change.
+#
+# --prefer-online, found live 2026-08-14: this is a FRESH resolution against the
+# registry, and npm answers it from its cached packuments unless told otherwise. On a
+# machine whose cache predates a recent publish the two disagree — a package resolves to
+# a new version whose peer range names a sibling version the stale packument does not
+# list, and the step dies with `ETARGET ... No matching version found for X@^N` for a
+# version that exists and that `npm view` prints happily. It failed twice in a row and
+# passed on the third run only because `npm view` had refreshed the metadata in between.
+# Revalidating makes the failure impossible instead of intermittent.
+relock: wheel
+	cd $(runtime_dir) && npm install --package-lock-only --prefer-online
+	cp $(runtime_dir)/package-lock.json packages/vsor/src/vsor/templates/site_runtime/package-lock.json
+	@echo "relock: templates/site_runtime/package-lock.json rewritten — review the diff, then re-run \`make wheel\`"
 
 # Browser tier of specs/sor-site/surface (B5–B13, B15, B16; B14 retired
 # 2026-08-14): builds the fixture site from the forked shell + the init scaffold
