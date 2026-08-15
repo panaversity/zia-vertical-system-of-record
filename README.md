@@ -2,11 +2,13 @@
 
 **Answers you can trace. Refusals you can trust.**
 
+**[See a site vsor built →](https://vsor-demo.vercel.app)** — four markdown files, one command.
+
 Point an AI assistant at your own files and get answers that name the file they came from — and a
 plain *"that isn't in here"* when the question falls outside them.
 
 ```bash
-vsor init my-sor      # a project in your own repo: markdown, config, git initialized
+uvx vsor init my-sor  # a project in your own repo: markdown, config, git initialized
 cd my-sor
 vsor dev              # the live site on 127.0.0.1:3000, reloading as you write
 vsor build            # → build/, ready to upload anywhere
@@ -107,14 +109,13 @@ that is not ours.
 **Needs:** Python 3.14+, and Node 20+ with npm (the first `dev` or `build` installs a site runtime
 under `.vsor/` — one time, a minute or two, network required).
 
-Not yet on PyPI, so build the wheel and run from it:
-
 ```bash
-make wheel
-uvx --from dist/vsor-0.1.2-py3-none-any.whl vsor init my-sor
+uvx vsor init my-sor
 ```
 
-Once the name is claimed that becomes `uvx vsor init my-sor`.
+That is the whole install — [uv](https://docs.astral.sh/uv/) fetches vsor and runs it; nothing is
+added to your system. `pip install vsor` works too if you would rather have the command on your
+PATH.
 
 ## Deploy
 
