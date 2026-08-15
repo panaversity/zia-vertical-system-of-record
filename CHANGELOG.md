@@ -1,5 +1,90 @@
 # Changelog
 
+## 0.1.2 — 2026-08-15
+
+The pre-publish record audit. Every entry below is a defect measured on a real build with the real
+wheel; the theme is that **`build.lock.json` had to stop claiming things it could not deliver**,
+because every citation the MCP surface will return resolves through that file.
+
+### Breaking
+
+- **`build.lock.json` is format 2.** A format-1 reader must be updated. Two fields are added and
+  one of them changes `build_id`, so every project's next build produces a new `build_id` for an
+  unchanged corpus. Taken now, before the first PyPI release, because a format bump after one is a
+  migration.
+  - **`corpus.prefix`** — the project root's path inside the repository `corpus.git` names (`""` at
+    the root, `"sor/"` one level below it). `documents[]` rows are project-relative while
+    `corpus.git` names HEAD of the *enclosing* repository, so in the layout `vsor init` instructs
+    the user into — inside an existing work tree — `<sha>:knowledge/x.md` was a path no commit
+    contained. A citation resolves `<git>:<prefix><path>`, which the build acceptance now asserts
+    per document.
+  - **`site.app`** — the forked site application that rendered the site, also in the `build_id`
+    preimage. The app is unpacked over the shell rather than installed, so no npm integrity hash
+    covers it: two builds of one corpus by one vsor version, by two different forks, collided.
+- **`build/build.lock.json`** — the deployable directory now carries a copy of the record that
+  describes it, so "is the live site the one this record names" is answerable by comparing one
+  `build_id`. Nothing in `build/` named the build before, which made a record/artifact divergence
+  undetectable by any means.
+
+### Fixed — the record
+
+- **`corpus.git` named a commit that could not reproduce the build.** The clean-check covered
+  `knowledge/` while `build_id` covers `knowledge/`, `site/` and `instance.md`. Editing
+  `site/docusaurus.config.ts` — the documented customization surface, and the first thing every
+  project does — left a record naming a commit that reproduces a different `build_id` and a
+  different site. All three trees are now checked, and a dirty one nulls the commit exactly as a
+  dirty corpus does.
+- **`corpus.git` named a commit whose `knowledge/` is a symbolic link.** A linked corpus root stays
+  legal — the copy and the walk both follow it, so the site and the record agree — but HEAD holds a
+  link, not the corpus, so zero recorded documents could be fetched from the commit the record
+  named. Now null, with a warning that says why.
+- **A `draft: true` document was recorded with no page behind it.** Docusaurus drops drafts from a
+  production build downstream of everything vsor measures, so the file was hashed, moved `build_id`
+  and got a `documents[]` row while no route existed — a citation resolving to the record and 404ing
+  on the site. Now refused: `error: knowledge-invalid`.
+- **The site's published identity could come from the environment.** The shell config reads six
+  `VSOR_*` variables (title, tagline, url, baseUrl, favicon, social image), so two builds with the
+  same `build_id` could publish at different origins, differing in every canonical link, og:/twitter:
+  URL, JSON-LD `@id` and sitemap entry. The environment is now a closed surface: `vsor` strips every
+  `VSOR_*` key before the build, and `site/docusaurus.config.ts` is the only door.
+
+### Fixed — safety
+
+- **A `build/` that was not a directory half-completed the swap and then wedged the project.** A
+  regular file or a symlink there made `shutil.rmtree` raise *between* the two renames: `build/` held
+  the new site while `build.lock.json` still described the previous one, and every later run
+  re-raised the same error before doing any work. All three shapes are now handled, the replacement
+  is reported rather than silent, a link's target is never touched, and the (cosmetic) cleanup can
+  no longer skip the record write.
+- **`vsor dev` ignored SIGHUP**, so closing the terminal killed vsor and left the dev server alive,
+  holding the port, with a lock naming a dead pid — which the next verb took over, straight into the
+  shell that orphan was serving from. SIGHUP and SIGQUIT now shut down the way SIGINT does, the lock
+  records the node process, and a live child holds the project even when its vsor is gone.
+- **`superseded: yes` passed as a genuine supersession and rendered no notice.** PyYAML reads `yes`
+  as a boolean; the site's own parser reads it as the string `"yes"` — so a withdrawn rule was
+  served as current and recorded as validly superseded. `superseded` is now decided from the
+  scalar's own characters: `true`/`false` only, the three spellings of each that both parsers share.
+- **Frontmatter that PyYAML rejects and the site accepts switched the whole dating gate off** for
+  that document, silently — a tab after the colon being the measured case, which shipped a
+  supersession pointer naming nothing. An unreadable frontmatter block is now `knowledge-invalid`.
+- **Ctrl-C during `vsor build` ended in a traceback** and a death by signal, with no `error: <slug>`
+  first line and no exit code from the closed set. It is now a decided exit 0 — and the build's node
+  process gets its own group and a sweep, so nothing survives the cancellation.
+- **A named pipe (or socket, or device node) in `knowledge/` died inside `copytree`**, surfacing a
+  raw Python `shutil.Error` repr under `io-failed`. The rule the record actually enforces — a
+  document is a regular file — is now the rule the refusal states.
+- **A `superseded_by` naming an accented filename was broken in both directions** (the build refused
+  a correct corpus, or the page lost the link), because the record's paths are NFC-normalized and the
+  pointer was not. Both ends now normalize.
+- **A successor declaring `id:` in its frontmatter** validated at build time and rendered "No
+  replacement is named" — the same observable outcome as the dangling pointer the build refuses
+  outright. Now refused, naming the collision.
+- Two rough edges on the lock: a reused pid could produce the remedy `kill 1`, and a directory at
+  `.vsor/lock` wedged the project permanently. Both closed; the refusal now names the process that
+  is actually running rather than the one that took the lock.
+- `io-failed` for a two-path call named the source (a temp file that was fine) instead of the
+  destination that was wrong. It prints `<src> -> <dst>` now.
+
 ## 0.1.1 — 2026-08-14
 
 Everything since the 0.1.0 tag. The theme of it is **publishability**: 0.1.0 could be built and

@@ -1,6 +1,6 @@
 [project]
 name = "vsor"
-version = "0.1.1"
+version = "0.1.2"
 description = "Compile a folder of governed markdown into a website and an MCP server, with cited answers and honest abstention."
 readme = "README.md"
 requires-python = ">=3.14"

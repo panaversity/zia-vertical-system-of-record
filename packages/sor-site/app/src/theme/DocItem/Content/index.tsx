@@ -32,6 +32,7 @@ import ReactMarkdown from "react-markdown";
 import LessonContent from "@/components/LessonContent";
 import DocPageActions from "@/components/DocPageActions";
 import ReadingProgress from "@/components/ReadingProgress";
+import { EffectiveDate, SupersededNotice } from "./EffectiveDating";
 import styles from "./styles.module.css";
 
 interface SummariesPluginData {
@@ -113,8 +114,12 @@ export default function ContentWrapper(props: any): React.ReactElement {
   return (
     <>
       <ReadingProgress />
+      {/* First on the page, deliberately: a document that is no longer current says so
+          before the first sentence a reader can quote, not after it. See EffectiveDating. */}
+      <SupersededNotice frontMatter={doc.frontMatter} />
       <div className={styles.contentHeader}>
         <div className={styles.contentHeaderLeft}>
+          <EffectiveDate frontMatter={doc.frontMatter} />
           <ReadingTime docId={doc.metadata.id} />
         </div>
         <DocPageActions />

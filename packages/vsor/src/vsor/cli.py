@@ -82,6 +82,20 @@ def main(argv: list[str] | None = None) -> int:
             return run_dev(port_raw=args.port)
     except CommandError as err:
         return _refuse(err)
+    except KeyboardInterrupt:
+        # A decided cancellation, exactly as `vsor dev`'s Ctrl-C is: exit 0 with one line,
+        # never a traceback and never a death by signal. Found live 2026-08-15: Ctrl-C
+        # during `vsor build` ended in a KeyboardInterrupt traceback through
+        # subprocess._try_wait and terminated by signal 2 — no `error: <slug>` first line
+        # and no code from the closed set, which is the one contract agents branch on.
+        # `build_cmd` has already swept the build child's process group by the time this
+        # runs, and the swap has not happened, so both artifacts are as they were.
+        sys.stderr.write(
+            f"\nvsor {args.verb} cancelled — build/ and build.lock.json are unchanged.\n"
+            if args.verb == "build"
+            else f"\nvsor {args.verb} cancelled.\n"
+        )
+        return 0
     except OSError as exc:
         # The environment's last-resort boundary. These verbs write into the project for
         # their whole run — the runtime shell, the staging tree, the swap, the record —

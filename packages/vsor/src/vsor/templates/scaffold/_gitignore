@@ -3,9 +3,9 @@
 build/
 .env
 .DS_Store
-# the two deploy CLIs write local project state (and, after a first run, the
-# project and org ids) into these — shipped rather than left for you to add,
-# because this project already carries both hosts' configs.
+# the Vercel and Netlify CLIs write local project state (and, after a first run,
+# the project and org ids) into these — ignored up front rather than left for you
+# to notice on the day you first deploy.
 .vercel/
 .netlify/
 # end vsor

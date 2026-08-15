@@ -111,7 +111,7 @@ Not yet on PyPI, so build the wheel and run from it:
 
 ```bash
 make wheel
-uvx --from dist/vsor-0.1.1-py3-none-any.whl vsor init my-sor
+uvx --from dist/vsor-0.1.2-py3-none-any.whl vsor init my-sor
 ```
 
 Once the name is claimed that becomes `uvx vsor init my-sor`.

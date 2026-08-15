@@ -19,7 +19,19 @@ from pathlib import Path
 from packaging.specifiers import InvalidSpecifier, SpecifierSet
 from packaging.version import InvalidVersion
 
-LOCK_FORMAT = 1
+# Format 2 (2026-08-15, from the adversarial record review, pre-PyPI). Two changes, both
+# about provenance rather than about which bytes were built:
+#
+# - `corpus.prefix` — the project root's path inside the repository `corpus.git` names.
+#   `documents[]` rows are project-relative, so below the repo root — the layout `vsor
+#   init` explicitly supports — `<git>:<path>` resolves to nothing and every MCP citation
+#   resolves through exactly that pair. It is provenance, not an input: the same corpus at
+#   a different path in a repository is the same build, so it stays OUT of the preimage.
+# - `app_sha256` in the preimage and `site.app` in the record — the site application that
+#   rendered the site. `.materialized.json` hashes the app tarball because "the app is
+#   unpacked, not installed, so nothing else would notice a changed fork"; build_id was
+#   that "nothing else", so two builds by one vsor version with different forks collided.
+LOCK_FORMAT = 2
 
 SCHEMA_PATH = Path(__file__).with_name("build_lock_schema.json")
 
@@ -72,11 +84,18 @@ def compute_build_id(
     docusaurus_version: str,
     node_version: str,
     lock_sha256: str,
+    app_sha256: str,
 ) -> str:
-    """The build_id recipe: sha256 over the NUL-separated preimage `"1"` (format) ·
-    corpus.tree · site tree · sha256(instance.md) · vsor ∥ docusaurus ∥ node ∥ site.lock.
-    `created` is not an input, by design — a no-change rebuild keeps its build_id.
-    Changing this preimage requires bumping LOCK_FORMAT."""
+    """The build_id recipe: sha256 over the NUL-separated preimage `"2"` (format) ·
+    corpus.tree · site tree · sha256(instance.md) · vsor ∥ docusaurus ∥ node ∥ site.lock ∥
+    site.app. `created` is not an input, by design — a no-change rebuild keeps its
+    build_id. Changing this preimage requires bumping LOCK_FORMAT.
+
+    `app_sha256` is the forked site application's own bytes, added at format 2: it is the
+    program that rendered the site, and the lockfile cannot speak for it — the app is
+    unpacked over the shell rather than installed into `node_modules`, so no integrity
+    hash of npm's covers it. Without it two builds of one corpus by one vsor version, by
+    two different forks, carry the same build_id."""
     preimage = b"\x00".join(
         [
             str(LOCK_FORMAT).encode("ascii"),
@@ -87,6 +106,7 @@ def compute_build_id(
             docusaurus_version.encode("utf-8"),
             node_version.encode("utf-8"),
             lock_sha256.encode("utf-8"),
+            app_sha256.encode("utf-8"),
         ]
     )
     return hashlib.sha256(preimage).hexdigest()
@@ -150,11 +170,18 @@ def assemble_record(
     docusaurus_version: str,
     node_version: str,
     lock_sha256: str,
+    app_sha256: str,
     git_head: str | None,
+    corpus_prefix: str,
     created: str,
 ) -> dict[str, object]:
-    """The format-1 record, exactly the committed schema's shape. `created` varies on
-    every rebuild by design and never moves `build_id`."""
+    """The format-2 record, exactly the committed schema's shape. `created` varies on
+    every rebuild by design and never moves `build_id`.
+
+    `corpus_prefix` is the project root's path within the repository `git_head` names —
+    `""` at the repository root, `"sor/"` one level below it. It is written whether or not
+    a commit could be named, because it describes where this project sits and that is true
+    either way; a reader resolves a document as `<git>:<prefix><path>`."""
     corpus_tree = tree_hash(corpus_rows)
     return {
         "format": LOCK_FORMAT,
@@ -166,6 +193,7 @@ def assemble_record(
             docusaurus_version=docusaurus_version,
             node_version=node_version,
             lock_sha256=lock_sha256,
+            app_sha256=app_sha256,
         ),
         "created": created,
         "vsor": vsor_version,
@@ -173,8 +201,14 @@ def assemble_record(
         "corpus": {
             "tree": corpus_tree,
             "git": git_head,
+            "prefix": corpus_prefix,
             "documents": [{"path": row_path, "sha256": row_sha} for row_path, row_sha in corpus_rows],
         },
-        "site": {"docusaurus": docusaurus_version, "node": node_version, "lock": lock_sha256},
+        "site": {
+            "docusaurus": docusaurus_version,
+            "node": node_version,
+            "lock": lock_sha256,
+            "app": app_sha256,
+        },
         "non_stock": [],
     }

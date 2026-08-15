@@ -7,6 +7,7 @@ guidance — never silently ignored. Reserved slice-2 keys (`retrieval`, `budget
 accepted and inert.
 """
 
+import codecs
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -126,9 +127,51 @@ def _read_requires(path: Path, data: dict[str, object]) -> str:
     return value
 
 
-def parse_instance(path: Path) -> Instance:
-    """Read and strictly parse ``path`` per specs/vsor/instance-format."""
-    text = path.read_text(encoding="utf-8")
+def decode_instance(path: Path, raw: bytes) -> str:
+    """The file's bytes as text, or an ``InstanceError`` — being UTF-8 is part of the
+    format, so failing it is a parse failure like a missing key.
+
+    Found in review 2026-08-15: this decode used to be `read_text(encoding="utf-8")` with
+    nothing catching `UnicodeDecodeError`, so an `instance.md` saved as UTF-16 — what
+    PowerShell's `Out-File` writes by default, and what a converted corpus arrives as —
+    left both site verbs with a raw traceback: no `error:` slug on the first stderr line
+    for an agent to branch on, and Python's exit 1 where the closed set owes
+    `instance-invalid`.
+    """
+    if raw.startswith(codecs.BOM_UTF8):
+        # Decodes cleanly, so it reached `_split_frontmatter` and was refused there with
+        # "the file must open with a `---` line" — of a file that visibly does. The bytes
+        # are three the eye cannot see, and an error whose reader can prove it wrong
+        # teaches them to distrust the next one. Refused rather than stripped: what the
+        # format accepts is the instance-format spec's to widen, not this function's.
+        raise InstanceError(
+            f"{path}: the file starts with a UTF-8 byte-order mark (the invisible bytes "
+            "EF BB BF), and instance.md must begin with its `---` frontmatter line.\n"
+            "Re-save it as UTF-8 WITHOUT a BOM — most editors call it \"UTF-8\" as against "
+            '"UTF-8 with BOM" — or: tail -c +4 instance.md > nobom.md && mv nobom.md '
+            "instance.md — then rerun."
+        )
+    try:
+        return raw.decode("utf-8")
+    except UnicodeDecodeError as exc:
+        raise InstanceError(
+            f"{path}: the file is not valid UTF-8 — byte 0x{raw[exc.start]:02x} at offset "
+            f"{exc.start} is not ({exc.reason}). instance.md is read as UTF-8 text; UTF-16 "
+            "is the usual cause.\nRe-save it as UTF-8 — your editor's \"save with encoding\", "
+            "or: iconv -f utf-16 -t utf-8 instance.md > utf8.md && mv utf8.md instance.md "
+            "(naming the encoding it actually has) — then rerun."
+        ) from exc
+
+
+def parse_instance(path: Path, *, text: str | None = None) -> Instance:
+    """Read and strictly parse ``path`` per specs/vsor/instance-format.
+
+    ``text`` accepts bytes the caller has already read and decoded, so a caller that must
+    hash exactly what it validated (`build.lock.json`'s instance input) reads the file
+    once instead of racing its own second read.
+    """
+    if text is None:
+        text = decode_instance(path, path.read_bytes())
     frontmatter, body = _split_frontmatter(path, text)
     data = _require_mapping(path, frontmatter)
     _check_keys(path, data)

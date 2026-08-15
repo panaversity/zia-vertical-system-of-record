@@ -17,9 +17,23 @@ and an AI assistant both get an answer they can follow home.
    serve it as if it were.
 4. **Two sources that disagree stay two sources.** Record both, say which document each came from,
    and tell the owner. Never resolve a conflict silently by picking the one that reads better.
-5. **Say when it was true.** Rules change. If a source carries an effective date, a version, or a
-   "as at" line, that belongs in the document too — a correct answer from 2019 is a wrong answer
-   now, and nothing else in the system can tell the difference.
+5. **Say when it was true.** Rules change, and a correct answer from 2019 is a wrong answer now.
+   Three optional frontmatter keys carry that fact, and both surfaces read them:
+
+   ```yaml
+   effective: 2024-01-01              # the day this document's content took effect
+   superseded: true                   # this document is no longer current
+   superseded_by: rules/filing.md     # what replaced it, as a path under knowledge/
+   ```
+
+   A page with `effective:` shows the date; a superseded page opens with a notice above its
+   content. If a source carries a version or an "as at" line as well, that belongs in the body
+   — the keys record the fact, the document explains it.
+6. **A replaced document is marked, never deleted.** Mark the old one and add the new one. Every
+   citation already pointing at the old page — in an email, in a filing, in another agent's
+   answer — stops resolving the moment the file is gone, and a citation that resolves to nothing
+   is indistinguishable from one that was invented. `vsor build` refuses a `superseded_by` that
+   names a document the project does not publish, so the two halves cannot fall out of step.
 
 ## What provenance is not
 

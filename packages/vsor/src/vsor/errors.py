@@ -22,6 +22,11 @@ SLUG_EXITS: MappingProxyType[str, int] = MappingProxyType(
         # symbolic links — bytes the site would serve and build.lock.json could not name.
         "project-busy": 1,
         "symlink-unsupported": 1,
+        # A corpus document whose effective-dating keys vsor cannot act on — the one that
+        # matters is a `superseded_by` naming a document this build is not publishing
+        # (see knowledge.py). Exit 1, beside `instance-invalid`: it is the user's markdown
+        # speaking, and the fix is a line in a file they wrote.
+        "knowledge-invalid": 1,
         # exit 3 — the environment speaking
         "missing-runtime": 3,
         "install-failed": 3,
@@ -100,7 +105,16 @@ def io_refusal(operation: str, exc: OSError, *, note: str | None = None) -> Comm
     thing only the raising call site knows.
     """
     reason = exc.strerror or str(exc) or exc.__class__.__name__
-    where = f" ({exc.filename})" if exc.filename else ""
+    # `filename2` is the DESTINATION of a two-path call and it is the one that is usually
+    # wrong: `os.replace(tmp, path)` onto a directory raises EISDIR with the *source* in
+    # `filename`, so the message named a temp file that was fine and sent the reader to
+    # the wrong path entirely (found live 2026-08-15). Both are printed when both exist,
+    # because "which end" is exactly the question the reader has.
+    where = ""
+    if exc.filename and getattr(exc, "filename2", None):
+        where = f" ({exc.filename} -> {exc.filename2})"
+    elif exc.filename or getattr(exc, "filename2", None):
+        where = f" ({exc.filename or exc.filename2})"
     remedy = _IO_REMEDIES.get(exc.errno, _IO_DEFAULT_REMEDY) if exc.errno else _IO_DEFAULT_REMEDY
     prose = f"{operation} failed: {reason}{where}.\n{remedy}"
     if note is not None:

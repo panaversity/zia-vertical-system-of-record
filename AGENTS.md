@@ -122,8 +122,12 @@ evidence, recorded here with a revision note.
    as a **document, not a verb**. It needed no code: `vsor build` already emits an ordinary static
    directory, so the missing thing was the knowledge of what to do with it (the two `url`/`baseUrl`
    values baked into the output, the two deploy shapes, how to verify a URL rather than trust it) —
-   exactly the shape a SKILL.md holds. It arrives with `vercel.json` and `netlify.toml` at the
-   scaffold root, where each host looks. The remaining four stay deferred and stay verbs.*
+   exactly the shape a SKILL.md holds. It arrived alongside `vercel.json` and `netlify.toml` at the
+   scaffold root — **withdrawn the same day on the owner's challenge**, and rightly: a framework has
+   no business writing a vendor's file into every project, two of any three would always be deleted,
+   and none could work before vsor was on PyPI. The host configs live inside the skill as
+   copy-paste blocks an agent writes once the owner has picked a host. The remaining four stay
+   deferred and stay verbs.*
 6. **The governance level is derived, never declared.** `vsor check` (post-v0) reports the level the
    `governance/` directory achieves; there is no `governance:` key on the instance. `instance.md`
    describes the *deployment*; `governance/` describes the *knowledge*.
@@ -132,6 +136,19 @@ evidence, recorded here with a revision note.
    embedder + chunker versions, one row per document), a gitignored `.vsor/` scratch dir, Postgres
    rows under a new generation, and the static `build/`. **No archive, tarball or package** — that
    was an upstream deployment detail, not a build output.
+   *Revision 2026-08-15, from the pre-publish record audit: the record is **format 2**, and the
+   artifact carries a copy of it.* Format 2 adds two fields, both provenance rather than content,
+   and it was taken now because a format bump after a PyPI release is a migration. **`corpus.prefix`**
+   — the project root's path inside the repository `corpus.git` names — because `documents[]` rows
+   are project-relative and a project below the repo root is the layout `vsor init` instructs the
+   user into, where `<sha>:knowledge/x.md` resolves to nothing; a citation resolves
+   `<git>:<prefix><path>`. **`site.app`**, the forked site application's own bytes, which also
+   enters the `build_id` preimage: the app is unpacked over the shell rather than installed, so no
+   npm integrity hash covers it and two builds by one vsor version with different forks collided.
+   And **`build/build.lock.json`** — the same record, written into the staging tree before the
+   swap — so a deployed directory and a committed record can be compared by anyone; before it, a
+   record/artifact divergence was undetectable by any means. The evidence for all three, and the
+   negative results beside them, are in `docs/status.md`.
 9. **Schema migrations land as one pass** with a runner (lifted from `sor-learning`'s numbered
    migrations), covering jurisdiction/effective dates, `corpus_id` on the **five** content tables
    (`content_nodes`, `sources`, `chunks`, `slug_aliases`, `node_centroids`), approval rows,
@@ -202,44 +219,56 @@ evidence, recorded here with a revision note.
 
 ## What `vsor init` writes
 
-The one authoritative scaffold tree. (An earlier, larger tree showing six skills and a `governance/`
-directory was a target state, not the scaffold — it caused false first-run beliefs and is gone.)
+The one authoritative scaffold tree — and it is **generated**, not written. Its source is
+`packages/vsor/src/vsor/templates/scaffold/`, the bytes `vsor init` copies; `tests/scaffold_tree.py`
+renders it and `tests/test_generated_docs.py` fails when document and templates disagree. Authored
+there: the order of the entries and the note beside each. Derived: every path, every name, every
+count. **Do not hand-edit the block** — change the templates, then run
+`uv run --package vsor python tests/scaffold_tree.py --write`. (An earlier, larger tree showing six
+skills and a `governance/` directory was a target state, not the scaffold — it caused false
+first-run beliefs and is gone.)
 
+<!-- generated from packages/vsor/src/vsor/templates/scaffold/ — see tests/scaffold_tree.py -->
 ```
-my-sor/                        ← created by `vsor init my-sor`; yours, your licence
+my-sor/                          ← created by `vsor init my-sor`; yours, your licence
 ├── instance.md                  frontmatter = machine config; body = the MCP server's prompt
-├── knowledge/
-│   └── example.md               ONE real example document — never empty directories
-├── .agents/skills/<name>/SKILL.md   the agent kit (decision 5's revision) — 14 skills:
-│                                add-sources · docx · pptx · fetch-library-docs ·
-│                                knowledge-extraction-method · technical-clarity ·
-│                                content-refiner · canonical-format-checker ·
-│                                summary-generator · quiz-generator · generate-flashcards ·
-│                                deploy · skill-creator · find-skills
+├── knowledge/example.md         ONE real example document — never an empty directory
+├── .agents/skills/<name>/SKILL.md  the agent kit (decision 5's revision) — 14 of them:
+│                                   add-sources · canonical-format-checker · content-refiner ·
+│                                   deploy · docx · fetch-library-docs · find-skills ·
+│                                   generate-flashcards · knowledge-extraction-method · pptx ·
+│                                   quiz-generator · skill-creator · summary-generator ·
+│                                   technical-clarity
 ├── .claude/
-│   ├── settings.json            the vsor verbs pre-permitted; no hooks, nothing phones out
-│   └── rules/                   provenance · abstention · review · repository-map
+│   ├── rules/                   abstention · provenance · repository-map · review
+│   └── settings.json            the vsor verbs pre-permitted; no hooks, nothing phones out
 ├── site/                        a REAL, thin Docusaurus shell — the seams agents know natively:
-│   ├── docusaurus.config.ts       live themeConfig (title, navbar items, footer, prism — wired)
+│   ├── docusaurus.config.ts     live themeConfig (title, navbar items, footer, prism — wired)
+│   ├── sidebars.ts              the sidebar over `knowledge/`, named `tutorialSidebar`
 │   └── src/
-│       ├── css/custom.css         the design tokens, including --ifm-color-primary
-│       └── pages/index.tsx        the homepage
-├── vercel.json                  the git-connected deploy: build command + output directory
-├── netlify.toml                 the same, for the other host — delete whichever you do not use
+│       ├── css/custom.css       the design tokens, including --ifm-color-primary
+│       └── pages/index.tsx      the homepage
 ├── AGENTS.md                    how an agent works in the scaffolded project
 ├── CLAUDE.md                    one line: `@AGENTS.md`
-├── .env                         the two things the user supplies: DATABASE_URL + embedding key
-├── .gitignore                   ignores .vsor/, build/, .vercel/, .netlify/ — and .env
-│                                (a bare .env leaks on deploy; the two host CLIs write
-│                                 project and org ids into their own directories)
+├── .env                         what the user supplies: DATABASE_URL + GEMINI_API_KEY
+├── .gitignore                   ignores .vsor/, build/, .env, .DS_Store, .vercel/, .netlify/
 └── (a git repository — init runs `git init` unless one exists)
 ```
+<!-- /generated -->
 
-**Byte-exact, in two places, neither of them here:** `tests/acceptance/init.sh` diffs the real
-output against the full file list, and `packages/vsor/tests/test_init.py`'s `EXPECTED_FILES` pins
-the same set. This tree is the map; those two are the contract — and neither this sentence nor
-`docs/status.md` states the count any more: both said 30 while the list was 31, having already
-carried 27-versus-28 forward once. A number with two homes is a number that drifts.
+**Why generated, recorded because it is the third failure of the same kind:** this tree was
+maintained by hand and drifted four ways at once — it listed `vercel.json` and `netlify.toml` for a
+day after they were withdrawn from the scaffold, it never gained `site/sidebars.ts` added the same
+day, its skill count was checked by nobody, and the paragraph beneath it said 30 files against a
+list of 31 when the truth was 29, having already carried 27-versus-28 forward once. The repair is
+not the edit. One fact was living in a document held together by discipline, in the very file that
+records the two previous times that discipline failed.
+
+**The contract still lives in two places, and now they are pinned to each other:**
+`tests/acceptance/init.sh` diffs real output against the full file list and
+`packages/vsor/tests/test_init.py`'s `EXPECTED_FILES` pins the same set — deliberately, one per
+language. `tests/test_generated_docs.py` asserts the two lists are identical and that both equal the
+templates on disk. No prose anywhere states the count.
 
 **Ownership destinations — one rule (settled 2026-08-13):** anything you take ownership of lands
 where its *home system* already puts it, never in an invented location. When swizzling arrives, a
@@ -330,10 +359,10 @@ scaffolded projects.
 | Tier | Selected by | May touch | CI |
 | :--- | :--- | :--- | :--- |
 | Unit | `tests/test_*.py`; `_pure` suffix where explicitly pure | memory + `tmp_path` only | ✅ |
-| Boundary | `tests/test_boundaries.py` | reads source, parses with `ast`, never imports | ✅ |
+| Boundary | the repo-root `tests/` suite (`make boundary`) — import graph, surface contract, and the documents-versus-source checks | reads source and shipped prose, parses with `ast`, never imports | ✅ |
 | Composition smoke | `tests/test_*_smoke.py` | real composition root; fake pool that *raises if touched* | ✅ |
 | Scaffold | one job | runs `vsor init` and builds the output | ✅ |
-| Surface | `make surface` (Playwright over the built fixture site, B5–B13 + B15–B16 of `specs/sor-site/surface`; B14 retired 2026-08-14 with the stock configuration it named — B15 is the design-system tier: the utilities compute *and only the scanned ones*, the shadcn sheet is the mobile menu, lucide is inline SVG, a CSS-module primitive keeps its own box, code is legible in light mode; B16 is admonitions in both the v2 and v3 syntaxes) | Node + pinned Chromium; static server on 127.0.0.1; deterministic by construction — DOM-state waits only, no screenshots | own job (needs Node) |
+| Surface | `make surface` (Playwright over the built fixture site, B5–B13 + B15–B17 of `specs/sor-site/surface`; B14 retired 2026-08-14 with the stock configuration it named — B15 is the design-system tier: the utilities compute *and only the scanned ones*, the shadcn sheet is the mobile menu, lucide is inline SVG, a CSS-module primitive keeps its own box, code is legible in light mode; B16 is admonitions in both the v2 and v3 syntaxes; B17 is effective dating and supersession — the date reaches the page, the notice precedes the content, its successor link resolves and is walked, it keeps its box in both themes, and a document carrying neither key renders neither element. **B17 is numbered in code only**: the spec wording is queued with the lead, `specs/` not having been edited in the change that added it) | Node + pinned Chromium; static server on 127.0.0.1; deterministic by construction — DOM-state waits only, no screenshots | own job (needs Node) |
 | Hosting | `make deploy-acceptance` (`tests/acceptance/deploy.sh`) — the two shapes a static host has, build-as-docroot and build-under-a-subpath, through the real wheel and a real browser. It is the only tier that reads `vsor build`'s own output rather than an assembled fixture, and the only one that ever serves at a prefix; both of those gaps hid real defects | Node + pinned Chromium; two static servers on 127.0.0.1 | own job |
 | Database | `skipif` on an env pair | disposable local Postgres | opt-in |
 | Eval | console scripts, not pytest | live provider | release gate |
@@ -434,10 +463,21 @@ review and apply to every decision below the invariants.
   performs it, and what row exists afterwards proving they did* — not *what field does this add to a
   register*. Rights checked at ingest but not at serving, approval attached to a corpus but not to
   an answer, audit rows that cannot replay a read — all fail this test.
-- **Provenance is not correctness.** Everything here proves *who said something and when*. Nothing
-  yet expresses that a source is contested, a minority position, or superseded — and the expert's
-  judgment, the commercial surface, is precisely the ungoverned part. When adding a mechanism, name
-  which of the two it serves; never sell a provenance mechanism as a correctness one.
+- **Provenance is not correctness.** Everything here proves *who said something and when*. The
+  expert's judgment — whether a source is contested, a minority position, or overtaken — is the
+  commercial surface, and it is precisely the ungoverned part. When adding a mechanism, name which
+  of the two it serves; never sell a provenance mechanism as a correctness one.
+  *Revision 2026-08-15: this bullet used to say "nothing yet expresses that a source is contested,
+  a minority position, or superseded". One third of that is now false. **Supersession is
+  expressed** at level 0: three optional frontmatter keys on a document (`effective`,
+  `superseded`, `superseded_by`), a notice rendered above the content of a document that is no
+  longer current, and a build-time refusal (`error: knowledge-invalid`) of a pointer naming a
+  document the build does not publish — `packages/vsor/src/vsor/knowledge.py` and
+  `packages/sor-site/app/src/theme/DocItem/Content/EffectiveDating.tsx`. It is a **correctness**
+  mechanism and is the first one here, which is why it is named as such rather than folded in with
+  the citation machinery. Contested and minority positions remain unexpressed, and so does every
+  temporal question beyond "is this document current" — chains, ranges, as-at queries and the MCP
+  surface's use of any of it are slice 2.*
 
 ## Authority
 

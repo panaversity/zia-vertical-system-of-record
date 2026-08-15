@@ -15,7 +15,7 @@
 #
 # Two rows are delegated to the unit tier, recorded here so the delegation is visible:
 #   - full JSON-Schema validation of build.lock.json (the committed schema lives in
-#     packages/vsor and is unit-asserted there); this script re-asserts the format-1
+#     packages/vsor and is unit-asserted there); this script re-asserts the format-2
 #     shape structurally with stdlib python — no jsonschema dependency in the lane.
 #   - the old-node row (node 18 on PATH -> error: missing-runtime naming the found
 #     version): no node 18 exists on this machine or in CI; the version-comparison
@@ -170,10 +170,10 @@ test -z "$(find . -name node_modules -not -path './.vsor/*' -print -quit)" \
   || fail "node_modules exists outside .vsor/"
 test ! -e package.json || fail "a package.json appeared at the project root"
 
-# --- the record: format-1 shape, clean-tree git sha, requires_satisfied -------------
+# --- the record: format-2 shape, clean-tree git sha, requires_satisfied -------------
 # (Full JSON-Schema validation is the unit tier's row — see the header note.)
 
-python3 - build.lock.json "$HEAD_SHA" "$VSOR_DEV_VERSION" <<'PY' || fail "build.lock.json violates the format-1 record contract"
+python3 - build.lock.json "$HEAD_SHA" "$VSOR_DEV_VERSION" <<'PY' || fail "build.lock.json violates the format-2 record contract"
 import datetime, json, re, sys
 
 lock = json.load(open(sys.argv[1]))
@@ -182,13 +182,13 @@ sha256 = re.compile(r"^[0-9a-f]{64}$")
 
 assert set(lock) == {"format", "build_id", "created", "vsor", "requires_satisfied",
                      "corpus", "site", "non_stock"}, f"top-level keys: {sorted(lock)}"
-assert lock["format"] == 1
+assert lock["format"] == 2
 assert sha256.match(lock["build_id"]), "build_id is not a sha256 hex"
 created = datetime.datetime.fromisoformat(lock["created"])
 assert created.utcoffset() == datetime.timedelta(0), "created is not UTC"
 assert lock["vsor"] == dev_version, f"vsor version recorded {lock['vsor']!r}, ran {dev_version!r}"
 assert lock["requires_satisfied"] is True
-assert set(lock["corpus"]) == {"tree", "git", "documents"}
+assert set(lock["corpus"]) == {"tree", "git", "prefix", "documents"}
 assert sha256.match(lock["corpus"]["tree"])
 docs = lock["corpus"]["documents"]
 assert [d["path"] for d in docs] == sorted(d["path"] for d in docs), "documents not in walk order"
@@ -197,11 +197,34 @@ for d in docs:
 assert any(d["path"] == "knowledge/example.md" for d in docs)
 assert lock["corpus"]["git"] == head, (
     f"clean tree: corpus.git must be HEAD ({head}), got {lock['corpus']['git']!r}")
-assert set(lock["site"]) == {"docusaurus", "node", "lock"}
+# This project IS the repository root, so the prefix is empty and `<git>:<path>` resolves
+# as written. The below-the-root case (which `vsor init` inside an existing work tree
+# produces) is the unit tier's row — it needs two repositories.
+assert lock["corpus"]["prefix"] == "", f"prefix at the repo root must be empty: {lock['corpus']['prefix']!r}"
+assert set(lock["site"]) == {"docusaurus", "node", "lock", "app"}
 assert lock["site"]["docusaurus"] and lock["site"]["node"]
 assert sha256.match(lock["site"]["lock"])
+assert sha256.match(lock["site"]["app"]), "site.app names the forked app that rendered the site"
 assert lock["non_stock"] == []
 PY
+
+# corpus.git + a documents[] path have to resolve TOGETHER — that pair is what every
+# citation resolves through, and it is the one thing no other row measures.
+python3 - build.lock.json <<'PY' > "$SCRATCH/cite-paths.txt" || fail "could not read the record's citation pairs"
+import json, sys
+lock = json.load(open(sys.argv[1]))
+for row in lock["corpus"]["documents"]:
+    print(f'{lock["corpus"]["git"]}:{lock["corpus"]["prefix"]}{row["path"]}')
+PY
+while read -r ref; do
+  git cat-file -e "$ref" 2>/dev/null || fail "the record names $ref, which no commit contains"
+done < "$SCRATCH/cite-paths.txt"
+
+# The artifact carries the record that describes it: "is this site the one the record
+# names" must be answerable by anyone holding the deployed directory.
+test -f build/build.lock.json || fail "build/ carries no build.lock.json — a record/artifact divergence would be undetectable"
+cmp -s build/build.lock.json build.lock.json \
+  || fail "build/build.lock.json and the committed record are not the same record"
 
 # --- served build/: homepage and the example doc ------------------------------------
 
@@ -354,6 +377,100 @@ rc=$?
 test "$rc" -eq 0 || { cat build5.out >&2; fail "build after config edit: expected exit 0, got $rc"; }
 grep -q 'cfgproof-77' build/index.html \
   || fail "config edit not picked up — the authored site/ is not what the build reads"
+
+# --- the corpus refusals that need a REAL build to be worth anything ----------------
+#
+# Both of these were exit 0 before 2026-08-15, and both left the record claiming
+# something the published site does not contain. They run here, on the real path,
+# because "the site has no page for it" is a fact only a real Docusaurus build has.
+
+cat > knowledge/notyet.md <<'EOF'
+---
+title: Not yet
+draft: true
+---
+
+Docusaurus drops this from a production build; vsor would still record it.
+EOF
+VSOR build >build-draft.out 2>err
+rc=$?
+test "$rc" -eq 1 || { cat build-draft.out err >&2; fail "draft: true — expected exit 1, got $rc"; }
+head -n 1 err | grep -q '^error: knowledge-invalid' \
+  || fail "draft: true — first stderr line is not the knowledge-invalid slug"
+grep -q 'knowledge/notyet.md' err || fail "the draft refusal does not name the document"
+rm knowledge/notyet.md
+
+cat > knowledge/yes-doc.md <<'EOF'
+---
+title: Withdrawn By Yes
+superseded: yes
+---
+
+PyYAML reads `yes` as true; the site's own parser reads it as the string "yes".
+EOF
+VSOR build >build-yes.out 2>err
+rc=$?
+test "$rc" -eq 1 || { cat build-yes.out err >&2; fail "superseded: yes — expected exit 1, got $rc"; }
+head -n 1 err | grep -q '^error: knowledge-invalid' \
+  || fail "superseded: yes — first stderr line is not the knowledge-invalid slug"
+rm knowledge/yes-doc.md
+
+# The falsification of both: `superseded: true` on a document with a real successor
+# builds, and the page carries the notice the record's claim promises.
+cat > knowledge/replacement.md <<'EOF'
+---
+title: The Replacement
+effective: 2026-01-01
+---
+
+The current statement.
+EOF
+cat > knowledge/withdrawn.md <<'EOF'
+---
+title: The Withdrawn Rule
+superseded_by: replacement.md
+---
+
+Kept for the record.
+EOF
+VSOR build >build-superseded.out 2>&1
+rc=$?
+test "$rc" -eq 0 || { cat build-superseded.out >&2; fail "a resolving supersession: expected exit 0, got $rc"; }
+grep -q 'data-vsor-superseded' build/docs/withdrawn/index.html \
+  || fail "a build-accepted supersession must carry the notice on the page"
+grep -q 'docs/replacement' build/docs/withdrawn/index.html \
+  || fail "the supersession notice does not link to the successor the build validated"
+rm knowledge/withdrawn.md knowledge/replacement.md
+
+# --- the site identity comes from the config file, never the environment ------------
+# Measured live 2026-08-15: two builds with the SAME build_id published at two different
+# origins, because the shell's config reads VSOR_SITE_URL and build_id is taken over the
+# config FILE. The file is the only door.
+
+VSOR_SITE_URL=https://leaked.example-real.com VSOR_SITE_TITLE=LeakedTitle \
+  VSOR build >build-env.out 2>&1
+rc=$?
+test "$rc" -eq 0 || { cat build-env.out >&2; fail "ambient VSOR_* build: expected exit 0, got $rc"; }
+grep -q 'leaked.example-real.com' build/sitemap.xml \
+  && fail "VSOR_SITE_URL from the environment reached the published site — build_id cannot see it"
+grep -rq 'LeakedTitle' build/index.html \
+  && fail "VSOR_SITE_TITLE from the environment reached the published site"
+
+# --- build/ that is not a directory: replaced and named, never a wedge ---------------
+# The raise used to land BETWEEN the swap's renames — build/ held the new site while
+# build.lock.json still described the previous one, and every later run re-raised it.
+
+rm -rf build && printf 'oops\n' > build
+VSOR build >build-file.out 2>&1
+rc=$?
+test "$rc" -eq 0 || { cat build-file.out >&2; fail "build/ as a regular file: expected exit 0, got $rc"; }
+test -d build || fail "build/ was not replaced with the site directory"
+grep -q 'regular file' build-file.out || fail "replacing build/ was silent"
+cmp -s build/build.lock.json build.lock.json \
+  || fail "after replacing a non-directory build/, the artifact and the record disagree"
+VSOR build >build-file2.out 2>&1
+rc=$?
+test "$rc" -eq 0 || { cat build-file2.out >&2; fail "the run after replacing build/ is wedged (exit $rc)"; }
 
 # --- interrupted install: stamp absent => wipe, re-materialize, succeed -------------
 

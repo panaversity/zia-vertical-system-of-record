@@ -437,6 +437,55 @@ def test_scaffold_agents_md_verb_honesty(sandbox: Path, capsys: pytest.CaptureFi
     assert "Before `vsor build` or `vsor serve` can run" not in text
 
 
+def _table_keys(text: str, heading: str) -> list[str]:
+    """The backticked first cell of every row under a `## ` heading, sorted.
+
+    Sorted because the tables are ordered for a reader — `add-sources` first, because it is the
+    entry point — and that order is prose. What must not drift is the membership.
+    """
+    section = text.split(heading, 1)[1].split("\n## ", 1)[0]
+    return sorted(
+        match.group(1) for line in section.splitlines() if (match := re.match(r"\|\s*`([^`]+)`\s*\|", line))
+    )
+
+
+def test_scaffold_agents_md_describes_exactly_the_kit_it_wrote(
+    sandbox: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """The scaffolded AGENTS.md is the only place a project says what its own kit contains, and
+    it says it as two hand-written tables. Derived here from the tree init just wrote, never
+    restated — a skill added to `templates/` without a row would otherwise reach every user's
+    project as a file their own map does not mention, and a row left behind after a removal would
+    point at nothing. Added 2026-08-15, after the same class of drift was found four times in this
+    repository's own AGENTS.md: two withdrawn files still listed, one new file never listed, and a
+    count nothing checked.
+    """
+    assert run_init(["demo"]) == 0
+    demo = sandbox / "demo"
+    text = (demo / "AGENTS.md").read_text(encoding="utf-8")
+
+    written_skills = sorted(p.name for p in (demo / ".agents" / "skills").iterdir() if p.is_dir())
+    written_rules = sorted(p.stem for p in (demo / ".claude" / "rules").glob("*.md"))
+
+    assert _table_keys(text, "## The skills") == written_skills, (
+        "the scaffolded AGENTS.md's skill table and the skills init wrote disagree"
+    )
+    assert [key.removesuffix(".md") for key in _table_keys(text, "## The rules")] == written_rules, (
+        "the scaffolded AGENTS.md's rule table and the rules init wrote disagree"
+    )
+
+    # Every own-layout path these documents point a user at is a path the user actually has.
+    # `knowledge/` is deliberately outside the pattern: corpus paths in prose are examples.
+    owned = re.compile(r"`((?:site|\.agents/skills|\.claude/rules)/[^`\s]+\.[a-z]+)`")
+    described = [demo / "AGENTS.md", *sorted((demo / ".claude" / "rules").glob("*.md"))]
+    for doc in described:
+        for rel in sorted(set(owned.findall(doc.read_text(encoding="utf-8")))):
+            assert (demo / rel).is_file(), (
+                f"{doc.name} points at {rel}, which init did not write — the project's own map "
+                "names a file its owner does not have"
+            )
+
+
 # --------------------------------------------------------------------- target vetting
 
 

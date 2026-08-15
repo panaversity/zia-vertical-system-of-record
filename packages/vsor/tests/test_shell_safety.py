@@ -29,7 +29,7 @@ Public surface these tests define:
 - `site_runtime.project_lock(project_root, *, verb) -> ContextManager[Path]` — takes the lock,
   yields its path, releases it on every exit path; raises `CommandError("project-busy")` when
   another live vsor holds it.
-- `site_runtime.authored_symlinks(project_root) -> list[str]` — every link inside the authored
+- `site_runtime.authored_irregulars(project_root) -> list[str]` — every link inside the authored
   trees, project-relative and sorted; the dot-prefixed paths the corpus walk already ignores are
   ignored here too.
 - `site_runtime.check_authored(project_root) -> None` — raises
@@ -299,7 +299,7 @@ def test_a_normal_build_leaves_no_lock_behind(project: Path, monkeypatch: pytest
         (runtime / "package-lock.json").write_text('{"lockfileVersion": 3}\n', encoding="utf-8")
         return runtime
 
-    def fake_build(runtime_dir: Path, staging: Path) -> None:
+    def fake_build(runtime_dir: Path, staging: Path, **_: object) -> None:
         staging.mkdir(parents=True)
         (staging / "index.html").write_text("<html></html>", encoding="utf-8")
 
@@ -388,7 +388,7 @@ def test_a_corpus_of_real_files_is_accepted(tmp_path: Path) -> None:
     make_project(root)
     (root / "knowledge" / "section").mkdir()
     (root / "knowledge" / "section" / "a.md").write_text("---\ntitle: A\n---\n", encoding="utf-8")
-    assert site_runtime.authored_symlinks(root) == []
+    assert site_runtime.authored_irregulars(root) == []
     site_runtime.check_authored(root)  # must not raise
 
 
@@ -404,7 +404,7 @@ def test_a_linked_tree_root_is_still_a_corpus(tmp_path: Path) -> None:
     shutil.rmtree(root / "knowledge")
     (root / "knowledge").symlink_to(real, target_is_directory=True)
 
-    assert site_runtime.authored_symlinks(root) == []
+    assert site_runtime.authored_irregulars(root) == []
     site_runtime.check_authored(root)  # must not raise
 
 
@@ -417,7 +417,7 @@ def test_dot_prefixed_paths_are_ignored_as_the_corpus_walk_ignores_them(tmp_path
     (root / "knowledge" / ".drafts" / "wip.md").symlink_to(outside_corpus(tmp_path))
     (root / "site" / ".cache").symlink_to(tmp_path / "elsewhere", target_is_directory=True)
 
-    assert site_runtime.authored_symlinks(root) == []
+    assert site_runtime.authored_irregulars(root) == []
     site_runtime.check_authored(root)  # must not raise
 
 
@@ -519,6 +519,37 @@ def test_sync_removes_a_shell_link_even_when_the_corpus_has_one_too(tmp_path: Pa
     assert victim.read_text(encoding="utf-8") == OUTSIDE_BODY, "the target was touched"
 
 
+def test_sync_never_writes_through_a_linked_directory_in_the_shell(tmp_path: Path) -> None:
+    """The same write-outside-the-project, one level up — and the level the file guard
+    could not see. `os.walk` does not descend a linked directory and never lists it among
+    `filenames`, so a linked DIRECTORY in the shell was in neither half of the mirror's
+    comparison: not debris to remove, not a document to replace. The copy loop then ran
+    `mkdir(parents=True, exist_ok=True)` on a parent that resolves outside the project —
+    which succeeds, because it is a directory — and `shutil.copy2` wrote the corpus
+    straight into it. Reproduced 2026-08-15."""
+    root = tmp_path / "demo"
+    make_project(root)
+    (root / "knowledge" / "notes").mkdir()
+    (root / "knowledge" / "notes" / "a.md").write_text("---\ntitle: A\n---\n", encoding="utf-8")
+    outside = tmp_path / "elsewhere"
+    outside.mkdir()
+    victim = outside / "a.md"
+    victim.write_text(OUTSIDE_BODY, encoding="utf-8")
+
+    runtime = root / ".vsor" / "site-runtime"
+    (runtime / "knowledge").mkdir(parents=True)
+    debris = runtime / "knowledge" / "notes"
+    debris.symlink_to(outside, target_is_directory=True)
+
+    site_runtime.sync_authored(root, runtime)
+
+    assert victim.read_text(encoding="utf-8") == OUTSIDE_BODY, (
+        "vsor wrote through a linked directory and overwrote a file outside the project"
+    )
+    assert not debris.is_symlink(), "the link is removed for what it is"
+    assert (debris / "a.md").is_file(), "and the real document lands in the shell"
+
+
 def test_sync_removes_a_link_left_in_the_shell(tmp_path: Path) -> None:
     """A link inside the shell is debris whatever put it there — an older vsor, a hand
     edit — and the mirror's job is to make the shell equal the corpus."""
@@ -535,6 +566,27 @@ def test_sync_removes_a_link_left_in_the_shell(tmp_path: Path) -> None:
     assert not debris.exists()
 
 
+def test_sync_drops_a_document_the_corpus_turned_into_a_link(tmp_path: Path) -> None:
+    """The mirror's rule is "the shell equals the corpus", and a document replaced by a
+    link mid-serve is no longer a document. `check_authored` refuses it at the next
+    `vsor build`; until then the dev server must stop showing the bytes it used to have,
+    rather than serve a page whose source the record would not name."""
+    root = tmp_path / "demo"
+    make_project(root)
+    runtime = root / ".vsor" / "site-runtime"
+    runtime.mkdir(parents=True)
+    site_runtime.copy_authored(root, runtime)
+    mirrored = runtime / "knowledge" / "example.md"
+    assert mirrored.is_file()
+
+    doc = root / "knowledge" / "example.md"
+    doc.unlink()
+    doc.symlink_to(outside_corpus(tmp_path))
+
+    assert site_runtime.sync_authored(root, runtime) is True
+    assert not mirrored.exists(), "the shell kept a document the corpus no longer offers"
+
+
 def test_sync_still_mirrors_ordinary_edits(tmp_path: Path) -> None:
     """The guard must not cost the hot path: an authored save still lands in the shell."""
     root = tmp_path / "demo"
@@ -549,3 +601,152 @@ def test_sync_still_mirrors_ordinary_edits(tmp_path: Path) -> None:
     assert site_runtime.sync_authored(root, runtime) is True
     mirrored = (runtime / "knowledge" / "example.md").read_text(encoding="utf-8")
     assert "An edit made while dev serves." in mirrored
+
+
+# ── nothing under the authored trees may be a non-file ─────────────────────────────────
+
+
+def test_a_non_regular_file_is_refused_with_the_same_rule(tmp_path: Path) -> None:
+    """A FIFO or a socket escapes an `is_symlink()`-only rule and dies inside `copytree`
+    instead: measured live 2026-08-15, `mkfifo knowledge/pipe.md` exited 3 with a raw
+    `shutil.Error` list-of-tuples repr under `io-failed`, where the neighbouring rule
+    would have said "vsor serves real files only" and exited 1. `lock.walk_tree`'s
+    S_ISREG test excludes both, so the site would serve bytes the record cannot name —
+    the identical argument."""
+    root = tmp_path / "demo"
+    make_project(root)
+    os.mkfifo(root / "knowledge" / "pipe.md")
+
+    with pytest.raises(CommandError) as exc:
+        site_runtime.check_authored(root)
+    assert exc.value.slug == "symlink-unsupported"
+    assert exc.value.exit_code == 1
+    prose = str(exc.value)
+    assert "knowledge/pipe.md" in prose
+    assert "named pipe" in prose, "the message says WHAT it is"
+    assert "build.lock.json" in prose
+
+
+def test_the_refusal_says_what_each_entry_is(tmp_path: Path) -> None:
+    root = tmp_path / "demo"
+    make_project(root)
+    (root / "knowledge" / "handbook.md").symlink_to(outside_corpus(tmp_path))
+    assert site_runtime.authored_irregulars(root) == [
+        "knowledge/handbook.md (a symbolic link)"
+    ]
+
+
+# ── the lock refuses without wedging and without dangerous advice ──────────────────────
+
+
+def test_a_lock_naming_a_pid_vsor_cannot_signal_never_says_kill(tmp_path: Path) -> None:
+    """A pid reused after a reboot produced the remedy "stop it ... or: kill 1" — advice
+    to kill init. A pid we may not signal is not this project's vsor, so the remedy leads
+    with the escape that actually applies."""
+    held = plant_lock(tmp_path, pid=1, verb="dev")
+    with pytest.raises(CommandError) as exc, site_runtime.project_lock(tmp_path, verb="build"):
+        pass
+    prose = str(exc.value)
+    assert exc.value.slug == "project-busy"
+    assert "kill 1" not in prose
+    assert str(held) in prose  # the escape: delete the lock
+    assert "reused" in prose.lower()
+    assert "rerun" in prose
+
+
+def test_a_directory_at_the_lock_path_is_debris_not_a_permanent_wedge(tmp_path: Path) -> None:
+    """`mkdir .vsor/lock` wedged a project forever: `_claim` got FileExistsError,
+    `_holder_of` read nothing usable, and the debris `unlink()` failed silently — so every
+    verb refused, on every run, with no way through but a manual delete. `.vsor/` is
+    vsor's own scratch; clearing debris inside it is this verb's own ownership."""
+    scratch = tmp_path / ".vsor"
+    scratch.mkdir()
+    (scratch / site_runtime.LOCK_NAME).mkdir()
+    with site_runtime.project_lock(tmp_path, verb="build") as held:
+        assert held.is_file()
+        assert json.loads(held.read_text(encoding="utf-8"))["pid"] == os.getpid()
+    assert not held.exists()
+
+
+def test_a_dead_holder_whose_child_is_alive_still_holds_the_project(tmp_path: Path) -> None:
+    """The takeover rule's missing half. A killed `vsor dev` (kill -9, a closed terminal,
+    an agent session torn down) leaves the Docusaurus server ALIVE and still serving from
+    `.vsor/site-runtime` — and taking the lock over on the strength of the dead parent
+    walked the next verb straight into rewriting the shell underneath it. Measured live
+    2026-08-15: the takeover rmtree'd the runtime under a live server."""
+    scratch = tmp_path / ".vsor"
+    scratch.mkdir()
+    path = scratch / site_runtime.LOCK_NAME
+    path.write_text(
+        json.dumps(
+            {
+                "pid": a_dead_pid(),
+                "verb": "dev",
+                "started": "2026-08-15T09:00:00Z",
+                "child": os.getppid(),  # a process that is certainly alive
+            }
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    with pytest.raises(CommandError) as exc, site_runtime.project_lock(tmp_path, verb="build"):
+        raise AssertionError("the lock must not have been granted")
+    assert exc.value.slug == "project-busy"
+    assert str(os.getppid()) in str(exc.value), "the refusal names the process still running"
+
+
+def test_a_dead_holder_with_a_dead_child_is_still_debris(tmp_path: Path) -> None:
+    """The falsification: recording a child must not turn an ordinary stale lock into a
+    wedge — that would trade one failure for a worse one."""
+    scratch = tmp_path / ".vsor"
+    scratch.mkdir()
+    (scratch / site_runtime.LOCK_NAME).write_text(
+        json.dumps(
+            {"pid": a_dead_pid(), "verb": "dev", "started": "x", "child": a_dead_pid()}
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    with site_runtime.project_lock(tmp_path, verb="build") as held:
+        assert json.loads(held.read_text(encoding="utf-8"))["pid"] == os.getpid()
+
+
+def test_recording_a_child_keeps_the_lock_ours(tmp_path: Path) -> None:
+    """`record_child` rewrites our own row while we hold it, so the release check compares
+    identity (pid + started) rather than the whole record — otherwise a dev server would
+    leave its own lock behind on every clean exit."""
+    with site_runtime.project_lock(tmp_path, verb="dev") as held:
+        site_runtime.record_child(held, 4242)
+        payload = json.loads(held.read_text(encoding="utf-8"))
+        assert payload["child"] == 4242
+        assert payload["pid"] == os.getpid()
+    assert not held.exists(), "the lock is still ours to release after recording the child"
+
+
+def test_record_child_never_overwrites_somebody_elses_lock(tmp_path: Path) -> None:
+    held = plant_lock(tmp_path, pid=a_live_pid(), verb="dev")
+    site_runtime.record_child(held, 4242)
+    assert "child" not in json.loads(held.read_text(encoding="utf-8"))
+
+
+def test_the_refusal_names_the_process_that_is_actually_running(tmp_path: Path) -> None:
+    """Found live 2026-08-15, in the first version of this very message: with a `kill -9`'d
+    `vsor dev`, the refusal said "stop it ... or: kill <dead parent>" while the process
+    genuinely holding the project was the node child. Advice that does nothing is worse
+    than no advice — it sends the reader away satisfied."""
+    scratch = tmp_path / ".vsor"
+    scratch.mkdir()
+    dead, alive = a_dead_pid(), os.getppid()
+    (scratch / site_runtime.LOCK_NAME).write_text(
+        json.dumps(
+            {"pid": dead, "verb": "dev", "started": "2026-08-15T09:00:00Z", "child": alive}
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    with pytest.raises(CommandError) as exc, site_runtime.project_lock(tmp_path, verb="build"):
+        pass
+    prose = str(exc.value)
+    assert f"kill {alive}" in prose, "the remedy must name the process that is alive"
+    assert f"kill {dead}" not in prose
+    assert "is gone" in prose, "and say plainly that the vsor that took the lock is not there"

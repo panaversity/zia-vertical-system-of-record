@@ -25,8 +25,9 @@ The shell is scratch: deleting `.vsor/` costs a re-install, never work.
 
 Two rules protect that tree, both added 2026-08-15 and both with their own note below:
 **one vsor at a time** inside `.vsor/` (`project_lock`), because every invoke rewrites the
-shell a running `vsor dev` is serving from; and **a symbolic link is not a document**
-(`check_authored`), because the record can only name files it can hash.
+shell a running `vsor dev` is serving from — and it holds against a killed vsor whose node
+process is still alive, which is the case it exists for; and **a document is a regular
+file** (`check_authored`), because the record can only name files it can hash.
 
 The command layer reaches `probe_node_version` and `ensure_runtime` as module attributes —
 the unit tier's monkeypatch seam; keep them that way.
@@ -230,8 +231,22 @@ def runtime_env(base: Mapping[str, str] | None = None) -> dict[str, str]:
     """The environment Docusaurus runs under: the app's own corpus/site seams pointed
     at the copies `copy_authored` made inside the shell. Set here rather than baked
     into the app, because the app keeps working standalone — sibling `../knowledge`
-    and `../site` — when it is developed in its own workspace."""
-    env = dict(os.environ if base is None else base)
+    and `../site` — when it is developed in its own workspace.
+
+    **Every other `VSOR_*` variable is stripped, and that is the contract**: the shell's
+    config reads six of them (title, tagline, url, baseUrl, favicon, social image), so an
+    ambient export decided the site's published identity while `build_id` — which is taken
+    over the config FILE — could not see it. Found live 2026-08-15: two builds with the
+    same build_id published at two different origins, every canonical link, og:/twitter:
+    URL, JSON-LD @id and sitemap entry differing. The config file is the only door; the
+    environment is a closed, non-input surface. This also stops a stray export in a shell
+    profile from silently changing what a project builds.
+    """
+    env = {
+        key: value
+        for key, value in (os.environ if base is None else base).items()
+        if not key.startswith("VSOR_")
+    }
     env[_KNOWLEDGE_ENV] = "./knowledge"
     env[_SITE_ENV] = "./site"
     return env
@@ -260,11 +275,37 @@ _AUTHORED_TREES = ("site", "knowledge")
 # corpus may live wherever its owner keeps it — it is links INSIDE the tree that split the
 # two apart. Dot-prefixed segments are skipped for the same reason the corpus walk skips
 # them: nothing under one is ever served.
-_SYMLINKS_NAMED = 5
+#
+# The rule is the record's, so it is stated as the record states it: **a document is a
+# regular file**. `lock.walk_tree`'s `S_ISREG` test is the definition, and everything it
+# excludes has to be refused here or the site serves bytes the record cannot name. Links
+# are the common case; a FIFO, a socket or a device node is the same defect with a worse
+# failure (found live 2026-08-15: `mkfifo knowledge/pipe.md` reached `copytree` and came
+# back as a raw `shutil.Error` list-of-tuples repr under `io-failed`, where the neighbouring
+# rule would have said "vsor serves real files only" and exited 1).
+_IRREGULARS_NAMED = 5
 
 
-def authored_symlinks(project_root: Path) -> list[str]:
-    """Every symbolic link inside the authored trees, project-relative and sorted."""
+def _irregular_kind(path: Path) -> str | None:
+    """What is wrong with this entry, in the user's vocabulary — or None if nothing is."""
+    if path.is_symlink():
+        return "a symbolic link"
+    try:
+        mode = os.lstat(path).st_mode
+    except OSError:
+        return None
+    if stat.S_ISDIR(mode) or stat.S_ISREG(mode):
+        return None
+    if stat.S_ISFIFO(mode):
+        return "a named pipe"
+    if stat.S_ISSOCK(mode):
+        return "a socket"
+    return "a device node"
+
+
+def authored_irregulars(project_root: Path) -> list[str]:
+    """Everything inside the authored trees that is not a regular file or a directory,
+    project-relative, sorted, each named with what it is."""
     found: list[str] = []
     for name in _AUTHORED_TREES:
         root = project_root / name
@@ -279,26 +320,33 @@ def authored_symlinks(project_root: Path) -> list[str]:
                 if entry.startswith("."):
                     continue
                 path = here / entry
-                if path.is_symlink():
-                    found.append(path.relative_to(project_root).as_posix())
+                kind = _irregular_kind(path)
+                if kind is not None:
+                    found.append(f"{path.relative_to(project_root).as_posix()} ({kind})")
     return sorted(found)
 
 
 def check_authored(project_root: Path) -> None:
-    """Refuse a corpus whose documents live behind links — the record could not name them.
+    """Refuse a corpus whose documents are not real files — the record could not name them.
 
     Called first thing in `ensure_runtime`, so both verbs pass through it and the refusal
-    costs seconds rather than a ~2-minute npm install."""
-    links = authored_symlinks(project_root)
-    if not links:
+    costs seconds rather than a ~2-minute npm install. The slug stays `symlink-unsupported`
+    (the set in errors.py is closed; a rename is queued with the spec) while the rule it
+    enforces is the wider one."""
+    irregulars = authored_irregulars(project_root)
+    if not irregulars:
         return
-    shown = ", ".join(links[:_SYMLINKS_NAMED])
-    more = f", and {len(links) - _SYMLINKS_NAMED} more" if len(links) > _SYMLINKS_NAMED else ""
+    shown = ", ".join(irregulars[:_IRREGULARS_NAMED])
+    more = (
+        f", and {len(irregulars) - _IRREGULARS_NAMED} more"
+        if len(irregulars) > _IRREGULARS_NAMED
+        else ""
+    )
     raise CommandError(
         "symlink-unsupported",
-        f"the authored trees contain symbolic links: {shown}{more}.\n"
+        f"the authored trees contain entries that are not real files: {shown}{more}.\n"
         "vsor serves real files only. Every document the site publishes is hashed into\n"
-        "build.lock.json, and that record counts regular files — so a linked document would be\n"
+        "build.lock.json, and that record counts regular files — so any of these would be\n"
         "served by the site and absent from the record your citations point at, which is the one\n"
         "disagreement this project cannot ship.\n"
         "Copy each one in instead of linking to it (`cp -RL` reads through the link), then rerun.",
@@ -332,7 +380,7 @@ def copy_authored(project_root: Path, runtime_dir: Path) -> None:
     The trees are wiped and re-copied on EVERY invoke, so an authored edit is still what
     the next build sees; `sync_authored` keeps `vsor dev` hot. Everything copied lives
     and dies inside `.vsor/`. Links are dropped rather than recreated — see the note above
-    `authored_symlinks`; the copy is followed everywhere else, root included."""
+    `authored_irregulars`; the copy is followed everywhere else, root included."""
     for name in _AUTHORED_TREES:
         dest = runtime_dir / name
         if dest.is_symlink() or dest.is_file():
@@ -346,22 +394,42 @@ def copy_authored(project_root: Path, runtime_dir: Path) -> None:
 
 def _visible_files(root: Path) -> dict[Path, tuple[int, int] | None]:
     """Relative path -> (mtime_ns, size) for regular files with no dot-prefixed segment;
-    None for an entry that exists but is not a regular file.
+    None for an entry that exists and is not a regular file — **linked directories
+    included**.
 
     `lstat`, never `stat`: a link is described as itself, so it can never be mistaken for
     the file it points at. The None carries the distinction the mirror needs in both
     directions — source-side it means "not a document, do not mirror"; destination-side it
     means "debris", and because None never equals a source signature the mirror always
-    replaces it with the real file instead of writing through it."""
+    replaces it with the real file instead of writing through it.
+
+    A linked DIRECTORY is reported by that same None, and it has to be reported here
+    because nothing else in the mirror can see one: `os.walk` never lists it among
+    `filenames`, and (`followlinks` being False) never descends it either, so it appeared
+    in neither half of the comparison — not debris to remove, not a document to replace.
+    A destination parent that resolves outside the project then survives
+    `mkdir(exist_ok=True)`, because it IS a directory, and `shutil.copy2` writes the
+    corpus into it. Found 2026-08-15 reviewing the file-level guard below: that guard made
+    the promise true one entry at a time and false one level up."""
     found: dict[Path, tuple[int, int] | None] = {}
     if not root.is_dir():
         return found
     for dirpath, dirnames, filenames in os.walk(root):
-        dirnames[:] = [name for name in dirnames if not name.startswith(".")]
+        here = Path(dirpath)
+        walk_into: list[str] = []
+        for name in dirnames:
+            if name.startswith("."):
+                continue
+            directory = here / name
+            if directory.is_symlink():
+                found[directory.relative_to(root)] = None
+            else:
+                walk_into.append(name)
+        dirnames[:] = walk_into
         for name in filenames:
             if name.startswith("."):
                 continue
-            file_path = Path(dirpath) / name
+            file_path = here / name
             try:
                 info = file_path.lstat()
             except OSError:
@@ -386,15 +454,23 @@ def sync_authored(project_root: Path, runtime_dir: Path) -> bool:
         src_files = _visible_files(src_root)
         dest_files = _visible_files(dest_root)
         for rel, signature in dest_files.items():
-            # Gone from the corpus, or not a regular file: either way it is not a document
-            # and the shell must not hold it. `unlink`, never rmtree and never open — on a
-            # link this removes the link itself and never touches what it points at.
-            if rel not in src_files or signature is None:
+            # The shell must equal the corpus, so a path goes when EITHER side says it is
+            # not a document: `src_files.get(rel) is None` covers both "gone from the
+            # corpus" and "still there, but no longer a regular file" (the mid-serve
+            # `rm doc.md && ln -s ~/docs/doc.md .`, which the next `vsor build` refuses
+            # outright — until then the dev server must stop showing bytes the record
+            # would not name), and the destination's own None covers debris.
+            # `unlink`, never rmtree and never open — on a link this removes the link
+            # itself and never touches what it points at, and that holds for a link to a
+            # DIRECTORY too, which is why the removal can be one rule. Top-down walk order
+            # means a linked directory is dropped before the copy loop reaches anything the
+            # corpus keeps under that path.
+            if src_files.get(rel) is None or signature is None:
                 (dest_root / rel).unlink(missing_ok=True)
                 changed = True
         for rel, signature in src_files.items():
             if signature is None:
-                continue  # a link, a fifo, a socket — not a document (see check_authored)
+                continue  # a link (file or directory), a fifo, a socket — not a document
             if dest_files.get(rel) != signature:
                 target = dest_root / rel
                 target.parent.mkdir(parents=True, exist_ok=True)
@@ -502,11 +578,25 @@ LOCK_NAME = "lock"
 
 
 class _Holder(NamedTuple):
-    """Who holds the lock, as the file records it."""
+    """Who holds the lock, as the file records it.
+
+    `child` is the long-running node process this verb spawned — the dev server, or the
+    Docusaurus build — recorded once it exists (`record_child`). It is what makes the
+    takeover rule safe: a killed vsor (kill -9, a closed terminal, an agent session torn
+    down) leaves its child ALIVE and still writing into `.vsor/`, and taking the lock over
+    on the strength of the dead parent walked the next verb straight into the shell that
+    child is serving from. Found live 2026-08-15: the takeover then rmtree'd the runtime
+    under a live dev server and killed a build mid-flight."""
 
     pid: int
     verb: str
     started: str
+    child: int = 0
+
+    @property
+    def identity(self) -> tuple[int, str]:
+        """What makes this record ours — stable across `record_child`'s rewrite."""
+        return (self.pid, self.started)
 
 
 def _process_alive(pid: int) -> bool:
@@ -521,6 +611,11 @@ def _process_alive(pid: int) -> bool:
     except OSError:
         return True  # unknowable — never take a lock over on a guess
     return True
+
+
+def _holder_alive(holder: _Holder) -> bool:
+    """A holder is alive while EITHER its vsor or the child it spawned is."""
+    return _process_alive(holder.pid) or _process_alive(holder.child)
 
 
 def _holder_of(lock_path: Path) -> _Holder | None:
@@ -538,7 +633,28 @@ def _holder_of(lock_path: Path) -> _Holder | None:
     pid = data.get("pid")
     if not isinstance(pid, int) or isinstance(pid, bool):
         return None
-    return _Holder(pid, str(data.get("verb", "?")), str(data.get("started", "?")))
+    child = data.get("child")
+    return _Holder(
+        pid,
+        str(data.get("verb", "?")),
+        str(data.get("started", "?")),
+        child if isinstance(child, int) and not isinstance(child, bool) else 0,
+    )
+
+
+def record_child(lock_path: Path, child_pid: int) -> None:
+    """Name the node process this verb just spawned in the lock we hold.
+
+    Best-effort by construction: if the rewrite is interrupted the payload is unreadable,
+    which `_holder_of` already treats as debris — the same outcome as the interrupted
+    create it was written for. Only ever rewrites a record that is still ours."""
+    holder = _holder_of(lock_path)
+    if holder is None or holder.pid != os.getpid():
+        return
+    with contextlib.suppress(OSError):
+        lock_path.write_text(
+            json.dumps(holder._replace(child=child_pid)._asdict()) + "\n", encoding="utf-8"
+        )
 
 
 def _claim(lock_path: Path, holder: _Holder) -> bool:
@@ -554,25 +670,98 @@ def _claim(lock_path: Path, holder: _Holder) -> bool:
     return True
 
 
+def _signalable(pid: int) -> bool:
+    """Whether telling the user to `kill <pid>` is advice rather than a trap.
+
+    Two ways it is a trap, both reachable through pid reuse after a reboot: pid 1 is init,
+    and a pid we may not signal at all belongs to another user — neither is the vsor that
+    wrote this lock (found live 2026-08-15: a lock naming pid 1 produced the remedy
+    "stop it (Ctrl-C in its terminal, or: kill 1)")."""
+    if pid <= 1:
+        return False
+    try:
+        os.kill(pid, 0)
+    except PermissionError:
+        return False
+    except OSError:
+        return True
+    return True
+
+
 def _busy(lock_path: Path) -> CommandError:
-    """The refusal, carrying who holds the project and every way out of it."""
+    """The refusal, carrying who holds the project and every way out of it.
+
+    The pid it tells you to stop is the pid that is actually RUNNING, which is not always
+    the one that took the lock: a `kill -9`'d `vsor dev` leaves its node process serving,
+    and that orphan is the reason this refusal exists (found live 2026-08-15 — the first
+    version of this message named the dead parent, which is advice that does nothing)."""
     holder = _holder_of(lock_path)
-    who = (
-        f"`vsor {holder.verb}` (pid {holder.pid}), started {holder.started}"
-        if holder is not None
-        else "another vsor process"
-    )
-    kill = f"kill {holder.pid}" if holder is not None else "stop it"
+    if holder is None:
+        return CommandError(
+            "project-busy",
+            f"another vsor is already working in this project.\n{_WHY_TWO_AT_ONCE}"
+            f"Wait for it to finish, or stop it, then rerun.\n{_REUSED_PID.format(lock=lock_path)}",
+        )
+
+    parent_alive = _process_alive(holder.pid)
+    child_alive = bool(holder.child) and _process_alive(holder.child)
+    if parent_alive:
+        who = f"`vsor {holder.verb}` (pid {holder.pid}), started {holder.started}"
+        if child_alive:
+            who = f"{who}, still running node (pid {holder.child})"
+        target = holder.pid
+    else:
+        # The parent is gone and its node process is not: the lock is held on the child's
+        # account, so the child is what has to stop.
+        who = (
+            f"`vsor {holder.verb}` (pid {holder.pid}, started {holder.started}) is gone, but the\n"
+            f"node process it started (pid {holder.child}) is still running in this project"
+        )
+        target = holder.child
+
+    if not _signalable(target):
+        # No `kill` advice for a pid vsor cannot signal: it is not this project's vsor.
+        ways_out = (
+            f"vsor cannot signal pid {target} — it is not a process of yours, so this is almost\n"
+            f"certainly a REUSED pid rather than a running vsor: delete {lock_path} and rerun.\n"
+            f"If a vsor really is working here, wait for it or stop it from its own terminal."
+        )
+    else:
+        where = "Ctrl-C in its terminal, or: " if parent_alive else ""
+        ways_out = (
+            f"Wait for it to finish, or stop it ({where}kill {target}), then rerun.\n"
+            f"{_REUSED_PID.format(lock=lock_path)}"
+        )
     return CommandError(
         "project-busy",
-        f"another vsor is already working in this project: {who}.\n"
-        "Two at once rewrite .vsor/site-runtime underneath each other — the copy of knowledge/\n"
-        "and site/ inside it is deleted and rebuilt on every invoke — so this one stops instead\n"
-        "of corrupting the site the other is serving.\n"
-        f"Wait for it to finish, or stop it (Ctrl-C in its terminal, or: {kill}), then rerun.\n"
-        f"vsor clears the lock of a process that has died; if one outlives its holder the pid was\n"
-        f"reused — delete {lock_path} and rerun.",
+        f"another vsor is already working in this project: {who}.\n{_WHY_TWO_AT_ONCE}{ways_out}",
     )
+
+
+_WHY_TWO_AT_ONCE = (
+    "Two at once rewrite .vsor/site-runtime underneath each other — the copy of knowledge/\n"
+    "and site/ inside it is deleted and rebuilt on every invoke — so this one stops instead\n"
+    "of corrupting the site the other is serving.\n"
+)
+
+_REUSED_PID = (
+    "vsor clears the lock of a process that has died; if one outlives its holder the pid was\n"
+    "reused — delete {lock} and rerun."
+)
+
+
+def _remove_lock_debris(lock_path: Path) -> None:
+    """Remove whatever is at the lock path — a DIRECTORY included.
+
+    `mkdir .vsor/lock` used to wedge a project permanently: `_claim` got FileExistsError,
+    `_holder_of` read nothing usable, and the debris `unlink()` failed silently, so every
+    verb refused forever (found live 2026-08-15). `.vsor/` is vsor's own scratch — nothing
+    else writes there — so clearing debris inside it is within this verb's ownership."""
+    with contextlib.suppress(OSError):
+        if lock_path.is_dir() and not lock_path.is_symlink():
+            shutil.rmtree(lock_path)
+        else:
+            lock_path.unlink()
 
 
 @contextlib.contextmanager
@@ -587,19 +776,21 @@ def project_lock(project_root: Path, *, verb: str) -> Iterator[Path]:
 
     if not _claim(lock_path, mine):
         holder = _holder_of(lock_path)
-        if holder is not None and holder.pid != mine.pid and _process_alive(holder.pid):
+        if holder is not None and holder.pid != mine.pid and _holder_alive(holder):
             raise _busy(lock_path)
-        # Debris: the holder is gone, or died before it could say who it was, or is us.
-        with contextlib.suppress(OSError):
-            lock_path.unlink()
+        # Debris: the holder is gone (child included), or died before it could say who it
+        # was, or is us.
+        _remove_lock_debris(lock_path)
         if not _claim(lock_path, mine):
             raise _busy(lock_path)  # somebody else won the same takeover — they hold it
 
     # The one race O_EXCL cannot close by itself: two processes can both find debris and
     # both take it over, and the second one's create wins the file. Re-reading is what
     # makes that harmless — whoever's record is in the file holds the lock, and the other
-    # refuses rather than running alongside it.
-    if _holder_of(lock_path) != mine:
+    # refuses rather than running alongside it. Compared on `identity` rather than on the
+    # whole record, because `record_child` rewrites our own row while we hold it.
+    current = _holder_of(lock_path)
+    if current is None or current.identity != mine.identity:
         raise _busy(lock_path)
 
     try:
@@ -607,6 +798,7 @@ def project_lock(project_root: Path, *, verb: str) -> Iterator[Path]:
     finally:
         # Only ever remove OUR lock: if a takeover happened while we ran, the file is now
         # somebody else's and deleting it would hand the project to a third process.
-        if _holder_of(lock_path) == mine:
+        held = _holder_of(lock_path)
+        if held is not None and held.identity == mine.identity:
             with contextlib.suppress(OSError):
                 lock_path.unlink()

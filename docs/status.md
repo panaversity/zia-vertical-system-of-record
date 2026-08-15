@@ -3,7 +3,7 @@
 What is true today, what is next, what blocks it. Changes weekly — which is why it is not in
 `AGENTS.md`.
 
-*Last updated: 2026-08-14*
+*Last updated: 2026-08-15*
 
 ---
 
@@ -36,17 +36,17 @@ history (the root commit), not the tree.
 - Governance **level 0 only** — no `governance/` directory, which removes `sor-governance` from v0
   entirely.
 - **A real agent kit, not one skill** (AGENTS.md decision 5's revision, owner 2026-08-13): the
-  scaffold writes `.claude/settings.json` (the vsor verbs pre-permitted, no hooks), four
-  `.claude/rules/` (provenance · abstention · review · repository-map) and **14 skills** —
-  `add-sources` (the one the five-minute claim rests on) plus the corpus-generic set copied from
-  upstream and de-branded: source conversion (`docx`, `pptx`, `fetch-library-docs`), knowledge work
-  (`knowledge-extraction-method`, `technical-clarity`, `content-refiner`,
-  `canonical-format-checker`), the shipped primitives (`summary-generator`, `quiz-generator`,
-  `generate-flashcards`), and the meta pair (`skill-creator`, `find-skills`) — plus `deploy`, the
-  first of the five deferred vsor skills to land (2026-08-14, with `vercel.json` and `netlify.toml`:
-  publishing was the one thing a finished build told the user nothing about). The exact file
-  list is pinned byte-for-byte by `tests/acceptance/init.sh` and `test_init.py` — those two are
-  the count, and no prose here carries a copy of it to drift.
+  scaffold writes `.claude/settings.json` (the vsor verbs pre-permitted, no hooks), the
+  `.claude/rules/` that say how a governed corpus is worked, and a skill set — `add-sources` (the
+  one the five-minute claim rests on) plus the corpus-generic families copied from upstream and
+  de-branded: source conversion, knowledge work, the shipped content primitives, the meta pair, and
+  `deploy`, the first of the five deferred vsor skills to land (2026-08-14: publishing was the one
+  thing a finished build told the user nothing about; the `vercel.json` and `netlify.toml` it
+  arrived with were withdrawn into the skill the same day). **Which files, and how many, is not
+  stated here** — this bullet used to name all fourteen skills and count them, and a copy of a list
+  is a list that drifts. The **generated** tree in AGENTS.md is the map;
+  `tests/acceptance/init.sh` and `test_init.py`'s `EXPECTED_FILES` are the contract; and
+  `tests/test_generated_docs.py` (2026-08-15) holds all three to each other so no reader has to.
 - **De-branding is done and CI-enforced, not deferred.** Zero upstream brand strings in shipped
   source, in built bundles, or in the scaffold's prose — the last of those became a test on
   2026-08-14 (`test_surface_contract.py`'s markdown tier, which also bars curriculum vocabulary:
@@ -133,7 +133,7 @@ sidebar confirmed live), `path: ../knowledge` resolving, the `--ifm-color-primar
 the shipped CSS bundle, homepage + doc page + 404 all rendering, and zero request-initiating
 external references from the shell. Measured: `npm install` 72s / 267MB node_modules (one-time);
 `docusaurus build` 14s (Node 24, Apple Silicon). **v0 wiring recommendation for the build spec:**
-the user's `site/` stays authored-input only (the init contract's exactly-10-files holds); `vsor
+the user's `site/` stays authored-input only (the init contract's exact file list holds); `vsor
 build`/`dev` materialize a runtime shell under `.vsor/` (package.json + install cache + the user's
 site files), per init's all-scratch-under-`.vsor/` rule — Node presence becomes a stated
 precondition like keys-in-hand, managed-runtime download is a later upgrade. Spike artifacts in the
@@ -171,12 +171,90 @@ this framework; it is the difference between O(n²) and O(n·k).** The scaffold 
 `knowledge/` and, until this was measured, said nothing about it.
 
 Second-order: `search-index.json` is 34 MB at 2,000 documents and the browser fetches it on first
-search — fine at hundreds, not at thousands. A server-side search or a sharded index is the
-post-v0 answer; the ceiling is recorded rather than guessed.
+search — fine at hundreds, not at thousands. That paragraph named "a server-side search" as the
+post-v0 answer; it was measured the next day instead, and the answer is below.
 
 **Working guidance until the machinery changes:** comfortable to ~500 documents in any layout;
 past that, organize `knowledge/` into folders. A build-time warning enforces the advice rather
 than leaving it in a document nobody reads.
+
+## Search at scale — measured, and decided static (2026-08-15)
+
+"Server-side" deletes the property `tests/acceptance/deploy.sh` exists to protect — plain static
+files, no server, any host — and `specs/sor-site/surface` pins it in one line ("Search stays the
+local index — no external service"). So it was measured before it was inherited. Corpora were
+regenerated and deleted (Node 24.18, Docusaurus 3.10.2, `@easyops-cn/docusaurus-search-local`
+0.55.3, mermaid off, 100 documents per folder, ~3.3 KB of markdown each) and the **shipped**
+SearchBar was driven in a real Chromium against a gzip-serving loopback host.
+
+| documents | `knowledge/` | build | site | `search-index.json` | over the wire | keystroke → first result | repeat query |
+| ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| 100 | 0.33 MB | 14s | 9 MB | 1.90 MB | 0.48 MB | 0.8 s | 0.8 s |
+| 500 | 1.68 MB | 23s | 37 MB | 9.36 MB | 2.32 MB | 1.4 s | 0.8 s |
+| 2,000 | 6.72 MB | 175s | 150 MB | 37.67 MB | 9.27 MB | 3.5 s | 1.9 s |
+
+The last two columns are end-to-end through the shipped dialog and carry a 300 ms debounce plus
+~0.3–0.5 s of harness overhead, so read the *differences*. Measured inside the page instead, with
+no harness in the way: fetch-and-decompress 109 / 566 / 2,058 ms, `JSON.parse` 15 / 68 / 321 ms,
+one query 29 / 51 / 266 ms. **The 2 s at 2,000 documents is not bandwidth** — that is a loopback
+host; it is gunzip turning 9.27 MB back into 37.67. A 25 Mbit connection adds ~3 s on top.
+
+Three facts the earlier note did not have.
+
+**The index is linear in corpus BYTES, not in documents** — 5.6× the markdown at every size
+measured (5.70 / 5.57 / 5.60), and 1.4× over the wire. The ceiling is therefore the weight of
+`knowledge/`, not a document count: 500 statutes cost what 2,000 short records do, and a build can
+predict the index before Docusaurus writes one.
+
+**87% of the index is body text.** At 2,000 documents the content sub-index is 32.9 MB of the
+37.67; headings 2.5, descriptions 1.7, titles 0.6. Anything that shrinks the index while keeping
+full-text search is negotiating over the other 13%.
+
+**The repeat query is our defect, not the index's.** `search-utils.ts` memoises the parsed JSON but
+not the deserialized lunr indexes, and resolves every hit with a linear `documents.find()` over all
+9,902 index rows. Searching a *common* term at 2,000 documents (7,126 hits) measured 1,935 ms, of
+which 1,841 ms was that scan — paid on every search, not the first.
+
+### What the plugin already offers, and what each costs
+
+| option | what it does | what it costs here |
+| :--- | :--- | :--- |
+| `searchContextByPaths` | the only real size lever: one `search-index-<path>.json` per named path | **built and measured**: over the 500-document corpus's five folders it emitted five ~1.9 MB shards and left the root `search-index.json` at **601 bytes** — the shipped SearchBar fetches exactly that fixed path, and rendered "No results found" for a term that is in the corpus. Real sharding, but a silent break of B13 until `search-utils.ts` learns to pick the shard from the route; and search then means "this section", or it fetches every shard and saves nothing |
+| `hashed` | `"filename"` → a hashed filename; `true`/`"query"` → the same filename plus `?_=<hash>` | no size change, only cache-busting; `false` is load-bearing because the SearchBar reads a fixed path, and `"query"` would keep the path but not the query, buying staleness |
+| `indexDocs` / `indexBlog` / `indexPages` | whole content types on or off | blog and pages are already off; docs **is** the corpus, so off is not a smaller search, it is no search |
+| `language` | lunr-languages stemmers | `["en"]` is the floor; each added language grows bundle and index |
+| `removeDefaultStopWordFilter`, `removeDefaultStemmer` | index stop words / skip stemming | both **grow** the index — they exist to make matching more literal |
+| `ignoreFiles`, `ignoreCssSelectors` | drop routes or page regions from indexing | real, but corpus-specific; no generic default to claim |
+| `searchResultLimits`, `searchResultContextMaxLength`, `explicitSearchResultPath` | how results are presented | no effect on index size |
+
+There is no lazy, incremental or streaming index in this plugin: its own SearchBar fetches on first
+focus, ours on first query, and both fetch the whole file.
+
+### The decision
+
+**Keep the site static and state the browser index's ceiling: ~500 documents — more exactly, keep
+`search-index.json` under ~10 MB, which is ~1.8 MB of markdown in `knowledge/`.** Below it a first
+search settles in about a second and a repeat search is imperceptible, the build stays a directory
+of files any host serves, and nothing built on top has to assume a process.
+
+What that costs, plainly: a project past the ceiling still builds and still publishes every
+document — only its in-page search bar degrades, and the framework says so rather than letting an
+owner discover it at 9.27 MB. It is **not** "don't hold thousands": the retrieval path for a large
+corpus is the MCP surface (`vsor serve` — `outline`, `read`, `search`, with Postgres behind it),
+which is v0 scope and the one verb still unimplemented. The site's search bar is a reader's
+convenience over the same corpus, never the system of record's index.
+
+**When it stops being the right answer:** at about double — ~3.5 MB of markdown, ~20 MB of index,
+~5 MB over the wire, first search past 2 s. Past there a stated ceiling is not guidance, it is a
+broken feature, and the move is sharding rather than a server: the folder layout the build already
+insists on at 300 documents is exactly the shard key `searchContextByPaths` wants, and the work is
+in `search-utils.ts` (choose the shard from the route), not in the hosting story.
+
+**Named, not built, in this run:** a sibling to `build_cmd.py:_warn_flat_corpus` that predicts the
+index from `knowledge/` bytes × 5.6 and says the number before Docusaurus writes it; and caching
+the deserialized lunr indexes beside the parsed JSON in `search-utils.ts`, with `documents` keyed
+by id instead of scanned — worth ~1.8 s per common-term query at 2,000 documents, and independent
+of every option above.
 
 ## Found by the hosting acceptance (2026-08-14) — three defects, all closed
 
@@ -208,6 +286,60 @@ Measured wall clock (Node 22.15, Apple Silicon, warm npm cache): `deploy-accepta
 including its own `make wheel` — against `surface` 4m34s and `build-acceptance` 4m13s. It stages
 the same shared paths those targets stage, so it is a separate target rather than a link in that
 chain, and the three cannot run concurrently on one checkout.
+
+## The record audit (2026-08-15) — what the record was lying about, and what it now is
+
+The last review before publishing attacked `build.lock.json` itself, on the premise that every MCP
+citation slice 2 returns resolves through that file. Eleven defects, all measured on real builds
+with the real wheel, all closed here; the record moved to **format 2** in the same change, which is
+the last moment it is free (a format bump after a PyPI release is a migration).
+
+| What the record said | Why it was false | Now |
+| :--- | :--- | :--- |
+| `corpus.git` + `documents[]` | Below the repo root — the layout `vsor init` **instructs** the user into, inside an existing work tree — the rows are project-relative and the commit is the enclosing repository's, so `<sha>:knowledge/x.md` is a path no commit contains. Nothing carried the prefix. | `corpus.prefix` (`""` at the root, `"sor/"` below it); `<git>:<prefix><path>` is asserted to resolve, per document, in `tests/acceptance/build.sh` |
+| `corpus.git` with a linked corpus root | `ln -s ~/docs knowledge` is deliberately legal (site and record agree). HEAD then holds a 120000 symlink blob: zero recorded documents fetchable from the commit the record named. | null, with a warning naming the link and the field |
+| `corpus.git` with a dirty `site/` or `instance.md` | The clean-check covered `knowledge/` while `build_id` covers seven inputs. Editing `site/docusaurus.config.ts` — the documented customization surface — left a record naming a commit that reproduces a *different* `build_id`. | HEAD only when `knowledge/`, `site/` **and** `instance.md` are all clean against it |
+| `build_id` | Blind to the forked site application (unpacked, not installed — no npm integrity hash covers it) and to six `VSOR_*` environment variables the shell config reads. Two builds with the same `build_id` published at different origins, with different canonical links, og: URLs, JSON-LD `@id` and sitemap. | `site.app` joins the preimage; `runtime_env` strips every `VSOR_*` key, so the config file is the only door |
+| `documents[]` rows | A `draft: true` document is hashed, moves `build_id`, gets a row — and Docusaurus emits no route for it. A citation resolves to the record and 404s. | refused at build time, `error: knowledge-invalid` |
+| nothing at all in `build/` | The artifact carried no identity and the record named no artifact, so deploying last week's `build/` beside this week's committed record was undetectable by anything. | `build/build.lock.json`, written into staging before the swap — byte-identical to the committed one |
+
+Four more in the same run were **safety**, not honesty, and are closed beside them: a `build/` that
+is not a directory half-completed the swap and then wedged every later run; `vsor dev` ignored
+SIGHUP, so a closed terminal orphaned a live server while releasing the lock; `superseded: yes`
+passed PyYAML as a boolean and reached the page as a string, rendering no notice at all; and
+frontmatter that PyYAML rejects while gray-matter accepts turned the whole effective-dating gate off
+for that document, silently.
+
+**Negative results — the attacks that did NOT break the record.** Recorded so the next adversarial
+pass starts where this one stopped rather than re-spending its budget:
+
+- writing into `knowledge/` at t=2s, t=8s and t=14s of a running build reaches neither `build/` nor
+  the record, in both directions (a delete after the snapshot is likewise built and recorded) — the
+  shell-snapshot fix holds;
+- a gitignored document warns, names the file, and nulls `corpus.git`, with the document present in
+  `build/` — correct;
+- a symlink **inside** the trees is refused before any install (`error: symlink-unsupported`);
+- the record write failing at the exact syscall stages a temp, fsyncs, renames, unlinks on failure,
+  never truncates the previous record, exits 3, and says what is still true;
+- `build_id` stability: a byte-identical rebuild reproduces it exactly; `created` varies alone;
+  touching one document moves it and moves only that document's row;
+- `.vsor/lock` prevents the two-verb shell corruption, and `_recover_interrupted_swap` handles both
+  crash points between the renames.
+
+**One limitation found while closing these, recorded rather than fixed.** `documents[]` paths are
+NFC-normalized (deliberately — it is what makes one corpus hash the same on macOS and Linux) while
+git stores the filesystem's own bytes, which on macOS are often NFD. So `<git>:<prefix><path>`
+resolves for every ASCII or NFC-named document and needs a normalization pass on the consumer side
+for a decomposed filename. The prefix itself is left exactly as git reports it, for the same reason
+— it addresses git objects, not the walk. This belongs with slice 2's citation resolver, which is
+the first code that will actually fetch through the pair; changing the walk's normalization to suit
+it would trade a cross-platform property for a single-platform one.
+
+One finding was **rejected as spec-compliant** and queued as wording instead: `corpus.documents[]`
+includes every regular file under `knowledge/**`, a `.txt` among them, which the spec defines
+exactly that way while AGENTS.md calls the record "one row per document". The vocabulary disagrees;
+the code does not. Splitting `corpus.tree` (all files) from `documents[]` (published rows) is a
+second record change and belongs with slice 2's citation shape, not in the same week as format 2.
 
 ## Ship order — two slices (decided 2026-08-13)
 
@@ -260,7 +392,8 @@ pointers at them — A3's designated token file, A4's frozen prop baseline — w
 `app/src` in the same change. Phase A runs inside `make gate` (allowlist +
 denylist backstop, exclusion boundary scan from the one committed `exclusions.json`, token lint at
 baseline zero, prop baseline); the browser tier is `make surface` (B5–B13,
-B15, B16; B14 retired 2026-08-14) against one configuration built twice, normally and with B12's
+B15, B16, B17; B14 retired 2026-08-14 — and B17, effective dating, is numbered in code with its
+spec wording queued) against one configuration built twice, normally and with B12's
 sentinels. The live walk caught what suites alone would have shipped:
 React #418 hydration on every themed doc page for Mac readers (Node ≥21's global `navigator` made
 the SSR guard dead), the build host's OS baked into shipped HTML, clipboard junk in
@@ -312,8 +445,9 @@ product said a word about deploying beyond the build's own "serve it from any st
 scaffold shipped `url: "http://localhost:3000"` with no warning anywhere, so a build uploaded as-is
 publishes a sitemap pointing at the author's laptop.
 
-**Closed in this pass:** the placeholder warning · the deploy skill, `vercel.json` and
-`netlify.toml` · the hosting acceptance and its three defects (above) · the two structured-data
+**Closed in this pass:** the placeholder warning · the deploy skill (it briefly scaffolded
+`vercel.json` and `netlify.toml`; both were withdrawn into the skill the same day, on the owner's
+challenge) · the hosting acceptance and its three defects (above) · the two structured-data
 defects · `vsor init --help` · the `serve` refusal's unreal paths · per-verb CLI help · `NOTICE`
 and a licence file inside every shipped npm tarball · `SECURITY.md`, `CONTRIBUTING.md`,
 `CODE_OF_CONDUCT.md` · the npm-audit summary answered with an owned line and a dated review ·
@@ -471,11 +605,13 @@ near-misses.
 - [x] LICENSE · NOTICE · CONTRIBUTING · CODE_OF_CONDUCT · **SECURITY.md as a normative triage
       boundary** — all landed 2026-08-14. SECURITY.md carries the operator trust model, an itemized
       out-of-scope list, and the two pre-answered patterns this scaffold will attract (the
-      `curl … | sh` in the host configs, and the floating `uvx vsor` that `build.lock.json`
-      records). **THREAT_MODEL.md is still open** and stays open: it is for the write door and the
-      MCP surface, and neither exists in this release
-- [x] CHANGELOG with breaking changes in prose, from release one — the scaffold's 28→31 file
-      change is recorded under Unreleased as breaking, because the file list is a contract
+      `curl … | sh` in the deploy skill's host-build blocks, and the floating `uvx vsor` that
+      `build.lock.json` records). **THREAT_MODEL.md is still open** and stays open: it is for the
+      write door and the MCP surface, and neither exists in this release
+- [x] CHANGELOG with breaking changes in prose, from release one — the scaffold's file-list change
+      is recorded under 0.1.1 as breaking, because the file list is a contract. The before-and-after
+      numbers live in `CHANGELOG.md` and nowhere else; this line used to carry its own pair, and
+      they were wrong in both halves
 - [ ] Publish **0.1.0 quietly**; let usage move the number; announce at whatever it reaches. State
       the 0.x contract (minor may break, patch does not) and a 1.0 *condition*, not a date
 

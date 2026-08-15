@@ -82,7 +82,17 @@ def _read_instance(project_root: Path) -> Instance:
 _SYNC_INTERVAL_SECONDS = 0.5
 
 
-def _serve(project_root: Path, runtime_dir: Path, port: int) -> int:
+# Everything that must end this verb rather than escape it. SIGINT and SIGTERM were
+# forwarded from the start; SIGHUP and SIGQUIT were not, and SIGHUP is what a closed
+# terminal and a torn-down agent session send. Found live 2026-08-15: `kill -HUP` on
+# `vsor dev` killed vsor and left the Docusaurus server ALIVE, still holding the port,
+# with `.vsor/lock` naming a dead pid — so the next verb took the lock over and rewrote
+# the shell that orphan was serving from, which is the exact corruption the lock exists
+# to prevent.
+_FORWARDED_SIGNALS = (signal.SIGINT, signal.SIGTERM, signal.SIGHUP, signal.SIGQUIT)
+
+
+def _serve(project_root: Path, runtime_dir: Path, port: int, lock_path: Path) -> int:
     """Spawn the dev server in its own process group and babysit it until a signal or
     its own death, mirroring authored edits into the shell's copies every half second
     (site_runtime.sync_authored — the copy-on-invoke fallback's hot-reload half).
@@ -95,6 +105,10 @@ def _serve(project_root: Path, runtime_dir: Path, port: int) -> int:
         stdin=subprocess.DEVNULL,
         start_new_session=True,
     )
+    # The lock names the child from here on: a killed vsor leaves this process alive and
+    # serving, and the next verb must see the project as still held rather than take it
+    # over and rewrite the shell underneath it.
+    site_runtime.record_child(lock_path, child.pid)
 
     forwarded: list[int] = []
 
@@ -103,8 +117,7 @@ def _serve(project_root: Path, runtime_dir: Path, port: int) -> int:
         with contextlib.suppress(ProcessLookupError, PermissionError):
             os.killpg(child.pid, signum)
 
-    previous_int = signal.signal(signal.SIGINT, _forward)
-    previous_term = signal.signal(signal.SIGTERM, _forward)
+    previous = {number: signal.signal(number, _forward) for number in _FORWARDED_SIGNALS}
     try:
         while True:
             returncode = child.poll()
@@ -115,8 +128,8 @@ def _serve(project_root: Path, runtime_dir: Path, port: int) -> int:
                     site_runtime.sync_authored(project_root, runtime_dir)
             time.sleep(_SYNC_INTERVAL_SECONDS)
     finally:
-        signal.signal(signal.SIGINT, previous_int)
-        signal.signal(signal.SIGTERM, previous_term)
+        for number, handler in previous.items():
+            signal.signal(number, handler)
         # No descendant survives: a final sweep of the (now leaderless) group.
         with contextlib.suppress(ProcessLookupError, PermissionError):
             os.killpg(child.pid, signal.SIGKILL)
@@ -156,8 +169,8 @@ def run_dev(project_root: Path | None = None, *, port_raw: str = DEFAULT_PORT) -
     # port — would delete and rebuild those copies underneath it. The port probe cannot see
     # that collision; the lock can. Taken after the probe, so the common "I already have one
     # running" case still gets the more specific port-in-use answer.
-    with site_runtime.project_lock(root, verb="dev"):
+    with site_runtime.project_lock(root, verb="dev") as lock_path:
         runtime_dir = site_runtime.ensure_runtime(root)
 
         print(f"vsor dev — serving http://127.0.0.1:{port}/ (Ctrl-C stops it)", flush=True)
-        return _serve(root, runtime_dir, port)
+        return _serve(root, runtime_dir, port, lock_path)

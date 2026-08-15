@@ -48,21 +48,24 @@ backports before 1.0.
 Both are deliberate, both are documented where they happen, and both are the kind of thing an
 automated review flags. Neither needs a report; a better answer to either is very welcome.
 
-**1. `vercel.json` and `netlify.toml` run `curl … | sh`.**
+**1. The host build command in `.agents/skills/deploy/SKILL.md` runs `curl … | sh`.**
 
 ```
 curl -LsSf https://astral.sh/uv/install.sh | env UV_UNMANAGED_INSTALL=/tmp/uv sh && /tmp/uv/uvx vsor build
 ```
 
 The host image ships Node and not necessarily Python; uv brings its own Python, so this is what
-makes one build command work on both hosts. The install path is pinned rather than added to `PATH`
+makes one build command work on every host. The install path is pinned rather than added to `PATH`
 because an installer cannot change the `PATH` of the shell already running it. The alternative — a
-host-native Python runtime — is documented in `.agents/skills/deploy/SKILL.md`, and path 2 of that
-document (build locally, upload the directory) avoids the question entirely, which is also the path
-for a corpus under a confidentiality obligation: the host receives rendered HTML and nothing else.
+host-native Python runtime — is documented in the same skill, and its path 2 (build locally, upload
+the directory) avoids the question entirely, which is also the path for a corpus under a
+confidentiality obligation: the host receives rendered HTML and nothing else.
 
-A user who does not want it deletes the file. Both host configs are the project's own, in the
-project's own repository, and nothing regenerates them.
+**The scaffold writes no host config.** `vercel.json` and `netlify.toml` were scaffolded on
+2026-08-14 and withdrawn the same day (`CHANGELOG.md` 0.1.1): a framework has no business putting a
+vendor's file into every project. The skill carries one copy-paste block per host instead, so this
+command enters a repository only by a deliberate act, in a file the project owns, that nothing
+regenerates. A user who does not want it uses path 2, or deletes the block.
 
 **2. `uvx vsor build` floats to the newest release.**
 

@@ -1,8 +1,8 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://vsor.dev/schemas/build.lock.json",
-  "title": "build.lock.json — format 1",
-  "description": "The committed record of one `vsor build` (specs/vsor/build). Every top-level field is required; `format` is pinned to the integer 1; format-1 readers must tolerate ANY element shape inside `non_stock` (reserved forward for `vsor eject`).",
+  "title": "build.lock.json — format 2",
+  "description": "The committed record of one `vsor build` (specs/vsor/build). Every top-level field is required; `format` is pinned to the integer 2; format-2 readers must tolerate ANY element shape inside `non_stock` (reserved forward for `vsor eject`). Format 2 (2026-08-15) added `corpus.prefix` — the project root's path inside the repository `corpus.git` names, so that `<git>:<prefix><documents[].path>` resolves — and `site.app`, the forked site application that rendered the site, which also entered the `build_id` preimage.",
   "type": "object",
   "required": [
     "format",
@@ -15,17 +15,18 @@
     "non_stock"
   ],
   "properties": {
-    "format": { "type": "integer", "const": 1 },
+    "format": { "type": "integer", "const": 2 },
     "build_id": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
     "created": { "type": "string" },
     "vsor": { "type": "string" },
     "requires_satisfied": { "type": "boolean" },
     "corpus": {
       "type": "object",
-      "required": ["tree", "git", "documents"],
+      "required": ["tree", "git", "prefix", "documents"],
       "properties": {
         "tree": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
         "git": { "type": ["string", "null"] },
+        "prefix": { "type": "string", "pattern": "^(|.*/)$" },
         "documents": {
           "type": "array",
           "items": {
@@ -41,11 +42,12 @@
     },
     "site": {
       "type": "object",
-      "required": ["docusaurus", "node", "lock"],
+      "required": ["docusaurus", "node", "lock", "app"],
       "properties": {
         "docusaurus": { "type": "string" },
         "node": { "type": "string" },
-        "lock": { "type": "string", "pattern": "^[0-9a-f]{64}$" }
+        "lock": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+        "app": { "type": "string", "pattern": "^[0-9a-f]{64}$" }
       }
     },
     "non_stock": { "type": "array" }

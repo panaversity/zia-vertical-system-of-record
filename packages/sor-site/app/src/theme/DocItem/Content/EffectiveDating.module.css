@@ -1,0 +1,120 @@
+/**
+ * The effective-dating layer's own box.
+ *
+ * A CSS module, not global classes, for the reason the header row beside it is one: a
+ * site that swizzles this wrapper away takes the styling with it. No colour literals —
+ * every value here is a token from the shell's own layer (token discipline, A3).
+ *
+ * The declarations are also load-bearing rather than decorative, which is what B15 taught
+ * the rest of this shell: Tailwind's preflight, boosted over single-class module rules by
+ * Docusaurus's cascade-layer polyfill, zeroes borders and padding on everything it
+ * reaches. A supersession notice stripped back to a bare line of text reads as a caption,
+ * which is exactly what it must not read as — so the browser tier measures this box by
+ * computed style rather than by the class being present.
+ */
+
+/* ── the notice, above the content ────────────────────────────────────────── */
+
+.superseded {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  margin: 0 0 1.5rem;
+  padding: 0.875rem 1rem;
+  border: 1px solid color-mix(in srgb, var(--warning) 45%, transparent);
+  /* The left rule carries the weight: it is the part that survives at a glance and the
+     part a reader recognizes from every other "read this first" band on the web. */
+  border-left: 4px solid var(--warning);
+  border-radius: var(--radius);
+  background: color-mix(in srgb, var(--warning) 12%, var(--background));
+  color: var(--foreground);
+}
+
+.supersededIcon {
+  display: inline-flex;
+  flex: none;
+  /* Aligned to the title's cap height rather than the box, so the icon reads as part of
+     the first line instead of floating above it. */
+  margin-top: 0.1rem;
+  color: var(--warning);
+}
+
+.supersededIcon svg {
+  width: 18px;
+  height: 18px;
+}
+
+.supersededBody {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  min-width: 0;
+}
+
+.supersededTitle {
+  font-size: 0.8125rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--foreground);
+}
+
+.supersededText {
+  margin: 0;
+  font-size: 0.9375rem;
+  line-height: 1.5;
+  color: var(--foreground);
+}
+
+/* Underlined, not colour-only: the notice's own background is already a wash of the
+   accent, so a link tinted with the same family would be the one element on the page
+   whose affordance depends on a hue difference nobody can see.
+ *
+ * found live 2026-08-15 (real `vsor build` output, docusaurus 3.10.2, opened in a
+ * browser): without `!important` this rule loses and the successor renders as plain bold
+ * text — a link nobody can tell is a link, in the one band on the page whose entire job is
+ * to send the reader somewhere else. Measured cause, and it generalizes:
+ *
+ *   Tailwind's base `a { color: inherit; text-decoration: inherit }` reaches the page as
+ *   `a:not(#\#):not(#\#)` — specificity (2,0,1) — because postcss-preset-env polyfills
+ *   `@layer` into `:not(#id)` hacks. Global stylesheets in this shell come out boosted the
+ *   same way (`.markdown a` ships as five `:not(#\#)`, which is why corpus links are fine).
+ *   **CSS MODULES ARE NOT BOOSTED AT ALL** — `.supersededLink_ab12` stays (0,1,0) — so any
+ *   module rule that has to beat a Tailwind base declaration cannot win on specificity at
+ *   any nesting depth, and `!important` is the honest way rather than growing our own
+ *   `:not(#\#)` chain. This is the anchor case of the same measurement the surface spec
+ *   already records for preflight and borders.
+ *
+ * The browser tier asserts the computed decoration, so a regression here is red, not
+ * merely ugly. */
+.supersededLink {
+  font-weight: 600;
+  color: inherit;
+  text-decoration: underline !important;
+  text-underline-offset: 3px;
+}
+
+/* ── the effective date, in the doc header ────────────────────────────────── */
+
+.effective {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  /* Not --muted-foreground, which is what the reading time beside it uses: for a governed
+     record the day it took effect is content, and the minutes it takes to read are not. */
+  color: var(--foreground);
+}
+
+.effective svg {
+  width: 13px;
+  height: 13px;
+  flex: none;
+  opacity: 0.75;
+}
+
+.effective time {
+  font-variant-numeric: tabular-nums;
+}

@@ -26,7 +26,7 @@ means an unimplemented verb, stated explicitly so nothing branches on the wrong 
 | Code | Meaning |
 | :--- | :--- |
 | 0 | success — including `vsor dev` stopped with Ctrl-C |
-| 1 | refused, or the input speaking — the first stderr line is a stable slug (`error: exists`, `blocked`, `bad-name`, `nested`, `instance-invalid`, `build-failed`, `bad-port`, `port-in-use`, `dev-failed`, `project-busy`, `symlink-unsupported`) |
+| 1 | refused, or the input speaking — the first stderr line is a stable slug (`error: exists`, `blocked`, `bad-name`, `nested`, `instance-invalid`, `build-failed`, `bad-port`, `port-in-use`, `dev-failed`, `project-busy`, `symlink-unsupported`, `knowledge-invalid`) |
 | 2 | unimplemented verb — it says so honestly and names what this release does implement |
 | 3 | environment or packaging (`error: unsupported-platform`, `error: unstamped`, `error: missing-runtime`, `error: install-failed`, `error: build-crashed`, `error: io-failed`) |
 
@@ -74,9 +74,20 @@ re-derived each session.
 - **One vsor at a time here.** `vsor build` while `vsor dev` is serving is refused
   (`error: project-busy`): both rewrite the site runtime under `.vsor/`, so the second would
   corrupt the site the first is serving. Stop the dev server, or wait for it.
-- **Documents are real files, never symbolic links.** A link inside `knowledge/` or `site/` is
-  refused (`error: symlink-unsupported`) — `build.lock.json` hashes the files it publishes, and a
-  link points at bytes no commit of this project contains. Copy the file in instead.
+- **Documents are real files** — never symbolic links, and never a pipe or a socket. Anything else
+  inside `knowledge/` or `site/` is refused (`error: symlink-unsupported`): `build.lock.json`
+  hashes the regular files it publishes, so anything it cannot hash would be served by the site and
+  absent from the record. Copy the file in instead.
+- **Every document in `knowledge/` is published.** `draft: true` is refused
+  (`error: knowledge-invalid`) — it would leave a row in `build.lock.json` with no page behind it.
+  Keep a document that is not ready outside `knowledge/` until it is.
+- **A replaced document is marked, never deleted.** `superseded_by:` in its frontmatter names
+  what replaced it, and the page then opens with a notice saying so. `vsor build` refuses a
+  pointer that names a document this project does not publish (`error: knowledge-invalid`), so a
+  reader never follows one that leads nowhere. `vsor dev` does not refuse it — writing the
+  successor second is an ordinary way to work. Write `true` and `false` in full: `yes` and `on` are
+  plain text to the parser that renders the page, so the notice would silently never appear. The
+  keys are in `.claude/rules/provenance.md`.
 
 ## Publishing
 
@@ -96,7 +107,10 @@ Before the first deploy, set `url` (and `baseUrl` for a subpath host) in
 Open Graph tags, so a default build advertises `localhost` to search engines.
 
 `build/` is git-ignored while `build.lock.json` is committed: the record of a build travels with
-the repository, and the output is reproducible from it.
+the repository, and the output is reproducible from it. The deployable directory carries a copy of
+that same record at `build/build.lock.json`, so "is the site that is live the one this repository's
+record describes" is answerable by comparing one `build_id` — including against a host that built
+it for you.
 
 Read `.agents/skills/deploy/SKILL.md` before deploying — including how to verify a deploy rather
 than trusting the URL a CLI printed.

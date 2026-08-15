@@ -3,8 +3,9 @@
 
 Public surface these tests define:
 
-- `LOCK_FORMAT: int = 1` — pinned; changing the build_id recipe REQUIRES bumping it
-  (the golden-recipe test below is the tripwire).
+- `LOCK_FORMAT: int = 2` — pinned; changing the build_id recipe REQUIRES bumping it
+  (the golden-recipe test below is the tripwire). Format 2 arrived 2026-08-15, pre-PyPI,
+  from the adversarial record review: `corpus.prefix` and `site.app`.
 - `SCHEMA_PATH: Path` — the committed JSON Schema for `build.lock.json`, shipped inside
   the package next to lock.py. The schema must require every top-level field, pin
   `format` to the integer 1, and tolerate ANY element shape inside `non_stock`.
@@ -15,16 +16,17 @@ Public surface these tests define:
   locale order).
 - `tree_hash(rows: Sequence[tuple[str, str]]) -> str` — sha256 over the sorted rows.
 - `compute_build_id(*, corpus_tree, site_tree, instance_sha256, vsor_version,
-  docusaurus_version, node_version, lock_sha256) -> str` — sha256 over the NUL-separated
-  preimage pinned by the golden test; `created` is NOT an input, by design.
+  docusaurus_version, node_version, lock_sha256, app_sha256) -> str` — sha256 over the
+  NUL-separated preimage pinned by the golden test; `created` is NOT an input, by design.
 - `requires_satisfied(requires: str, running: str) -> bool` —
   `SpecifierSet(requires).contains(running, prereleases=True)`.
 - `resolve_corpus_git(head, head_knowledge_tree, hashed_tree) -> str | None` — HEAD only
   when HEAD's knowledge tree equals the hashed tree, else None (the record never names a
   commit that lacks the corpus it built).
 - `assemble_record(*, corpus_rows, site_tree, instance_sha256, requires, vsor_version,
-  docusaurus_version, node_version, lock_sha256, git_head, created) -> dict[str, object]`
-  — the format-1 record; `created` varies without moving `build_id`.
+  docusaurus_version, node_version, lock_sha256, app_sha256, git_head, corpus_prefix,
+  created) -> dict[str, object]` — the format-2 record; `created` varies without moving
+  `build_id`, and neither does `corpus_prefix` (it is provenance, not an input).
 """
 
 import hashlib
@@ -143,17 +145,18 @@ BASE_ID_INPUTS: dict[str, str] = {
     "docusaurus_version": "3.9.1",
     "node_version": "24.4.1",
     "lock_sha256": sha(b"lock"),
+    "app_sha256": sha(b"app"),
 }
 
 
 def test_build_id_golden_recipe() -> None:
     """The recipe, pinned byte-for-byte: sha256 over the NUL-separated preimage
-    `"1" · corpus.tree · site tree · sha256(instance.md) · vsor · docusaurus · node ·
-    site.lock`. Changing this preimage REQUIRES bumping LOCK_FORMAT — this test is the
-    tripwire that makes a silent recipe change impossible."""
+    `"2" · corpus.tree · site tree · sha256(instance.md) · vsor · docusaurus · node ·
+    site.lock · site.app`. Changing this preimage REQUIRES bumping LOCK_FORMAT — this test
+    is the tripwire that makes a silent recipe change impossible."""
     preimage = b"\x00".join(
         [
-            b"1",
+            b"2",
             BASE_ID_INPUTS["corpus_tree"].encode(),
             BASE_ID_INPUTS["site_tree"].encode(),
             BASE_ID_INPUTS["instance_sha256"].encode(),
@@ -161,13 +164,14 @@ def test_build_id_golden_recipe() -> None:
             BASE_ID_INPUTS["docusaurus_version"].encode(),
             BASE_ID_INPUTS["node_version"].encode(),
             BASE_ID_INPUTS["lock_sha256"].encode(),
+            BASE_ID_INPUTS["app_sha256"].encode(),
         ]
     )
     assert lock.compute_build_id(**BASE_ID_INPUTS) == hashlib.sha256(preimage).hexdigest()
 
 
-def test_build_id_format_is_pinned_to_1() -> None:
-    assert lock.LOCK_FORMAT == 1
+def test_build_id_format_is_pinned_to_2() -> None:
+    assert lock.LOCK_FORMAT == 2
 
 
 def test_build_id_nul_separation_moved_boundary_moves_the_hash() -> None:
@@ -296,7 +300,11 @@ CORPUS_ROWS = [
 ]
 
 
-def record(created: str = "2026-08-13T00:00:00Z", git_head: str | None = None) -> dict[str, object]:
+def record(
+    created: str = "2026-08-13T00:00:00Z",
+    git_head: str | None = None,
+    corpus_prefix: str = "",
+) -> dict[str, object]:
     rec: dict[str, object] = lock.assemble_record(
         corpus_rows=CORPUS_ROWS,
         site_tree=sha(b"site"),
@@ -306,7 +314,9 @@ def record(created: str = "2026-08-13T00:00:00Z", git_head: str | None = None) -
         docusaurus_version="3.9.1",
         node_version="24.4.1",
         lock_sha256=sha(b"lock"),
+        app_sha256=sha(b"app"),
         git_head=git_head,
+        corpus_prefix=corpus_prefix,
         created=created,
     )
     return rec
@@ -314,7 +324,7 @@ def record(created: str = "2026-08-13T00:00:00Z", git_head: str | None = None) -
 
 def test_record_shape() -> None:
     rec = record(git_head="b" * 40)
-    assert rec["format"] == 1
+    assert rec["format"] == 2
     assert isinstance(rec["format"], int)
     assert rec["vsor"] == "0.1.0"
     assert rec["requires_satisfied"] is True
@@ -326,7 +336,12 @@ def test_record_shape() -> None:
     assert corpus["documents"] == [{"path": path, "sha256": digest} for path, digest in CORPUS_ROWS]
     site = rec["site"]
     assert isinstance(site, dict)
-    assert site == {"docusaurus": "3.9.1", "node": "24.4.1", "lock": sha(b"lock")}
+    assert site == {
+        "docusaurus": "3.9.1",
+        "node": "24.4.1",
+        "lock": sha(b"lock"),
+        "app": sha(b"app"),
+    }
 
 
 def test_record_build_id_matches_the_recipe() -> None:
@@ -339,6 +354,7 @@ def test_record_build_id_matches_the_recipe() -> None:
         docusaurus_version="3.9.1",
         node_version="24.4.1",
         lock_sha256=sha(b"lock"),
+        app_sha256=sha(b"app"),
     )
 
 
@@ -363,7 +379,9 @@ def test_requires_mismatch_is_recorded_never_raised() -> None:
         docusaurus_version="3.9.1",
         node_version="24.4.1",
         lock_sha256=sha(b"lock"),
+        app_sha256=sha(b"app"),
         git_head=None,
+        corpus_prefix="",
         created="2026-08-13T00:00:00Z",
     )
     assert rec["requires_satisfied"] is False
@@ -390,7 +408,7 @@ def test_golden_record_validates_against_the_schema() -> None:
 
 
 def test_schema_tolerates_any_non_stock_element_shape() -> None:
-    """Format-1 readers must tolerate any non_stock element shape — reserved forward
+    """Format-2 readers must tolerate any non_stock element shape — reserved forward
     for `vsor eject`."""
     rec = record()
     rec["non_stock"] = [{"weird": {"nested": True}}, "a-string", 3]
@@ -407,5 +425,66 @@ def test_schema_rejects_a_record_missing_build_id() -> None:
 def test_schema_rejects_a_string_format() -> None:
     rec = record()
     rec["format"] = "1"
+    with pytest.raises(ValidationError):
+        Draft202012Validator(schema()).validate(rec)
+
+
+# ── format 2: the record locates itself in its repository, and names the app ────────────
+#
+# Both added 2026-08-15 from the adversarial record review, and both are the same class of
+# defect: a field that reads as provenance and is not one.
+#
+# `corpus.prefix` — every `documents[]` path is project-relative (`knowledge/x.md`) while
+# `corpus.git` names HEAD of the ENCLOSING repository, which is the layout `vsor init`
+# explicitly supports (init inside an existing work tree scaffolds a subdirectory and
+# commits nothing). Below the repo root the pair does not resolve: `<sha>:knowledge/x.md`
+# is not a path in that commit. The prefix is the missing half, and it is not a build
+# INPUT — the same corpus at a different path in a repository is the same build — so it
+# stays out of the build_id preimage.
+#
+# `app_sha256` — the build_id covered every input except the application that rendered
+# the site. `.materialized.json` hashes the app tarball precisely because "the app is
+# unpacked, not installed, so nothing else would notice a changed fork"; build_id was
+# that "nothing else".
+
+
+def test_build_id_covers_the_site_application_that_rendered_the_site() -> None:
+    """Two builds by one vsor version with different forked apps must not collide."""
+    other = lock.compute_build_id(**{**BASE_ID_INPUTS, "app_sha256": sha(b"a different fork")})
+    assert other != lock.compute_build_id(**BASE_ID_INPUTS)
+
+
+def test_record_names_the_app_and_the_prefix() -> None:
+    rec = record(git_head="b" * 40, corpus_prefix="sor/")
+    corpus = rec["corpus"]
+    assert isinstance(corpus, dict)
+    assert corpus["prefix"] == "sor/", (
+        "documents[] paths are project-relative and corpus.git names the enclosing "
+        "repository — without the prefix the pair cannot be resolved"
+    )
+    site = rec["site"]
+    assert isinstance(site, dict)
+    assert site["app"] == sha(b"app")
+
+
+def test_the_prefix_is_provenance_never_a_build_input() -> None:
+    """Moving a project inside its repository does not change what was built."""
+    at_root = record(corpus_prefix="")
+    below = record(corpus_prefix="sor/")
+    assert at_root["build_id"] == below["build_id"]
+
+
+def test_the_schema_pins_the_prefix_and_the_app() -> None:
+    for missing in ("prefix",):
+        rec = record()
+        corpus = rec["corpus"]
+        assert isinstance(corpus, dict)
+        del corpus[missing]
+        with pytest.raises(ValidationError):
+            Draft202012Validator(schema()).validate(rec)
+    rec = record()
+    site = rec["site"]
+    assert isinstance(site, dict)
+    del site["app"]
     with pytest.raises(ValidationError):
         Draft202012Validator(schema()).validate(rec)

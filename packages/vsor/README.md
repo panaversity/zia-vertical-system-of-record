@@ -35,7 +35,8 @@ vsor build           # emits build/ (the deployable site) + build.lock.json (the
 
 `vsor init` writes a project that is content and config only — your corpus, one `instance.md`, a
 real (thin) Docusaurus `site/` whose every key is a live seam, four rules and fourteen skills for
-the coding agent you already use, a host config for Vercel and one for Netlify, and a first commit. No machinery, nothing frozen, nothing rented.
+the coding agent you already use, and a first commit. No machinery, nothing frozen, nothing rented,
+and no vendor's config file you did not ask for.
 
 ## What you get
 
@@ -45,7 +46,11 @@ the coding agent you already use, a host config for Vercel and one for Netlify, 
   tokens in one file.
 - **No external requests.** Fonts self-hosted, search a local index, zero analytics, zero CDN.
 - **`build.lock.json`** — the committed record of a build: a `build_id` derived from the inputs, the
-  commit it came from, one row per document, the tool versions. Same inputs, same `build_id`.
+  commit it came from *and where in that repository the project sits*, one row per document, the
+  tool versions. Same inputs, same `build_id`. The commit is named only when it genuinely contains
+  what was built, so `<commit>:<prefix><path>` always fetches the bytes a row describes — and the
+  deployable directory carries a copy of the record at `build/build.lock.json`, so you can tell
+  which build is live.
 
 ## Deploy
 
@@ -71,9 +76,11 @@ Rebuild, then upload. From the project root, where `build/` is:
 | S3 / R2 / GCS | `aws s3 sync build s3://<bucket>`, then enable website serving on the bucket |
 | your own server | `rsync -a build/ host:/var/www/<site>/` behind nginx or Caddy — it is files, it needs no runtime |
 
-Or let the host build it: `vsor init` writes a `vercel.json` and a `netlify.toml` carrying the same
-build command and output directory, so a connected repository deploys on push. That path needs
-`vsor` installable from PyPI — check with `uvx vsor --version`.
+Or let the host build it: `.agents/skills/deploy/SKILL.md` carries a ready host config for Vercel,
+Netlify and Cloudflare Pages — the same build command and output directory — for the agent to write
+into your project once you have picked one, after which a connected repository deploys on push. The
+scaffold ships none of them: two of any three would always be deleted. That path needs `vsor`
+installable from PyPI — check with `uvx vsor --version`.
 
 **Then verify rather than trust the URL a CLI printed** — with `-L`, because the sitemap writes
 extensionless directory URLs while the build emits `index.html` files, so a host either redirects
