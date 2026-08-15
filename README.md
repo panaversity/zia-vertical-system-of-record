@@ -12,16 +12,19 @@ vsor dev              # the live site on 127.0.0.1:3000, reloading as you write
 vsor build            # → build/, ready to upload anywhere
 ```
 
-## What you get
+## What vsor builds
 
-Write markdown. Run one command. You get a site like this — no theme to pick, no components to
-wire, no build config. Both pictures are a real build of a real corpus, not a mockup:
+One folder of markdown. Two surfaces, built from it, that can never disagree:
 
-![The generated homepage: the project's own name and tagline, and a panel counting the documents
-and sections found in the folder](docs/images/home.jpg)
+- **A website your team reads.** Search, dark mode, quizzes and flashcards, self-hosted fonts, and
+  **no calls to anyone else's server** — it works behind a firewall.
+- **A connector your AI answers from** (MCP — the standard assistants like Claude use to reach
+  outside tools). Every answer names the document it came from; a question your files do not cover
+  is declined instead of guessed.
 
-![A generated document page: sidebar built from the folder tree, breadcrumbs, reading time,
-copy-as-markdown, and an in-page table of contents](docs/images/doc-page.jpg)
+Every build also writes `build.lock.json` — a record of exactly which documents went in, from
+which commit, with which versions. When someone asks *why did it say that*, that file is how you
+find out.
 
 Your side of it is a folder. Sub-folders become sections; a line of frontmatter sets the title:
 
@@ -35,6 +38,15 @@ instance.md                   ← what this deployment is
 site/docusaurus.config.ts     ← title, navbar, colours — the parts that are yours
 ```
 
+Here is the website surface, from a real build of real content — no theme to pick, no components
+to wire, no build config:
+
+![The generated homepage: the project's own name and tagline, and a panel counting the documents
+and sections found in the folder](docs/images/home.jpg)
+
+![A generated document page: sidebar built from the folder tree, breadcrumbs, reading time,
+copy-as-markdown, and an in-page table of contents](docs/images/doc-page.jpg)
+
 ## Why not just use a chatbot
 
 A general-purpose assistant answers everything in the same confident voice: your rules and a
@@ -45,19 +57,6 @@ cannot use it.
 What fixes it is not a smarter model. It is having **one source everyone reads** — your people
 through a website, your AI through a connector — where every answer points back to the document it
 came from, and where "we don't cover that" is a real answer instead of an invented one.
-
-## The two things vsor builds
-
-Both come from the same folder, so they can never disagree:
-
-- **A website your team reads.** Search, dark mode, quizzes and flashcards, self-hosted fonts, and
-  **no calls to anyone else's server**. It works behind a firewall.
-- **A connector your AI answers from** (MCP — the standard assistants like Claude use to reach
-  outside tools). Every answer names its document; a question your files do not cover is declined.
-
-Every build also writes `build.lock.json` — a record of exactly which documents went in, from
-which commit, with which versions. When someone asks *why did it say that*, that file is how you
-find out.
 
 It is not an agent framework. It is the layer such frameworks read *from*. Your project stays
 markdown and one config file; the machinery is installed rather than copied in, so it upgrades
