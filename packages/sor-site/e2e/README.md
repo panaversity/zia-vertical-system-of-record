@@ -27,7 +27,7 @@ works on the two shapes a static host has. It is driven by
    - `<out>/site-runtime/site/` — the project's authored site, i.e.
      `packages/vsor/src/vsor/templates/scaffold/site` with placeholders stamped
      (`__VSOR_NAME__` → `fixture`, `__VSOR_YEAR__` → `2026`)
-   - `<out>/site-runtime/knowledge/` — `fixtures/tiny`
+   - `<out>/site-runtime/knowledge/` — `tests/fixtures/tiny`
    - `site-sentinel` is the same site rebuilt with sentinel values in exactly
      three seams of the authored site: `themeConfig.navbar.title`, footer
      copyright, `--ifm-color-primary` (distinct colors for the light and dark
@@ -51,7 +51,7 @@ works on the two shapes a static host has. It is driven by
 | `tests/static.spec.ts` | B5 (static scan of built HTML+CSS, zero non-local), B6 (route/sitemap + build-dir assertion), B7 (`tests/exclusions.json` vs built JS bundles) |
 | `tests/surface.spec.ts` | B9, B10, B11 walk, B13 (quiz feedback + search to the doc) |
 | `tests/seam.spec.ts` | B12 (sentinels present / old gone, token paints in light and dark) |
-| `tests/primitives.spec.ts` | B13, the rest of the vocabulary — ExerciseCard, HighlightTip, flashcards, gallery, tabs, mermaid, ImageZoom — each against `fixtures/tiny/document-primitives.md`. Computed-style *floors* (a rule width, a padding, a hairline), never equalities: a stripped box fails, decoration stays free to change |
+| `tests/primitives.spec.ts` | B13, the rest of the vocabulary — ExerciseCard, HighlightTip, flashcards, gallery, tabs, mermaid, ImageZoom — each against `tests/fixtures/tiny/document-primitives.md`. Computed-style *floors* (a rule width, a padding, a hairline), never equalities: a stripped box fails, decoration stays free to change |
 | `tests/design.spec.ts` | B15 — design-system liveness AND the regression net; B16 (admonitions in both the v2 and v3 syntaxes); and the hero's CSS-only capitalization, read from Chromium's AX tree |
 | `tests/chrome.spec.ts` | B13, the chrome on every page and the landing bands under the hero — the four unread `data-vsor` hooks (`mode-toggle`, `reading-progress`, `doc-page-actions`, `search-no-results`), `LessonContent`'s two-view tabs, and SectionCards / Surfaces / Closing. Added 2026-08-14; two of these had already regressed silently (see the decision below) |
 | `tests/harness.ts` | the always-on guard that makes every visited page enforce B8 (same-origin, zero ≥ 400) and B11 (zero console.error / pageerror); plus `inMode()`, the one place that knows how a color mode is forced |
@@ -121,7 +121,7 @@ startup line.
   carries `role="tablist" aria-label="Content view"` and that string appeared in
   0 of 7 built HTML files: the Summary branch renders only when a co-located
   `.summary.md` exists, and no fixture had one.
-  `fixtures/tiny/vertical-sor.summary.md` is that fixture. It is deliberately on
+  `tests/fixtures/tiny/vertical-sor.summary.md` is that fixture. It is deliberately on
   `vertical-sor` rather than `document-primitives`, so the doc that
   `primitives.spec.ts` searches for a single `tablist` still has exactly one.
 - **B7 list:** `tests/exclusions.json` mirrors the spec's exclusion table

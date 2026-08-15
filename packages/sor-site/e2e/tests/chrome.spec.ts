@@ -25,7 +25,7 @@
  * LessonContent is the fourth: it renders on every doc page, its tab nav carries
  * `role="tablist" aria-label="Content view"`, and the string "Content view"
  * appeared in 0 of 7 built HTML files — the Summary branch needs a co-located
- * `.summary.md` and no fixture had one. `fixtures/tiny/vertical-sor.summary.md`
+ * `.summary.md` and no fixture had one. `tests/fixtures/tiny/vertical-sor.summary.md`
  * is that fixture, so the branch now builds and the tabs are worked here.
  *
  * The landing bands are the same argument one level up: SectionCards, Surfaces
@@ -141,7 +141,7 @@ test("chrome: LessonContent offers the summary view when the corpus supplies one
   const env = envFor(testInfo.project.name);
   await page.goto(`${env.url}${DOC}`);
 
-  // The tab nav exists only because fixtures/tiny/vertical-sor.summary.md sits
+  // The tab nav exists only because tests/fixtures/tiny/vertical-sor.summary.md sits
   // beside vertical-sor.md — so this asserts the summaries plugin's co-location
   // contract as much as the component.
   const tabs = page.getByRole("tablist", { name: "Content view" });

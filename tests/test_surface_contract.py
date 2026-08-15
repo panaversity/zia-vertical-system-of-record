@@ -26,7 +26,7 @@ REPO = Path(__file__).resolve().parent.parent
 SOR_SITE = REPO / "packages" / "sor-site"
 # The templates site shell — the other shipped surface the A2 scan covers.
 TEMPLATE_SITE = REPO / "packages" / "vsor" / "src" / "vsor" / "templates" / "scaffold" / "site"
-FIXTURE = REPO / "fixtures" / "tiny"
+FIXTURE = REPO / "tests" / "fixtures" / "tiny"
 LOCKFILE = SOR_SITE / "package-lock.json"
 
 # A3: the designated token files (spec "Token discipline" — "the designated
@@ -554,7 +554,7 @@ def test_a4_prop_types_match_frozen_baseline() -> None:
 
 
 # ------------------------------------------------------- fixture preconditions
-# The spec's Phase B builds against fixtures/tiny and relies on two properties
+# The spec's Phase B builds against tests/fixtures/tiny and relies on two properties
 # of the corpus itself; both are pure source assertions, so they gate here.
 
 _EXTERNAL_RE = re.compile(r"https?://|\bwww\.")
@@ -582,6 +582,6 @@ def test_fixture_unique_search_phrase_appears_exactly_once() -> None:
         for _ in range(path.read_text().count(_SEARCH_PHRASE))
     ]
     assert len(occurrences) == 1, (
-        f"the unique search phrase {_SEARCH_PHRASE!r} must appear exactly once in fixtures/tiny "
+        f"the unique search phrase {_SEARCH_PHRASE!r} must appear exactly once in tests/fixtures/tiny "
         f"(B13 asserts one search hit linking to that doc); found {len(occurrences)}: {occurrences}"
     )

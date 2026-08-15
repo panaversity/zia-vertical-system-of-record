@@ -100,7 +100,7 @@ export function useCorpus(): Corpus {
   // plugin hands them over — which is NOT the author's order, and the comment
   // that used to stand here said it was.
   //
-  // Measured 2026-08-14 against a nested corpus (fixtures/tiny arranged as
+  // Measured 2026-08-14 against a nested corpus (tests/fixtures/tiny arranged as
   // 01-mains/, 02-street-food/, 03-drinks-and-sweets/): `version.docs` arrives
   // sorted by id, and Docusaurus's default number-prefix parser has already
   // stripped "01-" from the id as well as from the route — so the cards render

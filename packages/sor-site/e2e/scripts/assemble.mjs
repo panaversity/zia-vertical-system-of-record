@@ -14,7 +14,7 @@
  *                                  vsor init scaffold, placeholders stamped
  *                                  (__VSOR_NAME__ -> "fixture", __VSOR_YEAR__ ->
  *                                  "2026"). The shell reads it via VSOR_SITE_DIR.
- *   <out>/site-runtime/knowledge/  fixtures/tiny, read via VSOR_KNOWLEDGE_DIR.
+ *   <out>/site-runtime/knowledge/  tests/fixtures/tiny, read via VSOR_KNOWLEDGE_DIR.
  *   <out>/manifest.json            what was stamped/patched — the tests' single
  *                                  source for sentinel and old values.
  *
@@ -65,7 +65,7 @@ const shellSource = path.join(repoRoot, "packages", "sor-site", "app");
 const scaffoldSite = path.join(
   repoRoot, "packages", "vsor", "src", "vsor", "templates", "scaffold", "site",
 );
-const fixtures = path.join(repoRoot, "fixtures", "tiny");
+const fixtures = path.join(repoRoot, "tests", "fixtures", "tiny");
 
 const INSTANCE_NAME = "fixture";
 const YEAR = "2026";
@@ -125,7 +125,7 @@ function main() {
   for (const [label, p] of [
     ["the forked shell", shellSource],
     ["scaffold site", scaffoldSite],
-    ["fixtures/tiny", fixtures],
+    ["tests/fixtures/tiny", fixtures],
   ])
     if (!fs.existsSync(p)) fail(`${label} not found at ${p}`);
 

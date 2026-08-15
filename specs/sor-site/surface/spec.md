@@ -157,7 +157,7 @@ A4  exported primitive prop types match the frozen baseline byte-for-byte
 ```
 
 **Phase B — lands in the same change as the fixture-site build.** Build target:
-`templates/` site shell + `fixtures/tiny` as `knowledge/`, extended with one `<Quiz />` and one doc
+`templates/` site shell + `tests/fixtures/tiny` as `knowledge/`, extended with one `<Quiz />` and one doc
 carrying a unique search phrase; the fixture corpus is asserted to contain zero external
 references. *(Amended at implementation, 2026-08-13: originally "every kept primitive appears at
 least once" — the landed fixture proves the quiz end-to-end and search; per-primitive render

@@ -7,7 +7,7 @@
  *   shape or a corpus is hardcoded in a spec.
  * - `corpus`: the routes, heading and phrase the driver's project happens to
  *   have, so the same specs run against a scaffold's own documents and against
- *   fixtures/tiny.
+ *   tests/fixtures/tiny.
  * - `test`: @playwright/test extended with an always-on guard that turns every
  *   navigation into an assertion that the site asks only for things under the
  *   path this host serves it from, same-origin, with no 4xx and no page errors.

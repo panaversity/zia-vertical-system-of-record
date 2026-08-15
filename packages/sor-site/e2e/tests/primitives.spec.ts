@@ -38,7 +38,7 @@
  *     flex axis, the shell's min-height) as FLOORS, not equalities: the test is
  *     meant to catch a stripped box, not to freeze a decoration.
  *
- * The corpus side is `fixtures/tiny/document-primitives.md` plus its two
+ * The corpus side is `tests/fixtures/tiny/document-primitives.md` plus its two
  * co-located YAML files. The deck and the gallery are loaded by
  * `@vsor/lib-remark-flashcards` / `@vsor/lib-remark-gallery` from
  * `<stem>.flashcards.yaml` / `<stem>.gallery.yaml`, which is the authoring

@@ -9,7 +9,7 @@
  */
 import { test, expect, envFor } from "./harness";
 
-const PHRASE = "abstention floor"; // the fixture's unique search phrase (fixtures/tiny/vertical-sor.md)
+const PHRASE = "abstention floor"; // the fixture's unique search phrase (tests/fixtures/tiny/vertical-sor.md)
 
 test("B9: GET / returns 200 and the title carries the instance name", async ({ page }, testInfo) => {
   const env = envFor(testInfo.project.name);

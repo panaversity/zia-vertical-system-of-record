@@ -12,8 +12,8 @@ What is true today, what is next, what blocks it. Changes weekly — which is wh
 **Phase 0 landed 2026-08-13, gate green on first run** (it caught its own boundary test's lint —
 working as intended). Exists and runs: the uv workspace (`packages/vsor`, Python ≥3.14), the
 Makefile vocabulary, CI (SHA-pinned actions, `make gate`), AST boundary guards at **baseline zero**,
-`fixtures/tiny/` — the book's own `/vsor` example made real: ten Pakistani-dish documents, ten gold
-rows, five OOC probes (three scope-adjacent) — docker-compose for CI, and the supply-chain cooldown
+`tests/fixtures/tiny/` — the book's own `/vsor` example made real: ten Pakistani-dish documents, ten gold
+rows, five OOC probes (three scope-adjacent) — a docker-compose for CI (removed 2026-08-15; it returns with the ingest code), and the supply-chain cooldown
 (`exclude-newer`).
 
 **Three of the four verbs are implemented** and each has been walked live, like a user:
@@ -148,7 +148,7 @@ threshold).
 **New unknowns for the skeleton to measure:** behavioural-eval flake rate before gating · does
 docs-in-the-wheel measurably help a coding agent (run Test 2 with and without) · Test 2 driven
 entirely by a coding agent, human only pasting paths · serve-time token cost of the MCP prompt
-surface on `fixtures/tiny/` · scaffold-upgrade story once 0.2.0 meets a 0.1.0 project (record enough
+surface on `tests/fixtures/tiny/` · scaffold-upgrade story once 0.2.0 meets a 0.1.0 project (record enough
 in `build.lock.json` to derive it later).
 
 ## Measured limits (2026-08-14) — the corpus-scale experiment
@@ -267,7 +267,7 @@ the SSR guard dead), the build host's OS baked into shipped HTML, clipboard junk
 Copy-as-Markdown — all fixed with red-state evidence and found-live comments.
 **The named follow-up closed 2026-08-14:** the per-primitive render assertions (flashcards,
 gallery, ExerciseCard, HighlightTip, ImageZoom, tabs, mermaid) landed with the fixture doc that
-exercises them — `fixtures/tiny/document-primitives.md` plus its co-located flashcard and gallery
+exercises them — `tests/fixtures/tiny/document-primitives.md` plus its co-located flashcard and gallery
 YAML — taking the browser tier from 21 checks to 28. Each asserts computed-style *floors* (a rule
 width, a padding, a hairline) rather than equalities, so a stripped box fails while decoration
 stays free to change. A 29th followed in the green pass: the hero's uppercase had shipped as a
@@ -415,7 +415,7 @@ agent-built): `vsor/init` · `vsor/instance-format` · `vsor/build-lock` · `sor
 → observable contract → acceptance test → out-of-scope. Extraction needs no spec —
 `docs/extraction.md` is that work list.
 
-Order: **Phase 0** (workspace, Makefile, CI shell, boundary tests at baseline zero, `fixtures/tiny`
+Order: **Phase 0** (workspace, Makefile, CI shell, boundary tests at baseline zero, `tests/fixtures/tiny`
 — no spec, nothing blocks it) → **slice 1** (specs 1–2 → Node spike → spec 4 → init/dev/build-site
 → specs 3, 5 → timed site acceptance) → **slice 2** (kernel extraction → spec 6 → serve → gold set
 + abstention experiment → spec 7 → Tests 1+2 → checklist → quiet 0.1.0).
@@ -432,7 +432,8 @@ They measure different things; conflating them was a past defect.
 **Test 1 — skeleton (proves the plumbing):**
 
 ```bash
-docker compose up -d                     # postgres + pgvector
+docker compose up -d                     # postgres + pgvector (the compose file returns with the
+                                         #   ingest code; removed from the root 2026-08-15)
 uvx vsor init demo                    # scaffolds, git init, installs
 cd demo && vsor build && vsor serve
 
@@ -443,7 +444,7 @@ curl -s localhost:8080/health | jq .     # 200; abstain gate reported as uncalib
 # build.lock.json exists and is committed
 ```
 
-Corpus: `fixtures/tiny/` — ~10 markdown files with frontmatter.
+Corpus: `tests/fixtures/tiny/` — ~10 markdown files with frontmatter.
 
 **Test 2 — five minutes (proves the product claim):** from a real PDF, through a real agent, using
 `add-sources`, timed. `init` → "pull in these PDFs" → "put it live" → a cited answer, and an honest
@@ -455,7 +456,7 @@ production floor took 416 gold queries + 38 probes. Level 0 ships with the gate 
 saying so; if a floor is underivable at small scale, the honest default may become a conservative
 fixed floor plus an *uncalibrated* badge. Recording this result is a v0 deliverable.
 
-**v0 gold set:** ~10 in-corpus questions + 5 out-of-corpus probes against `fixtures/tiny/`, row
+**v0 gold set:** ~10 in-corpus questions + 5 out-of-corpus probes against `tests/fixtures/tiny/`, row
 schema `{q, expect, source, kind}` (+ optional `also_ok`). Probes must include scope-adjacent
 near-misses.
 

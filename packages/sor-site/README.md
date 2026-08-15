@@ -37,7 +37,7 @@ that does not ship:
 All three from `app/`, unchanged from the notes that used to sit in that directory:
 
 ```sh
-cp -r ../../../fixtures/tiny ../knowledge   # a real directory, see below
+cp -r ../../../tests/fixtures/tiny ../knowledge   # a real directory, see below
 npm run build --workspace app
 npx docusaurus serve --dir build
 ```

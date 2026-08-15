@@ -3,7 +3,7 @@
 # Invoked by `make surface`; CI runs it after `npm ci` + `npx playwright install chromium`.
 #
 # Flow: assemble two fixture sites (normal + sentinel) in the MATERIALIZED shape —
-# the forked shell as siteDir, the init scaffold as its `site/`, fixtures/tiny as
+# the forked shell as siteDir, the init scaffold as its `site/`, tests/fixtures/tiny as
 # its `knowledge/` → `docusaurus build` each with the shell's own env seams pointed
 # at those trees → serve each build with `python3 -m http.server` on an ephemeral
 # 127.0.0.1 port → run the single Playwright suite.

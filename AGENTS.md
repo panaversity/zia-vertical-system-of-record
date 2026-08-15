@@ -137,8 +137,11 @@ evidence, recorded here with a revision note.
    (`content_nodes`, `sources`, `chunks`, `slug_aliases`, `node_centroids`), approval rows,
    `text_search_config`, the archive table, auditor role, takedown write path.
 10. **The user's database is any Postgres DSN in `.env`** — Neon free tier recommended (production
-    is already Neon), any commodity Postgres works. **Docker is never a user requirement**; the
-    committed `docker compose` (`pgvector/pgvector:pg17`) is framework dev/CI machinery only.
+    is already Neon), any commodity Postgres works. **Docker is never a user requirement.** A
+    `docker compose` for `pgvector/pgvector:pg17` is framework dev/CI machinery and **arrives with
+    the ingest code that needs it** — it was committed in Phase 0, used by nothing for two weeks,
+    and removed 2026-08-15 rather than sit at the root of a public repository implying that a
+    static-site generator wants a database.
     `.env` is the whole user config surface: `DATABASE_URL` + the embedding key (Gemini at beta 1,
     user-supplied; provider pluggability post-v0).
     *Revision 2026-08-13: previously framed docker as the dev default for everyone — the user asked
@@ -293,7 +296,7 @@ packages/
                     wheel — amended 2026-08-13 with specs/vsor/build)
   sor-evals/        the proof + vsor.testing doubles ← extracted
 templates/          what `init` copies — will be CI-built; evals will be green
-fixtures/tiny/      ~10 markdown files the tests run against
+tests/fixtures/tiny/      ~10 markdown files the tests run against
 tests/
 ```
 

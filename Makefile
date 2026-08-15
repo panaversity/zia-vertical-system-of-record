@@ -153,7 +153,7 @@ wheel:
 
 # Browser tier of specs/sor-site/surface (B5–B13, B15, B16; B14 retired
 # 2026-08-14): builds the fixture site from the forked shell + the init scaffold
-# + fixtures/tiny, twice — normally and with B12's sentinels — and runs the
+# + tests/fixtures/tiny, twice — normally and with B12's sentinels — and runs the
 # Playwright acceptance against both. There is no stock/themed axis any more:
 # the design system is inside the shell and a project cannot opt out. Node lives
 # only here — `gate` stays node-free. Installs nothing; one-time prereq:
