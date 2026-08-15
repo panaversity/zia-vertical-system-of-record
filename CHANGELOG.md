@@ -28,21 +28,19 @@ decides whether the next defect is caught or shipped.
   in a way it can never steer a user's build.
 - `make surface` costs about four minutes more, and that is the price of testing the artifact.
 
-### Supply chain
+### Known, and not fixed here
 
-- **The shipped lockfile is committed and reviewed.** It was regenerated against the live registry on
-  every `make wheel` — so the tree every user installs was a fresh resolution taken at whatever
-  moment the wheel happened to be built, never committed, never read by anyone, and different on
-  every machine that ran the target. This repository's own rule calls the lockfile the dependency
-  review surface; this was the one dependency set nobody could review. `make wheel` now copies
-  `templates/site_runtime/package-lock.json` instead of resolving, so CI, a release and a laptop pack
-  the same tree. Safe because `npm pack` is byte-reproducible — verified by packing a library twice
-  and comparing sha512, and by checking a fresh pack against the integrity the lock already records.
-- **`make relock`** is the only way that tree changes: it re-resolves against the registry and leaves
-  the diff for a human. A test asserts the committed lock is the committed manifest resolved, so the
-  two cannot drift; it fails naming `make relock`.
-- The reviewed lockfile is excluded from the wheel — only the staged copy ships, rather than 834 KB
-  of the same JSON twice.
+- **The shipped lockfile is still not reviewable.** `make wheel` regenerates it against the live
+  registry on every run, so the dependency tree every user installs is a fresh resolution taken at
+  whatever moment the wheel was built — never committed, never read. This repository's own rule calls
+  the lockfile the dependency review surface, and this is the one dependency set nobody reviews.
+  Committing it was tried in this release and reverted: `npm pack` is byte-reproducible on one
+  machine but **not across platforms**, so a committed lock's `file:` integrity rows fail `npm ci`
+  with EINTEGRITY on any host that packs the tarballs itself — CI went red on all three jobs. The
+  constraint was already written down in two places, `test_wheel_contents.py`
+  ("make wheel must regenerate the shell lockfile whenever it repacks") and the `wheel` target's own
+  comment. A fix has to separate the reviewed registry pins from the per-machine `file:` integrity;
+  that is a design, not an edit, and it is not attempted here.
 
 ## 0.1.3 — 2026-08-15
 

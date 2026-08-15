@@ -174,7 +174,6 @@ REPO = Path(__file__).resolve().parents[3]
 SHELL_TEMPLATE = REPO / "packages/vsor/src/vsor/templates/site_runtime/package.json"
 APP_MANIFEST = REPO / "packages/sor-site/app/package.json"
 WORKSPACE_LOCK = REPO / "packages/sor-site/package-lock.json"
-SHELL_LOCK = REPO / "packages/vsor/src/vsor/templates/site_runtime/package-lock.json"
 
 # devDependencies of the fork that a BUILD needs, so the shell must install them as
 # ordinary dependencies: the faster toolchain the config's `future.faster` block turns
@@ -305,46 +304,3 @@ def test_shell_resolves_the_same_browser_targets_as_the_fork() -> None:
         "same `browserslist`; they compile the same CSS and a divergence changes which "
         "PostCSS polyfills run in a real `vsor build` but not in the e2e fixture"
     )
-
-
-def test_the_shipped_lockfile_is_the_shipped_manifest_resolved() -> None:
-    """The lockfile beside the shell manifest is the tree every user installs, and since
-    2026-08-15 it is committed rather than re-resolved on each `make wheel`.
-
-    That makes it reviewable — the repository's supply-chain rule calls the lockfile the
-    dependency review surface, and this was the one dependency set nobody could read — but
-    it also makes it possible for the two files to drift apart. A manifest naming a package
-    the lock does not resolve fails at `npm ci` in a user's project, long after anyone is
-    watching. This row is the coupling: edit the manifest, run `make relock`, commit both.
-    """
-    shell = json.loads(SHELL_TEMPLATE.read_text())
-    lock = json.loads(SHELL_LOCK.read_text())
-
-    root = lock["packages"][""]
-    assert root.get("name") == shell["name"], (
-        "the lockfile was resolved from a different manifest than the one beside it"
-    )
-    assert root.get("dependencies") == shell["dependencies"], (
-        "templates/site_runtime/package.json and its package-lock.json declare different "
-        "dependencies — run `make relock` and commit both files together"
-    )
-
-    for name, spec in sorted(shell["dependencies"].items()):
-        entry = lock["packages"].get(f"node_modules/{name}")
-        assert entry is not None, (
-            f"{name} is declared in the shell manifest but resolves to nothing in the "
-            "lockfile — run `make relock`"
-        )
-        if spec.startswith("file:"):
-            # A workspace library. npm records where it came from and the hash of the
-            # tarball `make wheel` packs; the pin itself is the path, not a version.
-            tarball = spec.removeprefix("file:").removeprefix("./")
-            assert entry.get("resolved") == f"file:{tarball}", (
-                f"{name} should resolve to the relative tarball {spec} — an absolute or "
-                "registry resolution would not survive `uv cache prune` on a user's machine"
-            )
-        else:
-            assert entry.get("version") == spec, (
-                f"the shell manifest pins {name} {spec} but the lockfile resolves "
-                f"{entry.get('version')} — run `make relock`"
-            )
