@@ -47,20 +47,41 @@ and sections found in the folder](docs/images/home.jpg)
 ![A generated document page: sidebar built from the folder tree, breadcrumbs, reading time,
 copy-as-markdown, and an in-page table of contents](docs/images/doc-page.jpg)
 
-## Why not just use a chatbot
+## What a system of record is, in the AI era
 
-A general-purpose assistant answers everything in the same confident voice: your rules and a
-stranger's, this year's number and last year's, the part it checked and the part it made up. If
-you are the one who has to stand behind the answer, that is not a rough edge. It is the reason you
-cannot use it.
+A system of record is the one place the official version lives. When the ledger and a spreadsheet
+disagree, the ledger wins. Businesses have had them for decades. AI never did — it answers from
+everything it has ever read, which is exactly why it cannot tell you which sentences were checked
+and which were invented.
 
-What fixes it is not a smarter model. It is having **one source everyone reads** — your people
-through a website, your AI through a connector — where every answer points back to the document it
-came from, and where "we don't cover that" is a real answer instead of an invented one.
+A **vertical** system of record is one profession's version of that: your rules, your thresholds,
+your documents — one governed source that your people and your AI both read.
 
-It is not an agent framework. It is the layer such frameworks read *from*. Your project stays
-markdown and one config file; the machinery is installed rather than copied in, so it upgrades
-underneath you without touching your work.
+**It is vendor-free by design.** The connector speaks MCP, the open standard for giving assistants
+access to outside tools, so the same knowledge answers in Claude, in ChatGPT, inside an agent
+framework, or in a worker you wrote yourself. You are not building on one company's platform, and
+you are not re-doing this work when you change models. What you own is the source; the runtimes
+are interchangeable.
+
+That is the part worth your attention. Retrieval plumbing is a solved, commodity problem. Whether
+an AI agent can be trusted in your field is not — and it is decided by the quality and the
+governance of what it reads.
+
+## Built for agents first
+
+You are not meant to operate this yourself. Tell the coding agent you already use — Claude Code,
+Codex, Cursor, whichever — and it does the work. Every scaffolded project ships the instructions
+that agent needs: **14 skills** (adding sources, converting a Word document or a deck, checking
+format, writing a quiz, deploying) and **4 rules** for working a corpus somebody is accountable
+for — provenance, abstention, review, and what lives where.
+
+So out of the box, the only thing you touch is the knowledge itself. Documents are plain markdown,
+written in English or whatever language you work in.
+
+When configuration is not enough, nothing is hidden: `site/` is a real Docusaurus site — its
+config, design tokens, pages and sidebar are ordinary files your agent already knows how to edit,
+not an abstraction we invented. And the framework itself is Apache-2.0, so an agent can read the
+machinery, change it, and send the change back.
 
 ## Status
 
