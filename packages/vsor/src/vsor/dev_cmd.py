@@ -138,14 +138,19 @@ def run_dev(project_root: Path | None = None, *, port_raw: str = DEFAULT_PORT) -
     port = validate_port(port_raw)
     _read_instance(root)
 
-    runtime_dir = site_runtime.ensure_runtime(root)
-
+    # The port check comes BEFORE materializing the runtime, deliberately. Reversed (as it was
+    # until 2026-08-15) a first run spends up to two minutes installing the site runtime and only
+    # then discovers it cannot bind — and, worse, ensure_runtime wipes and re-copies the corpus
+    # into the shell, which is the very shell a dev server already holding this port is serving
+    # from. Refusing first makes the common "I already have one running" case free and harmless.
     if not port_is_free(port):
         raise CommandError(
             "port-in-use",
             f"port {port} on 127.0.0.1 is already in use — stop whatever holds it, or pass a "
             f"different one: vsor dev --port <1-65535>.",
         )
+
+    runtime_dir = site_runtime.ensure_runtime(root)
 
     print(f"vsor dev — serving http://127.0.0.1:{port}/ (Ctrl-C stops it)", flush=True)
     return _serve(root, runtime_dir, port)

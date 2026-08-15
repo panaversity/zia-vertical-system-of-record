@@ -316,6 +316,13 @@ scaffolded projects.
 
 ## Tests and evals
 
+> **The `CI` column says wired, not enforced.** As of 2026-08-15 no GitHub Actions job in this
+> repository has ever executed — every run fails in 3–5 seconds on an account billing state, not a
+> code fault (`gh run list` shows the history). Every tier below is real and is run locally by
+> `make gate` / `make surface` / `make build-acceptance` / `make deploy-acceptance`; none has ever
+> run on a machine that is not the author's, and the Node-dependent tiers have therefore never run
+> on Linux. A second developer should read the column as intent until a green run exists.
+
 **Test tiers** (copied from upstream, which runs 1,021 tests in ~12s):
 
 | Tier | Selected by | May touch | CI |
