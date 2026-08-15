@@ -36,7 +36,7 @@ jobs:
   publish:
     runs-on: ubuntu-latest
     permissions:
-      contents: read
+      contents: write # to cut the GitHub Release at the end; nothing earlier needs it
       id-token: write # the OIDC identity PyPI Trusted Publishing verifies
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -66,6 +66,41 @@ jobs:
             echo "tag $GITHUB_REF_NAME names $tagged, packages/vsor/pyproject.toml says $packaged" >&2
             exit 1
           }
+
+      # What is being released, in the maintainer's own words, taken from the file that
+      # already records it. A release that cannot say what changed is a version number
+      # with a date on it, and this repository keeps a CHANGELOG section per version
+      # precisely so nobody has to reconstruct one at tag time.
+      #
+      # It is also a GATE, not just a formatting step: the section must exist. The
+      # failure it prevents is the ordinary one — bump the version, tag, and forget the
+      # notes — and it is worth catching BEFORE the upload, because a PyPI version cannot
+      # be replaced once it lands while a GitHub Release can be edited forever.
+      - name: the changelog names this version
+        id: notes
+        run: |
+          version=$(uv run --no-project python -c \
+            'import tomllib;print(tomllib.load(open("packages/vsor/pyproject.toml","rb"))["project"]["version"])')
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          # The section runs from `## <version>` to the next `## ` heading.
+          uv run --no-project python - "$version" <<'PY' > release-notes.md
+          import re, sys
+          version = sys.argv[1]
+          text = open("CHANGELOG.md", encoding="utf-8").read()
+          match = re.search(
+              rf"^##\s+{re.escape(version)}\b.*?$(.*?)(?=^##\s|\Z)",
+              text, re.MULTILINE | re.DOTALL,
+          )
+          if not match or not match.group(1).strip():
+              sys.exit(
+                  f"CHANGELOG.md has no section for {version}. Add `## {version} — <date>` "
+                  "and say what changed before tagging: this is what the GitHub Release "
+                  "will show, and it is the only place a reader is told."
+              )
+          print(match.group(1).strip())
+          PY
+          echo "--- release notes for $version ---"
+          cat release-notes.md
 
       # Stages the site runtime into packages/vsor/src/vsor/_site_runtime/ and then
       # builds the sdist and the wheel into dist/. Both artifacts are published: the
@@ -109,3 +144,23 @@ jobs:
       - name: publish to PyPI
         if: ${{ github.event_name == 'push' || !inputs.dry_run }}
         run: uv publish --trusted-publishing always dist/*
+
+      # Last, and only from a tag: the release a human reads. It goes AFTER the upload on
+      # purpose — a GitHub Release that exists while PyPI does not would be the repository
+      # announcing something a reader cannot install. The reverse gap is recoverable: the
+      # notes can be cut by hand from the same CHANGELOG section afterwards.
+      #
+      # `gh` is preinstalled on the runner, so this adds no action to the supply-chain
+      # surface the header commits to reviewing. The wheel and sdist ride along as
+      # downloadable assets, which makes the release self-contained for anyone who wants
+      # to verify what was uploaded against what PyPI serves.
+      - name: cut the GitHub release
+        if: ${{ startsWith(github.ref, 'refs/tags/') }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" \
+            --title "vsor ${{ steps.notes.outputs.version }}" \
+            --notes-file release-notes.md \
+            --verify-tag \
+            dist/*

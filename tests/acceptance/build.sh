@@ -34,6 +34,10 @@ SCRATCH="$(mktemp -d)"
 pids=()
 cleanup() {
   for p in ${pids[@]+"${pids[@]}"}; do kill "$p" 2>/dev/null || true; done
+  # Wait for them to actually go before deleting the tree they are writing into. `kill`
+  # only asks; `vsor dev` then forwards the signal to its own process group and unwinds,
+  # and node takes a moment over it. Without this the rm below races a live compiler.
+  for p in ${pids[@]+"${pids[@]}"}; do wait "$p" 2>/dev/null || true; done
   rm -rf "$SCRATCH"
 }
 trap cleanup EXIT INT TERM
@@ -490,8 +494,20 @@ DEV_PORT="$(free_port)"
 # and non-interactive bash defers SIGINT while waiting on its foreground child — the
 # signal never reached vsor dev and `wait` deadlocked forever. The dev child is
 # spawned via uvx directly so $! IS the process this row signals.
-uvx --from "$WHEEL" vsor dev --port "$DEV_PORT" >dev.log 2>&1 &
+# NO_COLOR: take the colour decision away from the child. `runtime_env()` strips only
+# `VSOR_*`, so this reaches Docusaurus and rspack, and colorette short-circuits on it
+# (index.cjs:33) — which also keeps the dev.log this row dumps on failure readable.
+# The count below is ANSI-insensitive anyway; belt and braces, because either one alone
+# would have been enough and the row must not depend on which.
+NO_COLOR=1 uvx --from "$WHEEL" vsor dev --port "$DEV_PORT" >dev.log 2>&1 &
 DEV_PID=$!
+# found live 2026-08-15 (ubuntu-latest, the first CI run this job ever reached): every
+# `fail` below exits straight to the EXIT trap, and DEV_PID was never in `pids` — so
+# cleanup's `rm -rf` raced a dev server that was still writing into the shell it was
+# deleting (`rm: cannot remove '.../.vsor/site-runtime/node_modules': Directory not
+# empty`), and GitHub reaped the leftovers itself ("Terminate orphan process ... (uv)").
+# The noise landed on top of the real failure and made it read like a second defect.
+pids+=("$DEV_PID")
 
 up=""
 for i in $(seq 1 360); do
@@ -509,11 +525,28 @@ test -n "$up" || { cat dev.log >&2; fail "vsor dev never answered GET / with 200
 # docs-regen recompile moments later). Wait for the compile count to hold still for
 # 3s before taking the baseline, so this row asserts the TOUCH's recompile — never a
 # late startup compile masquerading as one.
-BASE_COMPILES="$(grep -c 'compiled successfully' dev.log)"
+#
+# found live 2026-08-15, on the first CI run that ever reached this row: the literal
+# `grep -c 'compiled successfully'` returns 0 on GitHub Actions, and the whole row fails
+# for that reason alone. The child writes straight into dev.log (dev_cmd.py inherits
+# stdout rather than piping), so its stdout is a FILE and never a tty — and that is not
+# enough to get plain text. Docusaurus prints stats through webpack-dev-middleware, which
+# takes its colour setting from `colorette.isColorSupported` because @rspack/core exposes
+# no `webpack.cli`, and colorette turns colour ON for CI *regardless of tty*:
+# `"CI" in env && "GITHUB_ACTIONS" in env`. rspack then emits
+# `compiled ${green('successfully')}` — so the bytes are
+#   client (Rspack 1.7.12) compiled \033[1m\033[32msuccessfully\033[39m\033[22m
+# with the escape landing BETWEEN the two words the pattern joins. GitHub renders that
+# back as plain text in the web log, so the run looked like a hot-reload defect while the
+# mirror and the watcher had both worked perfectly. Counting past the escapes is the fix;
+# NO_COLOR on the spawn above is the second, independent one.
+ESC=$(printf '\033')
+compiles() { LC_ALL=C grep -acE "compiled ($ESC\[[0-9;]*m)*successfully" dev.log; }
+BASE_COMPILES="$(compiles)"
 stable=0
 for i in $(seq 1 120); do
   sleep 0.5
-  now="$(grep -c 'compiled successfully' dev.log)"
+  now="$(compiles)"
   if [ "$now" -eq "$BASE_COMPILES" ]; then
     stable=$((stable + 1))
     [ "$stable" -ge 6 ] && break
@@ -525,10 +558,43 @@ done
 printf '\nA dev hot-reload probe line.\n' >> knowledge/example.md
 recompiled=""
 for i in $(seq 1 120); do
-  if [ "$(grep -c 'compiled successfully' dev.log)" -gt "$BASE_COMPILES" ]; then recompiled=1; break; fi
+  if [ "$(compiles)" -gt "$BASE_COMPILES" ]; then recompiled=1; break; fi
   sleep 0.5
 done
-test -n "$recompiled" || { cat dev.log >&2; fail "no recompile line appeared after touching a knowledge doc"; }
+if [ -z "$recompiled" ]; then
+  # The failure has three possible causes and they need different fixes, so measure which
+  # one it is rather than reading the tea leaves in dev.log. `vsor dev` serves COPIES: the
+  # authored save is mirrored into .vsor/site-runtime/knowledge by sync_authored (dev_cmd.py,
+  # every 0.5s) and Docusaurus watches the copy. So either the mirror did not carry the edit
+  # across, or it did and the watcher ignored it — or, the one that actually happened on
+  # 2026-08-15, both halves worked and this row's own counter could not see the compile
+  # because the marker arrived wrapped in ANSI colour (see the long note above the counter).
+  # The raw byte count is printed for exactly that reason: a plain-vs-coloured mismatch is
+  # invisible in GitHub's rendered log, which strips the escapes before you read it.
+  echo "--- compile-line accounting ---" >&2
+  printf 'ANSI-insensitive count: %s | literal-string count: %s | baseline: %s\n' \
+    "$(compiles)" \
+    "$(LC_ALL=C grep -c 'compiled successfully' dev.log 2>/dev/null || echo 0)" \
+    "$BASE_COMPILES" >&2
+  echo "  (the two counts differing means the marker is coloured, not that hot reload broke)" >&2
+  echo "--- dev.log ---" >&2
+  cat dev.log >&2
+  echo "--- mirror state (did sync_authored carry the edit into the shell?) ---" >&2
+  for f in knowledge/example.md .vsor/site-runtime/knowledge/example.md; do
+    if [ -e "$f" ]; then
+      printf '%s: %s bytes, mtime %s, probe line present: %s\n' \
+        "$f" \
+        "$(wc -c <"$f" | tr -d ' ')" \
+        "$(date -r "$f" '+%H:%M:%S' 2>/dev/null || stat -c %y "$f" 2>/dev/null || echo '?')" \
+        "$(grep -c 'A dev hot-reload probe line' "$f" 2>/dev/null || echo 0)" >&2
+    else
+      echo "$f: MISSING" >&2
+    fi
+  done
+  echo "--- (probe present in the shell copy => the mirror works and the watcher ignored it;" >&2
+  echo "     absent => sync_authored is the half that did not fire) ---" >&2
+  fail "no recompile line appeared after touching a knowledge doc"
+fi
 
 kill -INT "$DEV_PID"
 wait "$DEV_PID"
