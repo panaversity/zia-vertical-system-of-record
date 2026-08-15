@@ -179,7 +179,14 @@ const config: Config = {
   },
 
   markdown: {
-    mermaid: true,
+    // Measured 2026-08-15 by an external reviewer on a clean machine, and confirmed here:
+    // mermaid is 83 MB of the install and ~3,440 KB of the ~4,500 KB client bundle — three
+    // quarters of it — and it lands in the COMMON chunk, so every page of every corpus pays for
+    // a diagram renderer whether or not one document contains a diagram. A corpus that wants
+    // diagrams turns it on in site/docusaurus.config.ts (markdown.mermaid + the theme); a corpus
+    // that does not should not carry it. Search, by contrast, costs 196 KB and is the feature a
+    // searchable corpus exists to have — it stays.
+    mermaid: false,
     // found live 2026-08-14: Docusaurus 3 requires `:::tip[Title]`; the v2 form
     // `:::tip Title` is not a directive at all, so it renders as the literal
     // text ":::tip Title" with no warning. Corpora written for Docusaurus 2 are
@@ -311,7 +318,6 @@ const config: Config = {
         searchBarShortcutHint: false,
       },
     ],
-    "@docusaurus/theme-mermaid",
   ],
 
   plugins: [

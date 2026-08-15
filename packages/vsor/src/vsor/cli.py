@@ -16,7 +16,7 @@ import argparse
 import sys
 
 from vsor import __version__
-from vsor.errors import CommandError
+from vsor.errors import CommandError, io_refusal
 
 # One line per verb, because a wheel is the only documentation a user is guaranteed to
 # have (found live 2026-08-14: `vsor --help` listed `{init,dev,build,serve}` and nothing
@@ -28,6 +28,13 @@ _VERBS = {
     "build": "write build/ — the deployable static site — and the build.lock.json record",
     "serve": "the MCP surface for AI assistants — not in this release",
 }
+
+
+def _refuse(err: CommandError) -> int:
+    """The refusal shape every verb owes: `error: <slug>` as the FIRST stderr line, the
+    prose remedy below it, and the slug's own exit code."""
+    sys.stderr.write(f"error: {err.slug}\n{err}\n")
+    return err.exit_code
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -74,8 +81,20 @@ def main(argv: list[str] | None = None) -> int:
 
             return run_dev(port_raw=args.port)
     except CommandError as err:
-        sys.stderr.write(f"error: {err.slug}\n{err}\n")
-        return err.exit_code
+        return _refuse(err)
+    except OSError as exc:
+        # The environment's last-resort boundary. These verbs write into the project for
+        # their whole run — the runtime shell, the staging tree, the swap, the record —
+        # and any of it can be refused by the machine; the measured case is the disk
+        # filling mid-build (2026-08-15). Without this the OSError escaped as a raw
+        # traceback: no slug on the first stderr line for an agent to branch on, and
+        # Python's exit 1, which in this vocabulary means "your input was wrong".
+        # scaffold.run_init has had the same boundary since 2026-08-13 (a chmod-555
+        # target died with a traceback there too); this is the site verbs' half.
+        # found live 2026-08-15: with the project root chmod 555, `vsor build` refuses at
+        # the swap and `vsor dev` at materialization — both exit 3, both naming the exact
+        # path the OS refused, and the committed build.lock.json is byte-identical after.
+        return _refuse(io_refusal(f"vsor {args.verb}", exc))
 
     # Every remaining verb's contract lives in specs/ before its implementation lands here.
     print(

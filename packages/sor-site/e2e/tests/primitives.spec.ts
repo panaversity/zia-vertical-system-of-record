@@ -54,7 +54,9 @@
  * deleted, every test in this file went red — none of them passes on a page that
  * merely loads.
  */
-import { test, expect } from "./harness";
+import fs from "node:fs";
+
+import { test, expect, envFor, filesUnder } from "./harness";
 
 /** The fixture doc that carries every primitive named above. */
 const ROUTE = "/docs/document-primitives/";
@@ -256,23 +258,52 @@ test("B13: the tab vocabulary compiles to real Docusaurus tabs and switches", as
   );
 });
 
-test("B13: a mermaid fence renders as a diagram, not as a code block", async ({ page }) => {
+test("B13: mermaid is opt-in — a fence stays a code block and ships no renderer", async ({
+  page,
+}, testInfo) => {
   await page.goto(ROUTE);
 
-  // `markdown.mermaid` + `@docusaurus/theme-mermaid` are both in the shell's
-  // config, so a corpus may write a mermaid fence — and when the pairing breaks,
-  // the fence degrades to a plain code block full of `flowchart LR`, silently.
-  // The renderer is client-side, so this is also a "the chunk loaded" assertion;
-  // the B8 guard on this page is what proves it loaded from this origin.
-  const diagram = page.locator(".docusaurus-mermaid-container svg");
-  await expect(diagram, "the fence rendered to an SVG diagram").toBeVisible();
-  await expect(diagram, "the diagram carries the document's own node labels").toContainText(
-    "MCP server",
-  );
+  // Measured 2026-08-15 (an external reviewer on a clean machine, confirmed here): with mermaid
+  // on, the renderer is 83 MB of a project's install and ~3,440 KB of a ~4,500 KB client bundle —
+  // three quarters of it — and it resolves into the COMMON chunk, so every page of every corpus
+  // paid for a diagram renderer whether or not any document had a diagram. It is off by default
+  // now; a corpus that wants diagrams sets markdown.mermaid and adds the theme in its own config.
+  //
+  // This test guards the payload decision rather than the feature: the fence must degrade to an
+  // honest code block, and the renderer must be absent from the build. Without the second half a
+  // regression that silently re-enabled mermaid would still pass.
+  await expect(
+    page.locator("pre").filter({ hasText: "flowchart LR" }),
+    "the fence renders as a code block, which is what an un-rendered diagram honestly is",
+  ).toBeVisible();
+  await expect(
+    page.locator(".docusaurus-mermaid-container"),
+    "no mermaid container is emitted when the feature is off",
+  ).toHaveCount(0);
+
+  const env = envFor(testInfo.project.name);
+  const js = filesUnder(env.buildDir, (f) => f.endsWith(".js"));
+  const jsBytes = js.map((f) => fs.readFileSync(f, "utf8")).join("");
+
+  // Not a search for the WORD mermaid: it survives as a config key and a theme name in the
+  // serialized siteConfig even with the feature off (measured — two chunks contain it). What must
+  // be absent is the renderer, so this looks for its own runtime signatures.
+  for (const signature of ["docusaurus-mermaid-container", "flowchart-v2", "sequenceDiagram"]) {
+    expect(jsBytes.includes(signature), `no mermaid renderer in the bundle (${signature})`).toBe(
+      false,
+    );
+  }
+
+  // And a budget, because the point of this test is a payload the owner never asked to carry.
+  // Measured 2026-08-15: 1,021 KB with mermaid off, ~4,500 KB with it on. The ceiling sits well
+  // above today and far below a re-enabled renderer, so it catches the regression without
+  // failing on ordinary growth.
+  const totalKB = Math.round(js.reduce((n, f) => n + fs.statSync(f).size, 0) / 1024);
   expect(
-    await page.locator("pre").filter({ hasText: "flowchart LR" }).count(),
-    "the mermaid source is not also sitting on the page as a code block",
-  ).toBe(0);
+    totalKB,
+    `client JS budget: ${totalKB} KB. Mermaid alone is ~3,440 KB of it — if this fails, something ` +
+      "re-enabled a renderer every page pays for whether or not a document has a diagram",
+  ).toBeLessThan(1800);
 });
 
 test("B13: ImageZoom makes the figure focusable and opens it full-screen", async ({ page }) => {

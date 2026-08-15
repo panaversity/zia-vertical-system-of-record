@@ -150,7 +150,14 @@ def run_dev(project_root: Path | None = None, *, port_raw: str = DEFAULT_PORT) -
             f"different one: vsor dev --port <1-65535>.",
         )
 
-    runtime_dir = site_runtime.ensure_runtime(root)
+    # Held for the WHOLE serve, not just materialization: this verb keeps writing into the
+    # shell the entire time it runs (sync_authored mirrors every authored save into the
+    # copies Docusaurus is watching), and a `vsor build` — or a second `vsor dev` on another
+    # port — would delete and rebuild those copies underneath it. The port probe cannot see
+    # that collision; the lock can. Taken after the probe, so the common "I already have one
+    # running" case still gets the more specific port-in-use answer.
+    with site_runtime.project_lock(root, verb="dev"):
+        runtime_dir = site_runtime.ensure_runtime(root)
 
-    print(f"vsor dev — serving http://127.0.0.1:{port}/ (Ctrl-C stops it)", flush=True)
-    return _serve(root, runtime_dir, port)
+        print(f"vsor dev — serving http://127.0.0.1:{port}/ (Ctrl-C stops it)", flush=True)
+        return _serve(root, runtime_dir, port)

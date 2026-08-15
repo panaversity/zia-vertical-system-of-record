@@ -29,6 +29,7 @@ from importlib import resources
 from pathlib import Path
 
 import pytest
+from vsor.errors import SLUG_EXITS
 from vsor.scaffold import run_init
 
 
@@ -424,17 +425,13 @@ def test_scaffold_agents_md_verb_honesty(sandbox: Path, capsys: pytest.CaptureFi
     assert "| `vsor build` | implemented" in text
     assert "| `vsor serve` | arrives in a later release" in text
     assert text.count("arrives in a later release") == 1  # serve is the only future-tense verb
-    for slug_name in (
-        "instance-invalid",
-        "build-failed",
-        "bad-port",
-        "port-in-use",
-        "dev-failed",
-        "missing-runtime",
-        "install-failed",
-        "build-crashed",
-    ):
-        assert slug_name in text, f"exit-code table lost the {slug_name} slug"
+    # Derived from the closed set itself, never restated here (2026-08-15): this list used
+    # to be a hand-written copy of vsor/errors.py, which is a second home for one fact —
+    # and a slug added there reached the user's own exit-code table only if somebody
+    # remembered this line. Every slug a site verb can print is a slug the scaffolded table
+    # documents; init's own four (exists, blocked, bad-name, nested) are asserted above.
+    for slug_name in SLUG_EXITS:
+        assert slug_name in text, f"the scaffolded exit-code table does not document {slug_name}"
     assert "read nothing from `.env`" in text
     # The pre-build wording claimed .env gates build — that claim was false and must stay gone.
     assert "Before `vsor build` or `vsor serve` can run" not in text

@@ -14,6 +14,7 @@ own seams at them. The project's `site/docusaurus.config.ts` is loaded by the sh
 config and merged over it, so an edit there is what the next build renders.
 """
 
+import contextlib
 import hashlib
 import ipaddress
 import json
@@ -21,13 +22,14 @@ import os
 import shutil
 import subprocess
 import sys
+from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
 from urllib.parse import urlsplit
 from xml.etree import ElementTree
 
 from vsor import lock, site_runtime
-from vsor.errors import CommandError
+from vsor.errors import CommandError, io_refusal
 from vsor.instance import Instance, InstanceError, parse_instance
 
 
@@ -59,11 +61,41 @@ def _git_head(project_root: Path) -> str | None:
     return proc.stdout.strip() if proc.returncode == 0 else None
 
 
-def _head_knowledge_tree(project_root: Path, hashed_tree: str) -> str | None:
+def _ignored_corpus_documents(
+    project_root: Path, corpus_rows: list[tuple[str, str]]
+) -> list[str]:
+    """Which of the hashed documents git is ignoring (see `lock.ignored_corpus_documents`
+    for why that question decides whether a commit may be named).
+
+    `ls-files --others --ignored --exclude-standard` is the only git command that answers
+    it: `status --porcelain` is silent about ignored paths by design. Paths come back
+    relative to `-C`'s directory and NUL-separated, so no quoting rule of git's can turn a
+    filename with a space or a quote in it into a path we fail to recognize."""
+    if shutil.which("git") is None:
+        return []
+    proc = _git(
+        project_root, "ls-files", "--others", "--ignored", "--exclude-standard", "-z", "--", "knowledge"
+    )
+    if proc.returncode != 0:
+        return []
+    return lock.ignored_corpus_documents(proc.stdout.split("\0"), corpus_rows)
+
+
+def _head_knowledge_tree(
+    project_root: Path, hashed_tree: str, ignored_documents: list[str]
+) -> str | None:
     """HEAD's knowledge/ tree, expressed in the walk's own hash: when git reports
     knowledge/ bit-clean against HEAD (no modification, no untracked file), HEAD's tree
     IS the hashed working tree; anything else is unknowable-here, so None — and
-    `resolve_corpus_git` then records null, never a commit that lacks the corpus."""
+    `resolve_corpus_git` then records null, never a commit that lacks the corpus.
+
+    An ignored document breaks that inference in the one way `status --porcelain` cannot
+    show: it reports nothing at all for ignored paths, so the tree reads clean while HEAD
+    is missing part of what was built. Found in review 2026-08-15 — one `.gitignore` line
+    for a drafts directory was enough to make the record name a commit that reproduces a
+    different site. So: ignored documents mean None, and the caller says so out loud."""
+    if ignored_documents:
+        return None
     status = _git(project_root, "status", "--porcelain", "--", "knowledge")
     if status.returncode != 0 or status.stdout.strip():
         return None
@@ -127,6 +159,113 @@ def _swap_in(project_root: Path, staging: Path) -> None:
         shutil.rmtree(prev)
 
 
+@dataclass(frozen=True)
+class _BuiltInputs:
+    """Everything `build.lock.json` says about this build's INPUTS, measured at one
+    instant — see `_measure_built_inputs`."""
+
+    corpus_rows: list[tuple[str, str]]
+    corpus_tree: str
+    site_tree: str
+    instance_sha256: str
+    docusaurus_version: str
+    lock_sha256: str
+    git_head: str | None
+    ignored_documents: list[str]
+
+
+def _measure_built_inputs(project_root: Path, runtime_dir: Path) -> _BuiltInputs:
+    """Measure the record's inputs from the runtime shell, at the instant the build starts.
+
+    **Hash what was built.** `ensure_runtime` snapshots the authored `knowledge/` and
+    `site/` into the shell (`copy_authored`) and Docusaurus reads *only* that snapshot.
+    Found in review 2026-08-15: this measurement used to run over the AUTHORED trees
+    *after* the build, leaving the entire Docusaurus run between the bytes that were built
+    and the bytes that were recorded — 231 seconds at 2,000 documents. An agent writing
+    into `knowledge/` inside that window (which is exactly what the add-sources skill
+    does) produced a record describing documents no page of the site contains, and the
+    whole MCP claim is that a citation points at a generation. Reading the shell's copies
+    closes the window to zero: `walk_tree` composes every row path as f"{subdir}/{rel}"
+    from its ARGUMENT, so the rows are byte-identical — what changed is which bytes get
+    hashed, never the record's shape.
+
+    The git facts are measured here for the same reason, not as a tidiness: the inference
+    "status reports knowledge/ clean, therefore HEAD's tree IS the hashed tree" is only
+    sound while the working tree still holds what was hashed. Measured after a five-minute
+    build, a `git checkout` landing mid-build would make it name the wrong commit.
+
+    `instance.md` is measured from the project, being the one input the shell has no copy
+    of; it is read here rather than after the build so that it, too, is the version this
+    run validated.
+
+    found live 2026-08-15 (real wheel, real scaffold, docusaurus 3.10.2): a document
+    written into `knowledge/` six seconds into a build is absent from `build/` — there is
+    no page for it — and is now absent from the record too, where the authored tree at
+    that same moment held it. The record and the site say the same thing, which is the
+    only property that makes a citation mean anything.
+    """
+    corpus_rows = lock.walk_tree(runtime_dir, "knowledge")
+    corpus_tree = lock.tree_hash(corpus_rows)
+    ignored_documents = _ignored_corpus_documents(project_root, corpus_rows)
+    return _BuiltInputs(
+        corpus_rows=corpus_rows,
+        corpus_tree=corpus_tree,
+        site_tree=lock.tree_hash(lock.walk_tree(runtime_dir, "site")),
+        instance_sha256=hashlib.sha256((project_root / "instance.md").read_bytes()).hexdigest(),
+        docusaurus_version=site_runtime.docusaurus_version(runtime_dir),
+        lock_sha256=hashlib.sha256((runtime_dir / "package-lock.json").read_bytes()).hexdigest(),
+        git_head=lock.resolve_corpus_git(
+            _git_head(project_root),
+            _head_knowledge_tree(project_root, corpus_tree, ignored_documents),
+            corpus_tree,
+        ),
+        ignored_documents=ignored_documents,
+    )
+
+
+def _write_record(path: Path, record: dict[str, object]) -> None:
+    """Stage in a sibling temp file, fsync, rename — the previous valid record is never
+    truncated to write the next one.
+
+    `Path.write_text` opens with O_TRUNC, so any failure during the write (the disk
+    filling is the measured one — it happened on this machine on 2026-08-15) left a
+    zero-byte `build.lock.json` where a valid record had been. That is the one artifact
+    nothing downstream can repair: it is what a citation resolves through, and its
+    previous copy is a committed file the user may not have pushed yet. Same shape, and
+    the same reason, as `scaffold._scaffold_staged`.
+
+    `os.open` with 0o666 rather than `tempfile.mkstemp`, so the process umask decides the
+    final permissions exactly as a normal create would; mkstemp's 0600 would ship a
+    committed record only its author can read.
+
+    The temp name carries the pid: two builds racing in one project then stage separately
+    and each rename is whole, so the loser costs a stale record and never a corrupt one.
+    The cost of that choice is that a build killed in the millisecond between open and
+    rename leaves one dot-file behind — inert, unread by anything, and cheaper than the
+    failure a shared temp name would allow."""
+    text = json.dumps(record, indent=2, ensure_ascii=False) + "\n"
+    tmp = path.with_name(f".{path.name}.{os.getpid()}.tmp")
+    try:
+        fd = os.open(tmp, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o666)
+        with os.fdopen(fd, "w", encoding="utf-8") as handle:
+            handle.write(text)
+            handle.flush()
+            os.fsync(handle.fileno())
+        os.replace(tmp, path)
+    except OSError as exc:
+        with contextlib.suppress(OSError):
+            tmp.unlink()
+        raise io_refusal(
+            f"writing {path}",
+            exc,
+            note=(
+                "The site itself built: build/ holds it. Only the record failed to write, "
+                "so build.lock.json still describes the PREVIOUS build — rerun vsor build "
+                "once the cause is fixed, and the pair matches again."
+            ),
+        ) from exc
+
+
 def run_build(project_root: Path | None = None) -> int:
     root = project_root if project_root is not None else Path.cwd()
 
@@ -135,37 +274,39 @@ def run_build(project_root: Path | None = None) -> int:
     assert node_version is not None  # check_node raised otherwise
 
     instance = _read_instance(root)
-    runtime_dir = site_runtime.ensure_runtime(root)
+    # Everything below writes inside `.vsor/` — the shell is rewritten on every invoke, the
+    # staging tree is deleted and rebuilt, and Docusaurus runs with the shell as its siteDir.
+    # A `vsor dev` serving from that same shell in another terminal would have the site
+    # pulled out from under it, so the two verbs take turns (site_runtime.project_lock).
+    # Taken AFTER validation: a bad instance.md is refused in seconds, and refusing it must
+    # not depend on whether someone else is building.
+    with site_runtime.project_lock(root, verb="build"):
+        runtime_dir = site_runtime.ensure_runtime(root)
+        built = _measure_built_inputs(root, runtime_dir)
 
-    _recover_interrupted_swap(root)
-    staging = root / ".vsor" / "staging"
-    if staging.exists():
-        shutil.rmtree(staging)
-    _run_docusaurus_build(runtime_dir, staging)
-    _swap_in(root, staging)
+        _recover_interrupted_swap(root)
+        staging = root / ".vsor" / "staging"
+        if staging.exists():
+            shutil.rmtree(staging)
+        _run_docusaurus_build(runtime_dir, staging)
+        _swap_in(root, staging)
 
-    corpus_rows = lock.walk_tree(root, "knowledge")
-    site_rows = lock.walk_tree(root, "site")
-    hashed_tree = lock.tree_hash(corpus_rows)
-    vsor_version = site_runtime.running_vsor_version()
-    record = lock.assemble_record(
-        corpus_rows=corpus_rows,
-        site_tree=lock.tree_hash(site_rows),
-        instance_sha256=hashlib.sha256((root / "instance.md").read_bytes()).hexdigest(),
-        requires=instance.requires,
-        vsor_version=vsor_version,
-        docusaurus_version=site_runtime.docusaurus_version(runtime_dir),
-        node_version=node_version,
-        lock_sha256=hashlib.sha256((runtime_dir / "package-lock.json").read_bytes()).hexdigest(),
-        git_head=lock.resolve_corpus_git(
-            _git_head(root), _head_knowledge_tree(root, hashed_tree), hashed_tree
-        ),
-        created=datetime.now(UTC).isoformat(timespec="microseconds").replace("+00:00", "Z"),
-    )
-    (root / "build.lock.json").write_text(
-        json.dumps(record, indent=2, ensure_ascii=False) + "\n", encoding="utf-8"
-    )
+        vsor_version = site_runtime.running_vsor_version()
+        record = lock.assemble_record(
+            corpus_rows=built.corpus_rows,
+            site_tree=built.site_tree,
+            instance_sha256=built.instance_sha256,
+            requires=instance.requires,
+            vsor_version=vsor_version,
+            docusaurus_version=built.docusaurus_version,
+            node_version=node_version,
+            lock_sha256=built.lock_sha256,
+            git_head=built.git_head,
+            created=datetime.now(UTC).isoformat(timespec="microseconds").replace("+00:00", "Z"),
+        )
+        _write_record(root / "build.lock.json", record)
 
+    _warn_ignored_documents(built.ignored_documents)
     if record["requires_satisfied"] is not True:
         sys.stderr.write(
             f"warning: instance.md pins vsor.requires {instance.requires!r} but vsor "
@@ -186,6 +327,36 @@ def run_build(project_root: Path | None = None) -> int:
     sys.stdout.flush()
     _warn_placeholder_url(root / "build")
     return 0
+
+# ── the ignored-corpus warning ──────────────────────────────────────────────────────────
+#
+# A null `corpus.git` is the record being honest, but on its own it is a null field in a
+# JSON file nobody reads until a citation fails to resolve. The cause here is invisible by
+# construction — `git status` says nothing about ignored paths, which is exactly why the
+# check exists — so the build says it out loud, once, naming the documents. A warning and
+# not a refusal, deliberately: ignoring drafts is a legitimate thing to do, and a record
+# that admits it cannot name a commit is a correct record, not a broken build.
+_IGNORED_SHOWN = 5
+
+
+def _warn_ignored_documents(paths: list[str]) -> None:
+    """Say why `corpus.git` is null when git is ignoring documents that were built."""
+    if not paths:
+        return
+    shown = ", ".join(paths[:_IGNORED_SHOWN])
+    more = f" and {len(paths) - _IGNORED_SHOWN} more" if len(paths) > _IGNORED_SHOWN else ""
+    sys.stderr.write(
+        f"warning: git ignores {len(paths)} document(s) that this build published, so\n"
+        f"  corpus.git is null in build.lock.json — no commit contains the corpus that was built.\n"
+        f"  which: {shown}{more}\n"
+        f"  why it matters: the record's job is to let a citation resolve back to bytes someone\n"
+        f"    else can fetch. Naming a commit that lacks these documents would resolve to a\n"
+        f"    different site, which is worse than naming none.\n"
+        f"  the fix: these are corpus, not build output — remove their pattern from .gitignore\n"
+        f"    and commit them, then rerun vsor build. Or keep them ignored and accept a null\n"
+        f"    corpus.git: the build, the site and every other field are unaffected.\n"
+    )
+
 
 # Measured 2026-08-14 on synthetic corpora (Node 24, Apple Silicon). Docusaurus renders the whole
 # sidebar into every page, so a FLAT corpus costs O(n^2) output: 2,000 flat documents built to

@@ -23,11 +23,19 @@ Seam contracts (so unit tests never touch npm or a real node):
   must never cost the user a ~2-minute npm install first.
 """
 
+import errno
+import hashlib
+import io
+import json
+import os
+import shutil
 import socket
+import subprocess
+from collections.abc import Callable
 from pathlib import Path
 
 import pytest
-from vsor import build_cmd, dev_cmd, site_runtime
+from vsor import build_cmd, dev_cmd, lock, site_runtime
 from vsor.cli import main
 from vsor.errors import SLUG_EXITS, CommandError
 
@@ -38,9 +46,20 @@ EXPECTED_SLUG_EXITS = {
     "bad-port": 1,
     "port-in-use": 1,
     "dev-failed": 1,
+    # Two the shell's safety contract added, 2026-08-15 — both proved in
+    # test_shell_safety.py: another vsor already working in this project, and a corpus
+    # whose documents are symbolic links (served by the site, unnameable by the record).
+    "project-busy": 1,
+    "symlink-unsupported": 1,
     "missing-runtime": 3,
     "install-failed": 3,
     "build-crashed": 3,
+    # The filesystem refusing vsor's own work — the disk filling mid-build is the
+    # measured one (2026-08-15). Exit 3 because it is the environment speaking: not the
+    # user's markdown, not their config, and not something rerunning the same command
+    # fixes. Without it the OSError escaped as a raw traceback — no slug for an agent to
+    # branch on, and a code that reads as "your input was wrong".
+    "io-failed": 3,
 }
 
 INSTANCE_MD = (
@@ -380,25 +399,52 @@ def test_built_site_origin_is_none_when_there_is_nothing_to_read(
     assert build_cmd.built_site_origin(build_dir) is None
 
 
-def given_built_site(monkeypatch: pytest.MonkeyPatch, loc: str) -> None:
+FAKE_DOCUSAURUS_VERSION = "3.10.2"
+FAKE_SHELL_LOCK = '{"lockfileVersion": 3}\n'
+
+
+def given_built_site(
+    monkeypatch: pytest.MonkeyPatch,
+    loc: str,
+    *,
+    during_build: Callable[[], None] | None = None,
+) -> None:
     """Stand in for the whole Node half: a materialized shell carrying the two files
-    the record reads, and a build that writes the sitemap Docusaurus would emit."""
+    the record reads, and a build that writes the sitemap Docusaurus would emit.
+
+    The fake shell SNAPSHOTS the authored trees exactly as `ensure_runtime` does
+    (`copy_authored`), because that snapshot is what the record has to hash: a fake that
+    skipped it would let a test pass over a record measured from a tree the build never
+    read. `during_build` runs at the instant Docusaurus would be running — the window an
+    agent writing into `knowledge/` actually lands in.
+    """
 
     def fake_runtime(project_root: Path, *args: object, **kwargs: object) -> Path:
         runtime = project_root / ".vsor" / "site-runtime"
         core = runtime / "node_modules" / "@docusaurus" / "core"
         core.mkdir(parents=True, exist_ok=True)
-        (core / "package.json").write_text('{"version": "3.10.2"}\n', encoding="utf-8")
-        (runtime / "package-lock.json").write_text('{"lockfileVersion": 3}\n', encoding="utf-8")
+        (core / "package.json").write_text(
+            f'{{"version": "{FAKE_DOCUSAURUS_VERSION}"}}\n', encoding="utf-8"
+        )
+        (runtime / "package-lock.json").write_text(FAKE_SHELL_LOCK, encoding="utf-8")
+        site_runtime.copy_authored(project_root, runtime)
         return runtime
 
     def fake_docusaurus_build(runtime_dir: Path, staging: Path) -> None:
+        if during_build is not None:
+            during_build()
         staging.mkdir(parents=True)
         (staging / "index.html").write_text("<html><body>built</body></html>", encoding="utf-8")
         (staging / "sitemap.xml").write_text(SITEMAP.format(loc=loc), encoding="utf-8")
 
     monkeypatch.setattr(site_runtime, "ensure_runtime", fake_runtime)
     monkeypatch.setattr(build_cmd, "_run_docusaurus_build", fake_docusaurus_build)
+
+
+def read_record(project: Path) -> dict[str, object]:
+    loaded = json.loads((project / "build.lock.json").read_text(encoding="utf-8"))
+    assert isinstance(loaded, dict)
+    return loaded
 
 
 def test_build_warns_when_the_built_site_carries_a_placeholder_url(
@@ -469,3 +515,302 @@ def test_build_says_nothing_when_the_url_is_a_real_domain(
     captured = capsys.readouterr()
     assert captured.err == "", f"a configured site must build silently, got: {captured.err!r}"
     assert "build/ written" in captured.out
+
+
+# ── the record describes the bytes that were built ─────────────────────────
+#
+# `ensure_runtime` snapshots `knowledge/` and `site/` into the shell and Docusaurus reads
+# ONLY that snapshot. Measuring the record from the authored trees afterwards leaves the
+# whole Docusaurus run between the two — 231 seconds at 2,000 documents — and an agent
+# writing into knowledge/ during a build (which is exactly what the add-sources skill
+# does) then produces a record describing bytes the site does not contain. The whole MCP
+# pitch is that a citation points at a generation; a record of the wrong generation is
+# the one defect that cannot be caught downstream.
+
+REAL_LOC = "https://sor.acme.com/docs/example"
+
+
+def expected_build_id(corpus_rows: list[tuple[str, str]], site_rows: list[tuple[str, str]]) -> str:
+    """The recipe over the SNAPSHOT — what the record must say."""
+    return lock.compute_build_id(
+        corpus_tree=lock.tree_hash(corpus_rows),
+        site_tree=lock.tree_hash(site_rows),
+        instance_sha256=hashlib.sha256(INSTANCE_MD.encode("utf-8")).hexdigest(),
+        vsor_version=site_runtime.running_vsor_version(),
+        docusaurus_version=FAKE_DOCUSAURUS_VERSION,
+        node_version="24.4.1",
+        lock_sha256=hashlib.sha256(FAKE_SHELL_LOCK.encode("utf-8")).hexdigest(),
+    )
+
+
+def test_the_record_follows_the_snapshot_the_build_read(
+    project: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """An agent lands two documents and edits the config while Docusaurus runs. None of it
+    is in the site that was just written, so none of it may be in the record."""
+    given_node(monkeypatch, "24.4.1")
+    snapshot: dict[str, list[tuple[str, str]]] = {}
+
+    def agent_writes_mid_build() -> None:
+        # Measured at the instant the build starts: the authored trees still hold exactly
+        # what ensure_runtime copied, so this IS the tree Docusaurus is reading.
+        snapshot["corpus"] = lock.walk_tree(project, "knowledge")
+        snapshot["site"] = lock.walk_tree(project, "site")
+        (project / "knowledge" / "example.md").write_text("rewritten mid-build\n", encoding="utf-8")
+        (project / "knowledge" / "late.md").write_text(
+            "---\ntitle: Late\n---\n\nArrived during the build.\n", encoding="utf-8"
+        )
+        (project / "site" / "docusaurus.config.ts").write_text(
+            "export default {changed: true};\n", encoding="utf-8"
+        )
+
+    given_built_site(monkeypatch, REAL_LOC, during_build=agent_writes_mid_build)
+    assert main(["build"]) == 0
+
+    record = read_record(project)
+    corpus = record["corpus"]
+    assert isinstance(corpus, dict)
+    assert corpus["documents"] == [
+        {"path": path, "sha256": digest} for path, digest in snapshot["corpus"]
+    ], "the record must describe the corpus the site was built from"
+    assert [d["path"] for d in corpus["documents"]] == ["knowledge/example.md"], (
+        "knowledge/late.md is in no page of this build — recording it claims a site that "
+        "does not exist"
+    )
+    assert corpus["tree"] == lock.tree_hash(snapshot["corpus"])
+    assert record["build_id"] == expected_build_id(snapshot["corpus"], snapshot["site"]), (
+        "site/ is snapshotted by the same copy, so build_id owes the same instant"
+    )
+
+
+def test_an_undisturbed_build_records_exactly_the_authored_rows(
+    project: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """The normal path is unchanged by all of the above: `walk_tree` composes every row
+    path as f"{subdir}/{rel}" from its ARGUMENT, so hashing the shell's copies yields
+    byte-identical rows. This is the guard that the fix moved WHAT is measured and
+    nothing else."""
+    given_node(monkeypatch, "24.4.1")
+    (project / "knowledge" / "sub").mkdir()
+    (project / "knowledge" / "sub" / "deep.md").write_text(
+        "---\ntitle: Deep\n---\n\nNested.\n", encoding="utf-8"
+    )
+    corpus_rows = lock.walk_tree(project, "knowledge")
+    site_rows = lock.walk_tree(project, "site")
+
+    given_built_site(monkeypatch, REAL_LOC)
+    assert main(["build"]) == 0
+
+    record = read_record(project)
+    corpus = record["corpus"]
+    assert isinstance(corpus, dict)
+    assert corpus["documents"] == [
+        {"path": path, "sha256": digest} for path, digest in corpus_rows
+    ]
+    assert [d["path"] for d in corpus["documents"]] == [
+        "knowledge/example.md",
+        "knowledge/sub/deep.md",
+    ]
+    assert record["build_id"] == expected_build_id(corpus_rows, site_rows)
+
+
+# ── corpus.git names a commit that HAS the corpus, or nothing ──────────────
+#
+# `git status --porcelain` does not report ignored files; the walk hashes every non-dot
+# regular file whether git tracks it or not. One `.gitignore` line for a drafts directory
+# is therefore enough to make a clean-status inference name a commit that reproduces a
+# DIFFERENT site — the same class of lie `git rev-parse HEAD:knowledge` was rejected for.
+
+needs_git = pytest.mark.skipif(shutil.which("git") is None, reason="git is not on PATH")
+
+
+def git(root: Path, *args: str) -> subprocess.CompletedProcess[str]:
+    return subprocess.run(
+        ["git", "-C", str(root), *args], capture_output=True, text=True, check=False
+    )
+
+
+def commit_project(root: Path, monkeypatch: pytest.MonkeyPatch) -> str:
+    """Commit everything present and return HEAD, with git isolated from the machine's
+    own config (identity, default branch and signing all leak into assertions otherwise)."""
+    monkeypatch.setenv("GIT_CONFIG_GLOBAL", os.devnull)
+    monkeypatch.setenv("GIT_CONFIG_SYSTEM", os.devnull)
+    assert git(root, "init", "-q", "-b", "main").returncode == 0
+    assert git(root, "add", "-A").returncode == 0
+    committed = git(
+        root,
+        "-c",
+        "user.name=vsor",
+        "-c",
+        "user.email=test@vsor.local",
+        "commit",
+        "-q",
+        "--no-gpg-sign",
+        "--no-verify",
+        "-m",
+        "corpus",
+    )
+    assert committed.returncode == 0, committed.stderr
+    head = git(root, "rev-parse", "HEAD").stdout.strip()
+    assert len(head) == 40
+    return head
+
+
+@needs_git
+def test_corpus_git_is_head_when_every_hashed_document_is_in_it(
+    project: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    given_node(monkeypatch, "24.4.1")
+    given_built_site(monkeypatch, REAL_LOC)
+    head = commit_project(project, monkeypatch)
+
+    assert main(["build"]) == 0
+    corpus = read_record(project)["corpus"]
+    assert isinstance(corpus, dict)
+    assert corpus["git"] == head
+    assert capsys.readouterr().err == "", "a committed corpus builds silently"
+
+
+@needs_git
+def test_a_gitignored_document_costs_the_commit_and_says_so(
+    project: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """`git status` reports nothing for an ignored path, so the tree reads clean while
+    HEAD demonstrably lacks part of what was built. Null, and a warning that names the
+    file — silently claiming a clean commit is the lie the record exists to prevent."""
+    given_node(monkeypatch, "24.4.1")
+    given_built_site(monkeypatch, REAL_LOC)
+    (project / ".gitignore").write_text("knowledge/drafts/\n", encoding="utf-8")
+    head = commit_project(project, monkeypatch)
+    (project / "knowledge" / "drafts").mkdir()
+    (project / "knowledge" / "drafts" / "secret.md").write_text(
+        "---\ntitle: Draft\n---\n\nIgnored by git, built into the site.\n", encoding="utf-8"
+    )
+    assert git(project, "status", "--porcelain", "--", "knowledge").stdout == "", (
+        "the premise: git reports this tree as clean"
+    )
+
+    assert main(["build"]) == 0
+
+    record = read_record(project)
+    corpus = record["corpus"]
+    assert isinstance(corpus, dict)
+    assert "knowledge/drafts/secret.md" in [d["path"] for d in corpus["documents"]], (
+        "the walk hashes it, which is why the commit cannot be claimed"
+    )
+    assert corpus["git"] is None, f"HEAD {head} does not contain this corpus"
+    err = capsys.readouterr().err
+    assert err.startswith("warning:")
+    assert "knowledge/drafts/secret.md" in err  # which document
+    assert "corpus.git" in err  # which field went null
+    assert "git" in err and ".gitignore" in err  # and why
+
+
+@needs_git
+def test_an_ignored_dot_file_in_the_corpus_never_costs_the_commit(
+    project: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """The scaffold ignores `.DS_Store` and the walk excludes every dot segment, so a
+    Finder-dropped one inside knowledge/ is a document this record claims nothing about.
+    Crying wolf on it would make the real warning worthless."""
+    given_node(monkeypatch, "24.4.1")
+    given_built_site(monkeypatch, REAL_LOC)
+    (project / ".gitignore").write_text(".DS_Store\n", encoding="utf-8")
+    head = commit_project(project, monkeypatch)
+    (project / "knowledge" / ".DS_Store").write_bytes(b"finder junk")
+
+    assert main(["build"]) == 0
+    corpus = read_record(project)["corpus"]
+    assert isinstance(corpus, dict)
+    assert corpus["git"] == head
+    assert capsys.readouterr().err == ""
+
+
+# ── the record survives a failed write ─────────────────────────────────────
+#
+# `Path.write_text` opens the destination with O_TRUNC, so a failure anywhere in the write
+# leaves a zero-byte build.lock.json where a valid record used to be — the one artifact
+# nothing else can repair, since it is what a citation resolves through. The disk filling
+# is not hypothetical: it happened on this machine on 2026-08-15.
+
+
+def install_write_refusal(monkeypatch: pytest.MonkeyPatch, marker: str, error: int) -> None:
+    """Make every write whose payload carries `marker` fail with `error`.
+
+    Injected at `io.open` because that is the one call BOTH shapes of the write go
+    through — `Path.write_text` (which opens the destination itself) and a temp-then-
+    rename staging via `os.fdopen`, which is `io.open` on a file descriptor. A fault
+    installed on `Path.write_text` instead would go quiet the moment the implementation
+    stopped calling it, and quietly stop testing anything.
+    """
+    real_open = io.open
+
+    class _Refusing:
+        def __init__(self, handle: object) -> None:
+            self._handle = handle
+
+        def write(self, data: object) -> int:
+            payload = data if isinstance(data, str) else bytes(data).decode("utf-8", "replace")  # type: ignore[arg-type]
+            if marker in payload:
+                raise OSError(error, os.strerror(error))
+            return int(self._handle.write(data))  # type: ignore[attr-defined]
+
+        def __getattr__(self, name: str) -> object:
+            return getattr(self._handle, name)
+
+        def __enter__(self) -> _Refusing:
+            self._handle.__enter__()  # type: ignore[attr-defined]
+            return self
+
+        def __exit__(self, *exc: object) -> object:
+            return self._handle.__exit__(*exc)  # type: ignore[attr-defined]
+
+    def refusing_open(*args: object, **kwargs: object) -> object:
+        return _Refusing(real_open(*args, **kwargs))  # type: ignore[arg-type]
+
+    monkeypatch.setattr(io, "open", refusing_open)
+
+
+def test_a_full_disk_never_costs_the_previous_record(
+    project: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    given_node(monkeypatch, "24.4.1")
+    given_built_site(monkeypatch, REAL_LOC)
+    assert main(["build"]) == 0
+    previous = (project / "build.lock.json").read_bytes()
+    capsys.readouterr()
+
+    install_write_refusal(monkeypatch, marker='"build_id"', error=errno.ENOSPC)
+    assert main(["build"]) == 3, "the filesystem refusing is exit 3 — never a traceback"
+
+    err = capsys.readouterr().err
+    assert slug_line(err) == "error: io-failed"
+    assert "No space left on device" in err  # the OS's own reason
+    assert "build.lock.json" in err  # what was being written
+    assert (project / "build.lock.json").read_bytes() == previous, (
+        "the previous valid record must survive a failed write of the next one"
+    )
+    leftovers = [p.name for p in project.iterdir() if "build.lock.json" in p.name]
+    assert leftovers == ["build.lock.json"], f"a staging temp file was left behind: {leftovers}"
+
+
+def test_a_filesystem_refusal_in_dev_is_a_slug_not_a_traceback(
+    project: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """The boundary is the verb's, not one call site's: `dev` reaches the filesystem too,
+    and an unwritable `.vsor/` must arrive as a slug an agent can branch on."""
+    given_node(monkeypatch, "24.4.1")
+    with socket.socket() as probe:
+        probe.bind(("127.0.0.1", 0))
+        port = int(probe.getsockname()[1])
+
+    def unwritable(project_root: Path, *args: object, **kwargs: object) -> Path:
+        raise OSError(errno.EACCES, os.strerror(errno.EACCES), str(project_root / ".vsor"))
+
+    monkeypatch.setattr(site_runtime, "ensure_runtime", unwritable)
+    assert main(["dev", "--port", str(port)]) == 3
+
+    err = capsys.readouterr().err
+    assert slug_line(err) == "error: io-failed"
+    assert "Permission denied" in err
+    assert ".vsor" in err  # the path the OS named

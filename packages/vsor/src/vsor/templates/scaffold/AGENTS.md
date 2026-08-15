@@ -26,9 +26,9 @@ means an unimplemented verb, stated explicitly so nothing branches on the wrong 
 | Code | Meaning |
 | :--- | :--- |
 | 0 | success — including `vsor dev` stopped with Ctrl-C |
-| 1 | refused, or the input speaking — the first stderr line is a stable slug (`error: exists`, `blocked`, `bad-name`, `nested`, `instance-invalid`, `build-failed`, `bad-port`, `port-in-use`, `dev-failed`) |
+| 1 | refused, or the input speaking — the first stderr line is a stable slug (`error: exists`, `blocked`, `bad-name`, `nested`, `instance-invalid`, `build-failed`, `bad-port`, `port-in-use`, `dev-failed`, `project-busy`, `symlink-unsupported`) |
 | 2 | unimplemented verb — it says so honestly and names what this release does implement |
-| 3 | environment or packaging (`error: unsupported-platform`, `error: unstamped`, `error: missing-runtime`, `error: install-failed`, `error: build-crashed`) |
+| 3 | environment or packaging (`error: unsupported-platform`, `error: unstamped`, `error: missing-runtime`, `error: install-failed`, `error: build-crashed`, `error: io-failed`) |
 
 ## The rules
 
@@ -71,6 +71,12 @@ re-derived each session.
 - Secrets go in `.env`, never in command arguments.
 - Read the rendered page before calling a document done: `vsor dev`, then open it.
 - Never hand-edit `build/`, `.vsor/` or `build.lock.json` — they are generated.
+- **One vsor at a time here.** `vsor build` while `vsor dev` is serving is refused
+  (`error: project-busy`): both rewrite the site runtime under `.vsor/`, so the second would
+  corrupt the site the first is serving. Stop the dev server, or wait for it.
+- **Documents are real files, never symbolic links.** A link inside `knowledge/` or `site/` is
+  refused (`error: symlink-unsupported`) — `build.lock.json` hashes the files it publishes, and a
+  link points at bytes no commit of this project contains. Copy the file in instead.
 
 ## Publishing
 

@@ -13,7 +13,7 @@ import hashlib
 import os
 import stat
 import unicodedata
-from collections.abc import Sequence
+from collections.abc import Iterable, Sequence
 from pathlib import Path
 
 from packaging.specifiers import InvalidSpecifier, SpecifierSet
@@ -99,6 +99,35 @@ def requires_satisfied(requires: str, running: str) -> bool:
         return SpecifierSet(requires).contains(running, prereleases=True)
     except (InvalidSpecifier, InvalidVersion):
         return False
+
+
+def ignored_corpus_documents(
+    ignored_paths: Iterable[str], corpus_rows: Sequence[tuple[str, str]]
+) -> list[str]:
+    """The documents THIS RECORD describes that git is ignoring — the intersection.
+
+    Why it exists (found in review 2026-08-15): `git status --porcelain` does not report
+    ignored files, while `walk_tree` above hashes every non-dot regular file whether git
+    tracks it or not. One `.gitignore` line for a drafts directory was therefore enough to
+    leave the tree reading clean while HEAD demonstrably lacked part of what was built —
+    a record naming a commit that reproduces a *different* site, which is the same class
+    of lie `git rev-parse HEAD:knowledge` was rejected for.
+
+    The intersection is the whole point, and it is what keeps this from crying wolf: the
+    scaffold's own `.gitignore` names `.DS_Store` and `build/`, and git reports both as
+    ignored — but the walk excludes every dot segment and never leaves `knowledge/`, so
+    neither is a document this record claims anything about. Paths are NFC-normalized
+    because git reports the filesystem's bytes (NFD on macOS) while the rows are NFC;
+    without that the intersection is empty on exactly the platform this is likeliest on.
+    """
+    hashed = {row_path for row_path, _ in corpus_rows}
+    return sorted(
+        {
+            normalized
+            for raw in ignored_paths
+            if (normalized := unicodedata.normalize("NFC", raw)) in hashed
+        }
+    )
 
 
 def resolve_corpus_git(

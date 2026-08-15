@@ -98,8 +98,9 @@ retrieval kernel it will use runs in production elsewhere; bringing it across is
 
 [CHANGELOG.md](CHANGELOG.md) is what shipped. [docs/status.md](docs/status.md) is what is still
 missing, including the measurements we would rather you heard from us — the corpus size where a
-flat folder starts to cost you, and the fact that nothing has yet run on a machine that is not
-ours.
+flat folder starts to cost you, and the fact that CI has never executed a single job — an account
+billing state, not a code fault. The code itself has now been cloned and run green on a machine
+that is not ours.
 
 ## Install
 

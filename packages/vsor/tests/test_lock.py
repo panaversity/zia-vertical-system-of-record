@@ -234,6 +234,60 @@ def test_corpus_git_is_null_without_head() -> None:
     assert lock.resolve_corpus_git("a" * 40, None, tree) is None
 
 
+# --- the ignored-document intersection
+#
+# `git status --porcelain` does not report ignored files; the walk hashes every non-dot
+# regular file whether git tracks it or not. The intersection is what separates "git is
+# ignoring part of the corpus this record describes" (the commit cannot be claimed) from
+# "git is ignoring something the walk never hashed" (nothing to say).
+
+IGNORED_ROWS = [
+    ("knowledge/a.md", sha(b"a")),
+    ("knowledge/drafts/secret.md", sha(b"secret")),
+]
+
+
+def test_ignored_documents_are_the_hashed_ones_git_ignores() -> None:
+    assert lock.ignored_corpus_documents(
+        ["knowledge/drafts/secret.md"], IGNORED_ROWS
+    ) == ["knowledge/drafts/secret.md"]
+
+
+def test_ignored_paths_the_walk_never_hashed_are_not_documents() -> None:
+    """A Finder-dropped `.DS_Store` and the `build/` output are both ignored by the
+    scaffold's own .gitignore and both excluded from the record — reporting them would
+    make the warning cry wolf on every project."""
+    assert (
+        lock.ignored_corpus_documents(
+            ["knowledge/.DS_Store", "knowledge/.obsidian/cache.md", "build/index.html"],
+            IGNORED_ROWS,
+        )
+        == []
+    )
+
+
+def test_ignored_documents_are_deduplicated_and_byte_sorted() -> None:
+    rows = [*IGNORED_ROWS, ("knowledge/b.md", sha(b"b"))]
+    assert lock.ignored_corpus_documents(
+        ["knowledge/b.md", "knowledge/drafts/secret.md", "knowledge/b.md"], rows
+    ) == ["knowledge/b.md", "knowledge/drafts/secret.md"]
+
+
+def test_ignored_documents_normalize_like_the_walk() -> None:
+    """git reports the filesystem's own bytes — NFD on macOS — while the walk's rows are
+    NFC. Without normalizing, the intersection is empty on exactly the platform this is
+    most likely to happen on."""
+    nfd = "knowledge/cafe\u0301.md"  # e + combining acute, as macOS stores it
+    nfc = "knowledge/caf\u00e9.md"  # precomposed, as walk_tree emits it
+    assert not unicodedata.is_normalized("NFC", nfd)
+    assert lock.ignored_corpus_documents([nfd], [(nfc, sha(b"x"))]) == [nfc]
+
+
+def test_no_ignored_paths_is_no_documents() -> None:
+    assert lock.ignored_corpus_documents([], IGNORED_ROWS) == []
+    assert lock.ignored_corpus_documents([""], IGNORED_ROWS) == []
+
+
 # ------------------------------------------------------------- record assembly + schema
 
 CORPUS_ROWS = [

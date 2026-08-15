@@ -23,20 +23,29 @@ changing one changes `lock_sha256`.
 
 The shell is scratch: deleting `.vsor/` costs a re-install, never work.
 
+Two rules protect that tree, both added 2026-08-15 and both with their own note below:
+**one vsor at a time** inside `.vsor/` (`project_lock`), because every invoke rewrites the
+shell a running `vsor dev` is serving from; and **a symbolic link is not a document**
+(`check_authored`), because the record can only name files it can hash.
+
 The command layer reaches `probe_node_version` and `ensure_runtime` as module attributes —
 the unit tier's monkeypatch seam; keep them that way.
 """
 
+import contextlib
 import hashlib
 import io
 import json
 import os
 import shutil
+import stat
 import subprocess
 import tarfile
-from collections.abc import Mapping
+from collections.abc import Iterator, Mapping
+from datetime import UTC, datetime
 from importlib import resources
 from pathlib import Path
+from typing import NamedTuple
 
 from vsor.errors import CommandError
 
@@ -230,6 +239,81 @@ def runtime_env(base: Mapping[str, str] | None = None) -> dict[str, str]:
 
 _AUTHORED_TREES = ("site", "knowledge")
 
+# ── a symbolic link is not a document ───────────────────────────────────────────────────
+#
+# Decided 2026-08-15, from the audit: the corpus is real files. Three code paths used to
+# disagree about what a link is — `copy_authored` recreated it inside the shell
+# (`copytree(symlinks=True)`), `sync_authored` then wrote THROUGH that copy (`shutil.copy2`
+# opens the destination path `'wb'`, which follows a link and truncates whatever it points
+# at, outside the project entirely), and `lock.walk_tree` (os.lstat + S_ISREG) left it out
+# of `build.lock.json` altogether. The net effect was the one thing this product cannot
+# ship: a document the site served and the record could not name.
+#
+# Either both follow links or neither does. Neither is the answer at v0, because following
+# one imports bytes that no commit of this project contains — `corpus.git` names HEAD, and
+# HEAD would not hold the document that was built. So a link inside the trees is refused,
+# loudly, before anything is installed or copied; `lock.walk_tree`'s exclusion is then
+# honest rather than silent.
+#
+# The tree's own ROOT is deliberately not inspected: `ln -s ~/docs knowledge` keeps the
+# record and the site in agreement (the copy and the walk both follow the root), so the
+# corpus may live wherever its owner keeps it — it is links INSIDE the tree that split the
+# two apart. Dot-prefixed segments are skipped for the same reason the corpus walk skips
+# them: nothing under one is ever served.
+_SYMLINKS_NAMED = 5
+
+
+def authored_symlinks(project_root: Path) -> list[str]:
+    """Every symbolic link inside the authored trees, project-relative and sorted."""
+    found: list[str] = []
+    for name in _AUTHORED_TREES:
+        root = project_root / name
+        if not root.is_dir():
+            continue
+        # followlinks stays False: a linked directory is REPORTED here and never walked
+        # into, so a cycle (`ln -s . loop`) costs one row rather than an infinite walk.
+        for dirpath, dirnames, filenames in os.walk(root):
+            dirnames[:] = [entry for entry in dirnames if not entry.startswith(".")]
+            here = Path(dirpath)
+            for entry in (*dirnames, *filenames):
+                if entry.startswith("."):
+                    continue
+                path = here / entry
+                if path.is_symlink():
+                    found.append(path.relative_to(project_root).as_posix())
+    return sorted(found)
+
+
+def check_authored(project_root: Path) -> None:
+    """Refuse a corpus whose documents live behind links — the record could not name them.
+
+    Called first thing in `ensure_runtime`, so both verbs pass through it and the refusal
+    costs seconds rather than a ~2-minute npm install."""
+    links = authored_symlinks(project_root)
+    if not links:
+        return
+    shown = ", ".join(links[:_SYMLINKS_NAMED])
+    more = f", and {len(links) - _SYMLINKS_NAMED} more" if len(links) > _SYMLINKS_NAMED else ""
+    raise CommandError(
+        "symlink-unsupported",
+        f"the authored trees contain symbolic links: {shown}{more}.\n"
+        "vsor serves real files only. Every document the site publishes is hashed into\n"
+        "build.lock.json, and that record counts regular files — so a linked document would be\n"
+        "served by the site and absent from the record your citations point at, which is the one\n"
+        "disagreement this project cannot ship.\n"
+        "Copy each one in instead of linking to it (`cp -RL` reads through the link), then rerun.",
+    )
+
+
+def _skip_symlinks(directory: str, names: list[str]) -> set[str]:
+    """`copytree`'s ignore hook: never carry a link into the shell.
+
+    `check_authored` has already refused these, so this is the structural guarantee behind
+    that promise rather than the promise itself — nothing under `.vsor/` is a link, and
+    therefore nothing in the shell can be written through to somewhere else."""
+    base = Path(directory)
+    return {name for name in names if (base / name).is_symlink()}
+
 
 def copy_authored(project_root: Path, runtime_dir: Path) -> None:
     """Copy-on-invoke of the authored `site/` and `knowledge/` into the shell — the build
@@ -247,7 +331,8 @@ def copy_authored(project_root: Path, runtime_dir: Path) -> None:
 
     The trees are wiped and re-copied on EVERY invoke, so an authored edit is still what
     the next build sees; `sync_authored` keeps `vsor dev` hot. Everything copied lives
-    and dies inside `.vsor/`."""
+    and dies inside `.vsor/`. Links are dropped rather than recreated — see the note above
+    `authored_symlinks`; the copy is followed everywhere else, root included."""
     for name in _AUTHORED_TREES:
         dest = runtime_dir / name
         if dest.is_symlink() or dest.is_file():
@@ -256,12 +341,19 @@ def copy_authored(project_root: Path, runtime_dir: Path) -> None:
             shutil.rmtree(dest)
         src = project_root / name
         if src.is_dir():
-            shutil.copytree(src, dest, symlinks=True)
+            shutil.copytree(src, dest, symlinks=False, ignore=_skip_symlinks)
 
 
-def _visible_files(root: Path) -> dict[Path, tuple[int, int]]:
-    """Relative path -> (mtime_ns, size) for files with no dot-prefixed segment."""
-    found: dict[Path, tuple[int, int]] = {}
+def _visible_files(root: Path) -> dict[Path, tuple[int, int] | None]:
+    """Relative path -> (mtime_ns, size) for regular files with no dot-prefixed segment;
+    None for an entry that exists but is not a regular file.
+
+    `lstat`, never `stat`: a link is described as itself, so it can never be mistaken for
+    the file it points at. The None carries the distinction the mirror needs in both
+    directions — source-side it means "not a document, do not mirror"; destination-side it
+    means "debris", and because None never equals a source signature the mirror always
+    replaces it with the real file instead of writing through it."""
+    found: dict[Path, tuple[int, int] | None] = {}
     if not root.is_dir():
         return found
     for dirpath, dirnames, filenames in os.walk(root):
@@ -271,10 +363,12 @@ def _visible_files(root: Path) -> dict[Path, tuple[int, int]]:
                 continue
             file_path = Path(dirpath) / name
             try:
-                info = file_path.stat()
+                info = file_path.lstat()
             except OSError:
                 continue
-            found[file_path.relative_to(root)] = (info.st_mtime_ns, info.st_size)
+            relative = file_path.relative_to(root)
+            regular = stat.S_ISREG(info.st_mode)
+            found[relative] = (info.st_mtime_ns, info.st_size) if regular else None
     return found
 
 
@@ -291,13 +385,25 @@ def sync_authored(project_root: Path, runtime_dir: Path) -> bool:
         dest_root = runtime_dir / name
         src_files = _visible_files(src_root)
         dest_files = _visible_files(dest_root)
-        for rel in dest_files.keys() - src_files.keys():
-            (dest_root / rel).unlink(missing_ok=True)
-            changed = True
+        for rel, signature in dest_files.items():
+            # Gone from the corpus, or not a regular file: either way it is not a document
+            # and the shell must not hold it. `unlink`, never rmtree and never open — on a
+            # link this removes the link itself and never touches what it points at.
+            if rel not in src_files or signature is None:
+                (dest_root / rel).unlink(missing_ok=True)
+                changed = True
         for rel, signature in src_files.items():
+            if signature is None:
+                continue  # a link, a fifo, a socket — not a document (see check_authored)
             if dest_files.get(rel) != signature:
                 target = dest_root / rel
                 target.parent.mkdir(parents=True, exist_ok=True)
+                if target.is_symlink():
+                    # NEVER write through a link: shutil.copy2 opens the destination path
+                    # 'wb', which follows it and truncates whatever it points at — outside
+                    # the project, if that is where it points. Nothing this code wrote can
+                    # be a link any more; a hand-made one is removed rather than trusted.
+                    target.unlink()
                 shutil.copy2(src_root / rel, target)  # preserves mtime: the comparison key
                 changed = True
     return changed
@@ -306,7 +412,12 @@ def sync_authored(project_root: Path, runtime_dir: Path) -> bool:
 def ensure_runtime(project_root: Path) -> Path:
     """Materialize (or reuse) `.vsor/site-runtime/` and return it. First run prints one
     owned notice line, then streams npm's own output unmodified; the second run prints
-    neither."""
+    neither.
+
+    Callers hold `project_lock` around this: everything below rewrites the shell, and on
+    the reuse path `copy_authored` deletes and rebuilds the corpus copy inside the very
+    directory a running `vsor dev` is serving from."""
+    check_authored(project_root)
     runtime_dir = project_root / ".vsor" / "site-runtime"
     package_json = runtime_file("package.json")
     lockfile = runtime_file("package-lock.json")
@@ -353,3 +464,149 @@ def ensure_runtime(project_root: Path) -> Path:
         runtime_dir, vsor_version=vsor_version, package_json=package_json, lock=lockfile, app=app
     )
     return runtime_dir
+
+
+# ── one vsor at a time ──────────────────────────────────────────────────────────────────
+#
+# Added 2026-08-15, from the audit. Both site verbs rewrite the shell: a stamp mismatch
+# rmtree's the whole of `.vsor/site-runtime`, and `copy_authored` deletes and rebuilds the
+# authored trees inside it on EVERY invoke — inside the very directory a running `vsor dev`
+# is serving from. So a `vsor build` in the second terminal corrupts the dev server's site
+# underneath it, mid-serve. Two terminals is the ordinary workflow here (the site in one,
+# the agent in the other) and an agent loop re-invokes eagerly, so this is the normal case
+# rather than a corner — and at slice 2 `serve` becomes a third long-running verb sharing
+# `.vsor/`, which is why it is here now rather than after two more verbs learn to live
+# without it.
+#
+# The mechanism is one file created with O_EXCL — atomic on every filesystem these verbs
+# run on — carrying the holder's pid, its verb and when it started. It is advisory in the
+# only sense that matters: nothing but vsor writes under `.vsor/`.
+#
+# Two properties it must have, and each is why this is thirty lines rather than a library:
+#
+# - **Never a wedge.** A killed holder (kill -9, a closed terminal, an agent session torn
+#   down) leaves the file behind. So the record names a pid, and a lock whose pid is gone
+#   is debris: removed, and taken over. `os.kill(pid, 0)` is the probe — PermissionError
+#   means alive-and-not-ours, which is still alive, and any other OSError means unknowable,
+#   where the safe answer is "alive": we never take a lock over on a guess.
+# - **Never a wait.** A held project is a refusal, exactly as `port-in-use` is a refusal —
+#   never a prompt, never a queue. An agent that blocked here would hang with no output,
+#   which is the one outcome worse than the corruption.
+#
+# The pid is a MACHINE-LOCAL fact: two machines sharing one project over a network mount
+# would each read the other's pid against their own process table. v0 is a local CLI on
+# macOS and Linux (init's platform gate); if that ever changes, the record gains a host and
+# the probe gains a "not this machine, cannot say" branch.
+
+LOCK_NAME = "lock"
+
+
+class _Holder(NamedTuple):
+    """Who holds the lock, as the file records it."""
+
+    pid: int
+    verb: str
+    started: str
+
+
+def _process_alive(pid: int) -> bool:
+    if pid <= 0:
+        return False
+    try:
+        os.kill(pid, 0)
+    except ProcessLookupError:
+        return False
+    except PermissionError:
+        return True  # alive, just not ours to signal
+    except OSError:
+        return True  # unknowable — never take a lock over on a guess
+    return True
+
+
+def _holder_of(lock_path: Path) -> _Holder | None:
+    """The record inside a lock file, or None when there is nothing usable in it.
+
+    None covers the interrupted create — the file exists because O_EXCL made it, and the
+    payload never landed because the process died in the microseconds before the write.
+    Bytes nobody can read name nobody, so they are debris."""
+    try:
+        data = json.loads(lock_path.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return None
+    if not isinstance(data, dict):
+        return None
+    pid = data.get("pid")
+    if not isinstance(pid, int) or isinstance(pid, bool):
+        return None
+    return _Holder(pid, str(data.get("verb", "?")), str(data.get("started", "?")))
+
+
+def _claim(lock_path: Path, holder: _Holder) -> bool:
+    """O_EXCL create plus the payload on the same descriptor. False means someone has it."""
+    try:
+        fd = os.open(lock_path, os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o644)
+    except FileExistsError:
+        return False
+    try:
+        os.write(fd, (json.dumps(holder._asdict()) + "\n").encode("utf-8"))
+    finally:
+        os.close(fd)
+    return True
+
+
+def _busy(lock_path: Path) -> CommandError:
+    """The refusal, carrying who holds the project and every way out of it."""
+    holder = _holder_of(lock_path)
+    who = (
+        f"`vsor {holder.verb}` (pid {holder.pid}), started {holder.started}"
+        if holder is not None
+        else "another vsor process"
+    )
+    kill = f"kill {holder.pid}" if holder is not None else "stop it"
+    return CommandError(
+        "project-busy",
+        f"another vsor is already working in this project: {who}.\n"
+        "Two at once rewrite .vsor/site-runtime underneath each other — the copy of knowledge/\n"
+        "and site/ inside it is deleted and rebuilt on every invoke — so this one stops instead\n"
+        "of corrupting the site the other is serving.\n"
+        f"Wait for it to finish, or stop it (Ctrl-C in its terminal, or: {kill}), then rerun.\n"
+        f"vsor clears the lock of a process that has died; if one outlives its holder the pid was\n"
+        f"reused — delete {lock_path} and rerun.",
+    )
+
+
+@contextlib.contextmanager
+def project_lock(project_root: Path, *, verb: str) -> Iterator[Path]:
+    """Hold `.vsor/lock` for the window that touches the shell; release it on every exit."""
+    scratch = project_root / ".vsor"
+    scratch.mkdir(parents=True, exist_ok=True)
+    lock_path = scratch / LOCK_NAME
+    mine = _Holder(
+        os.getpid(), verb, datetime.now(UTC).isoformat(timespec="seconds").replace("+00:00", "Z")
+    )
+
+    if not _claim(lock_path, mine):
+        holder = _holder_of(lock_path)
+        if holder is not None and holder.pid != mine.pid and _process_alive(holder.pid):
+            raise _busy(lock_path)
+        # Debris: the holder is gone, or died before it could say who it was, or is us.
+        with contextlib.suppress(OSError):
+            lock_path.unlink()
+        if not _claim(lock_path, mine):
+            raise _busy(lock_path)  # somebody else won the same takeover — they hold it
+
+    # The one race O_EXCL cannot close by itself: two processes can both find debris and
+    # both take it over, and the second one's create wins the file. Re-reading is what
+    # makes that harmless — whoever's record is in the file holds the lock, and the other
+    # refuses rather than running alongside it.
+    if _holder_of(lock_path) != mine:
+        raise _busy(lock_path)
+
+    try:
+        yield lock_path
+    finally:
+        # Only ever remove OUR lock: if a takeover happened while we ran, the file is now
+        # somebody else's and deleting it would hand the project to a third process.
+        if _holder_of(lock_path) == mine:
+            with contextlib.suppress(OSError):
+                lock_path.unlink()
