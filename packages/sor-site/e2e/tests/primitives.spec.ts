@@ -348,11 +348,16 @@ test("B13: ImageZoom makes the figure focusable and opens it full-screen", async
     };
   });
   expect(overlay.position, "the lightbox is a fixed overlay").toBe("fixed");
+  // The -20 tolerance is a classic scrollbar gutter: a fixed box fills the initial
+  // containing block, which excludes it, while the page around it is 15px wider on
+  // ubuntu (0px on macOS's overlay scrollbars). found live 2026-08-15 — 1265 against
+  // 1280 — on the first CI run that ever reached this suite. The claim being made is
+  // "full-screen, not inline", and a 15px gutter does not blur that.
   expect(overlay.width, "it fills the viewport width").toBeGreaterThanOrEqual(
-    overlay.viewport.width - 1,
+    overlay.viewport.width - 20,
   );
   expect(overlay.height, "it fills the viewport height").toBeGreaterThanOrEqual(
-    overlay.viewport.height - 1,
+    overlay.viewport.height - 20,
   );
 
   // The FULL image, explicitly not the placeholder PhotoSwipe paints first from

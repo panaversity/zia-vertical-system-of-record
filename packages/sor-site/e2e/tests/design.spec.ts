@@ -244,32 +244,61 @@ test("design system: fenced code is legible in light mode", async ({ page }, tes
   // declared value would let a fully transparent code surface score against black and
   // pass. found live 2026-08-15 — this row died in the contrast helper on ubuntu-latest
   // while passing on macOS, so the value it was handed differed by platform.
-  const { color, background } = await pre.evaluate((el) => {
+  const { color, background, rawColor, rawBackground } = await pre.evaluate((el) => {
     const canvas = document.createElement("canvas").getContext("2d")!;
-    const norm = (css: string) => {
-      canvas.fillStyle = "#000";
+    // Assigning an unparseable value to fillStyle is a NO-OP — it silently keeps whatever
+    // was there. A single-sentinel version of this therefore reports the sentinel's colour
+    // as if it were the element's, which is exactly how this row came back saying
+    // "rgb(0, 0, 0) on rgb(0, 0, 0)": black text on black, contrast 1.0, from a helper that
+    // had simply failed to parse anything. Two different sentinels make the failure
+    // detectable — if the value took, both reads agree; if it did not, each read is its own
+    // sentinel.
+    const norm = (css: string): string | null => {
+      canvas.fillStyle = "#e66465";
       canvas.fillStyle = css;
-      const out = canvas.fillStyle as string;
-      // Canvas gives "#rrggbb" for opaque colours and "rgba(...)" when alpha < 1.
-      if (out.startsWith("#")) {
-        const n = parseInt(out.slice(1), 16);
+      const first = canvas.fillStyle as string;
+      canvas.fillStyle = "#9198e5";
+      canvas.fillStyle = css;
+      const second = canvas.fillStyle as string;
+      if (first !== second) return null; // neither assignment took: canvas cannot read it
+      if (first.startsWith("#")) {
+        const n = parseInt(first.slice(1), 16);
         return `rgb(${(n >> 16) & 255}, ${(n >> 8) & 255}, ${n & 255})`;
       }
-      return out;
+      return first;
     };
-    const opaqueBehind = (node: Element | null): string => {
+    const opaqueBehind = (node: Element | null): string | null => {
       for (let cur = node; cur; cur = cur.parentElement) {
         const value = norm(getComputedStyle(cur).backgroundColor);
+        if (value === null) return null;
         const alpha = value.startsWith("rgba") ? Number(value.split(",")[3]) : 1;
         if (alpha > 0) return value;
       }
       return "rgb(255, 255, 255)"; // the canvas the browser paints on
     };
-    return { color: norm(getComputedStyle(el).color), background: opaqueBehind(el) };
+    const cs = getComputedStyle(el);
+    return {
+      color: norm(cs.color),
+      background: opaqueBehind(el),
+      rawColor: cs.color,
+      rawBackground: cs.backgroundColor,
+    };
   });
+
+  // Report the raw computed strings when the normaliser could not read them. A row whose
+  // whole subject is a colour pair must never fail without naming the colours it saw.
   expect(
-    contrast(color, background),
-    `code text ${color} on ${background} — a Prism theme drawn for a dark ground on a light code surface`,
+    color,
+    `could not read the code text colour: getComputedStyle gave ${JSON.stringify(rawColor)}`,
+  ).not.toBeNull();
+  expect(
+    background,
+    `could not read the code background: getComputedStyle gave ${JSON.stringify(rawBackground)}`,
+  ).not.toBeNull();
+  expect(
+    contrast(color!, background!),
+    `code text ${color} on ${background} (raw: ${rawColor} on ${rawBackground}) — ` +
+      "a Prism theme drawn for a dark ground on a light code surface",
   ).toBeGreaterThanOrEqual(4.5);
 });
 
@@ -546,16 +575,12 @@ test("design system: the search overlay covers the window, not the navbar", asyn
       parent: overlay.parentElement?.tagName ?? null,
       width: r.width,
       height: r.height,
-      // documentElement.clientWidth, NOT window.innerWidth. A `position: fixed` box is
-      // laid out in the initial containing block, which EXCLUDES a classic scrollbar,
-      // while innerWidth includes it. found live 2026-08-15 on ubuntu-latest: 1265 vs
-      // 1280 — a 15px gutter that is exactly the GTK scrollbar, and that measures as
-      // zero on the maintainer's macOS overlay scrollbars, so the row was green locally
-      // and red on the first CI run that ever reached it.
       viewport: {
         w: document.documentElement.clientWidth,
         h: document.documentElement.clientHeight,
       },
+      navbarHeight:
+        document.querySelector("header")?.getBoundingClientRect().height ?? 0,
     };
   });
 
@@ -565,12 +590,22 @@ test("design system: the search overlay covers the window, not the navbar", asyn
     "the overlay is portalled to <body> — rendered in place it inherits the blurred navbar as " +
       "its containing block",
   ).toBe("BODY");
-  expect(measured!.height, "the overlay is as tall as the window (it was navbar-tall)").toBeCloseTo(
-    measured!.viewport.h,
-    0,
-  );
-  expect(measured!.width, "the overlay is as wide as the window").toBeCloseTo(
-    measured!.viewport.w,
-    0,
-  );
+
+  // HEIGHT is the discriminator, and it is the whole assertion. When this was broken the
+  // overlay measured 1193x64 in a 1193x783 window — the same WIDTH as the viewport and the
+  // height of the navbar, because the navbar it was confined to is full-width. So an
+  // equality check on width never separated the two states; it only imported whatever the
+  // platform does about scrollbars, and it is what turned this row red on ubuntu-latest
+  // (1265 against 1280 — a GTK scrollbar, invisible on macOS's overlay scrollbars).
+  // Asserting the width to the pixel was over-specification; the floor below still
+  // excludes the broken state by a wide margin, and the height carries the real claim.
+  expect(
+    measured!.height,
+    `the overlay is as tall as the window, not as tall as the navbar ` +
+      `(${measured!.navbarHeight}px) — it was navbar-tall when this was broken`,
+  ).toBeGreaterThanOrEqual(measured!.viewport.h - 2);
+  expect(
+    measured!.width,
+    "the overlay spans the window, allowing for a classic scrollbar gutter",
+  ).toBeGreaterThanOrEqual(measured!.viewport.w - 20);
 });
