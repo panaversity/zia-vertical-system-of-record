@@ -468,9 +468,9 @@ export function DocPageActions() {
   /** Parallel fetch with concurrency limit */
   const fetchWithConcurrency = useCallback(
     async (
-      items: ChapterLesson[],
+      items: SectionDocument[],
       fetcher: (
-        item: ChapterLesson,
+        item: SectionDocument,
         index: number,
       ) => Promise<{ index: number; result: string }>,
       onProgress: (completed: number, current: string) => void,

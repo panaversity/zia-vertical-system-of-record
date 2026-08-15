@@ -419,3 +419,107 @@ test("the hero capitalizes in CSS only — authored text, authored accessible na
       "Hero.tsx's aria-label restores the authored one",
   ).not.toContain(mangled);
 });
+
+/**
+ * The mechanism behind the box, asserted at its source.
+ *
+ * The sentinel above measures ONE element, and on 2026-08-15 that turned out to
+ * be exactly one element too few. The deployed demo shipped with `padding`,
+ * `margin` and `border` dead in all thirteen of the shell's CSS modules — the
+ * quiz counter and its Submit button rendered as unpadded slabs, the search
+ * overlay ignored its own `padding: 10vh 1rem 1rem` — while this suite stayed
+ * green, because `.optionButton` happens to carry the one workaround that had
+ * been applied when the sentinel was written.
+ *
+ * The cause was never the elements. Docusaurus hands postcss-preset-env an
+ * empty options object, which leaves its `cascade-layers` polyfill on, and that
+ * polyfill rewrites every `@layer` into `:not(#\#)` chains. Tailwind's preflight
+ * — `*,::before,::after { margin: 0; padding: 0; border: 0 solid }` — therefore
+ * arrives at specificity (2,0,0), and a CSS module's single class (0,1,0) cannot
+ * beat it at any nesting depth. Every module in the shell loses its box at once,
+ * silently, in a build that succeeds and logs nothing.
+ *
+ * So this asserts the mechanism rather than another element: cascade layers must
+ * survive the build. It is the cheapest total check available — one regression
+ * in docusaurus.config.ts's `configurePostCss` turns it red, instead of thirteen
+ * modules quietly flattening and one sentinel happening to notice.
+ */
+test("design system: cascade layers survive the build, unpolyfilled", async ({}, testInfo) => {
+  const env = envFor(testInfo.project.name);
+  const sheets = filesUnder(env.buildDir, (p) => p.endsWith(".css"));
+  expect(sheets.length, "the build emits at least one stylesheet").toBeGreaterThan(0);
+
+  const css = sheets.map((p) => fs.readFileSync(p, "utf8")).join("\n");
+
+  // The polyfill's fingerprint. `#\#` is an id selector that matches nothing, so
+  // `:not(#\#)` is a no-op that costs one id of specificity — the only reason to
+  // write it is to emulate layer order with specificity.
+  const boosted = css.match(/:not\(#\\?#\)/g) ?? [];
+  expect(
+    boosted.length,
+    "postcss-preset-env's cascade-layers polyfill is rewriting @layer into specificity hacks, " +
+      "which lifts Tailwind's preflight above every CSS module in the shell",
+  ).toBe(0);
+
+  // And the layers are really there, so the assertion above cannot pass merely
+  // because the stylesheet lost its layers some other way.
+  expect(css, "Tailwind's own layers reach the built stylesheet").toMatch(/@layer[^{;]*\bbase\b/);
+});
+
+/**
+ * The search overlay, measured against the window it claims to cover.
+ *
+ * found live 2026-08-15 on the deployed demo. The overlay is `position: fixed;
+ * inset: 0`, which everyone reads as "the viewport" — but the navbar it renders
+ * inside is `sticky` and, once scrolled, `backdrop-blur-xl`. A non-none
+ * backdrop-filter makes an element the containing block for its fixed
+ * descendants, so `inset: 0` resolved against a 1193x64 navbar: the backdrop
+ * dimmed only the navbar strip and the dialog hung off-centre at the top of the
+ * page, over undimmed content. Nothing about the search BEHAVIOUR changed, which
+ * is why B13 — "search finds the phrase and the result renders the doc" — passed
+ * throughout, and why this measures geometry instead.
+ *
+ * The scroll is load-bearing: the blur is conditional on `isScrolled`, so an
+ * unscrolled page cannot reproduce it. The fix is a portal to <body>, and the
+ * parent assertion is what keeps it from being quietly reverted.
+ */
+test("design system: the search overlay covers the window, not the navbar", async ({
+  page,
+}, testInfo) => {
+  const env = envFor(testInfo.project.name);
+  await page.goto(env.manifest.docRoute + "/");
+
+  // Put the navbar into its blurred state — the condition under which the bug exists.
+  await page.evaluate(() => window.scrollTo(0, 400));
+  await page.waitForFunction(() => window.scrollY > 0);
+
+  await page.locator("[data-vsor='search-button']").first().click();
+  await expect(page.locator("[data-vsor='search-input']")).toBeVisible();
+
+  const measured = await page.evaluate(() => {
+    const overlay = document.querySelector("[class*='overlay_']") as HTMLElement | null;
+    if (!overlay) return null;
+    const r = overlay.getBoundingClientRect();
+    return {
+      parent: overlay.parentElement?.tagName ?? null,
+      width: r.width,
+      height: r.height,
+      viewport: { w: window.innerWidth, h: window.innerHeight },
+    };
+  });
+
+  expect(measured, "the overlay is in the DOM once search is open").not.toBeNull();
+  expect(
+    measured!.parent,
+    "the overlay is portalled to <body> — rendered in place it inherits the blurred navbar as " +
+      "its containing block",
+  ).toBe("BODY");
+  expect(measured!.height, "the overlay is as tall as the window (it was navbar-tall)").toBeCloseTo(
+    measured!.viewport.h,
+    0,
+  );
+  expect(measured!.width, "the overlay is as wide as the window").toBeCloseTo(
+    measured!.viewport.w,
+    0,
+  );
+});

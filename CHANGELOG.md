@@ -1,5 +1,51 @@
 # Changelog
 
+## 0.1.3 — 2026-08-15
+
+The design system reached the browser in pieces, and the test suite could not see it. Every entry
+here was measured on the deployed demo — the artifact `vsor build` produces, not the fixture the
+browser tier assembles — which is the whole lesson of the release.
+
+### Fixed
+
+- **Every CSS module in the site shell lost its padding, margin and border.** The quiz rendered as
+  unpadded slabs, the search overlay ignored its own `padding: 10vh 1rem 1rem` and sat flush against
+  the top of the window, the flashcard became a tall empty box. Three facts had to line up: the
+  materialized shell's `package.json` declared no `browserslist`, so a real build fell back to
+  browserslist's defaults (`and_qq`, `and_uc`, `kaios` — none of which support cascade layers);
+  Docusaurus installs `postcss-preset-env` with an empty options object, so its `cascade-layers`
+  polyfill was on; and that polyfill rewrites every `@layer` into `:not(#\#)` chains. Tailwind's
+  preflight — `*,::before,::after { margin: 0; padding: 0; border: 0 solid }` — therefore arrived at
+  specificity **(2,0,0)**, which no CSS module's single class (0,1,0) can beat at any nesting depth.
+  The shipped 0.1.2 stylesheet carried 6,451 of those selectors and zero `@layer`. Fixed at both
+  ends: the shell manifest now mirrors the app's `browserslist`, and the site config disables the
+  polyfill outright, because this design system requires cascade layers and every browser it targets
+  has supported them since 2022.
+- **The search dialog opened over an undimmed page, off-centre, pinned to the top.** The overlay is
+  `position: fixed; inset: 0`, but it rendered inside a navbar that becomes `backdrop-blur-xl` once
+  scrolled — and a non-none `backdrop-filter` makes an element the containing block for its fixed
+  descendants, so `inset: 0` resolved against a 1193×64 bar. It is portalled to `<body>` now. The
+  portal was lost when the shadcn/cmdk command dialog was replaced with a self-contained one.
+- **`DocPageActions` was annotated with `ChapterLesson`,** an upstream type deleted on copy, inside
+  the function that runs every time a reader downloads a section. Docusaurus compiles with SWC and
+  strips types without reading them, so it built, deployed and served.
+
+### Testing
+
+- **The browser tier was certifying a different compiler than the one that ships.** It assembles its
+  fixture by copying `packages/sor-site/app`, so it inherited that directory's `browserslist` and
+  compiled correctly while the artifact did not: 42 checks green, including one written in response
+  to this exact failure mode ("a CSS-module primitive keeps its own box") whose sentinel element
+  measured `padding: 0px; border: 0px` on the live site. Reverting the fix and re-running the tier
+  still produced 42 green. Three rows close it: the shipped stylesheet must keep its cascade layers
+  (**deploy tier**, which reads the real `vsor build` output — red against 0.1.2), the same check in
+  the surface tier, and the search overlay must measure as large as the window it claims to cover.
+- **The shell manifest and the app must resolve the same browser targets** — asserted in
+  `test_site_runtime.py`, next to the dependency mirror it sits beside. `browserslist` is not a
+  dependency, but it decides how the CSS is compiled, and the shell manifest *replaces* the app's.
+- **`make surface` now typechecks the shell's TypeScript** (`make typecheck-app`). No tier read it
+  before; `gate` stays node-free.
+
 ## 0.1.2 — 2026-08-15
 
 The pre-publish record audit. Every entry below is a defect measured on a real build with the real

@@ -155,4 +155,44 @@ test.describe("file tier", () => {
       "each document's Article carries its OWN description — one value across every page is the site tagline leaking through a failed extraction",
     ).toBe(2);
   });
+
+  /**
+   * S6 — the design system, measured on the artifact rather than on the fixture.
+   *
+   * This row exists because the surface tier could not have caught what shipped in
+   * 0.1.2. That tier assembles its fixture by copying packages/sor-site/app, so it
+   * inherits the app's own `browserslist`; a real `vsor build` materializes the
+   * shell from templates/site_runtime/package.json, which carried none, and
+   * browserslist fell back to defaults that include and_qq, and_uc and kaios.
+   * postcss-preset-env (installed by Docusaurus with an empty options object) then
+   * polyfills every `@layer` into `:not(#\#)` chains, which lifts Tailwind's
+   * preflight — `*,::before,::after { margin:0; padding:0; border:0 solid }` — to
+   * specificity (2,0,0). No CSS module in the shell can beat that with its single
+   * class, so all thirteen lost padding, margin and border at once: the quiz
+   * rendered as slabs, the search overlay ignored its `padding: 10vh`, the
+   * flashcard became an empty box. 42 browser checks stayed green throughout,
+   * because every one of them ran against the fixture.
+   *
+   * found live 2026-08-15 on the deployed demo. Two fixes hold it shut — the shell
+   * manifest now mirrors the app's browserslist, and docusaurus.config.ts disables
+   * the polyfill outright — and this row is the one that reads the shipped bytes.
+   */
+  test("S6: the shipped stylesheet keeps its cascade layers", ({}, testInfo) => {
+    const env = deployEnv(testInfo.project.name);
+    const sheets = filesUnder(env.dir, (p) => p.endsWith(".css"));
+    expect(sheets.length, "the deployable build emits at least one stylesheet").toBeGreaterThan(0);
+
+    const css = sheets.map((p) => fs.readFileSync(p, "utf8")).join("\n");
+
+    // `#\#` is an id selector that matches nothing: `:not(#\#)` is a no-op that buys
+    // one id of specificity, and emulating layer order is the only reason to write it.
+    const boosted = css.match(/:not\(#\\?#\)/g) ?? [];
+    expect(
+      boosted.length,
+      "the cascade-layer polyfill ran on the SHIPPED build — Tailwind's preflight now " +
+        "outranks every CSS module in the shell, and every primitive loses its box",
+    ).toBe(0);
+
+    expect(css, "the built stylesheet really carries layers").toMatch(/@layer[^{;]*\bbase\b/);
+  });
 });

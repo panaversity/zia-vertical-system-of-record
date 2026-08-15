@@ -21,6 +21,7 @@
  */
 
 import React, { useState, useEffect, useRef } from "react";
+import { createPortal } from "react-dom";
 import { useHistory } from "@docusaurus/router";
 import Link from "@docusaurus/Link";
 import { searchContent, type SearchResult } from "./search-utils";
@@ -205,7 +206,15 @@ export function SearchBar({
         )}
       </button>
 
-      {open && (
+      {/* Portalled to <body> deliberately. The navbar this renders inside is
+          `sticky` with `backdrop-blur-xl`, and a non-none backdrop-filter makes
+          an element the containing block for its `position: fixed` descendants
+          — so rendered in place, this overlay resolved against the 1193×64
+          navbar instead of the viewport: the backdrop dimmed only the navbar
+          strip and the dialog hung off-centre at the top of the page.
+          found live 2026-08-15 on the deployed demo. `open` is false until a
+          browser event sets it, so this never runs during SSR. */}
+      {open && createPortal(
         <div
           className={styles.overlay}
           role="presentation"
@@ -301,7 +310,8 @@ export function SearchBar({
               )}
             </div>
           </div>
-        </div>
+        </div>,
+        document.body,
       )}
     </>
   );

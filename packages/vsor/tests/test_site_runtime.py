@@ -279,3 +279,28 @@ def test_runtime_env_points_the_app_at_the_copies_inside_the_shell() -> None:
     assert env["VSOR_KNOWLEDGE_DIR"] == "./knowledge"
     assert env["VSOR_SITE_DIR"] == "./site"
     assert env["PATH"] == "/usr/bin"  # the ambient environment is carried, not replaced
+
+
+def test_shell_resolves_the_same_browser_targets_as_the_fork() -> None:
+    """`browserslist` is not a dependency, but it decides how the CSS is COMPILED — and
+    the shell manifest REPLACES the app's, so an absent field is not "inherit", it is
+    "fall back to browserslist's own defaults".
+
+    Those defaults include and_qq, and_uc and kaios, none of which support cascade
+    layers. postcss-preset-env — which Docusaurus installs with an empty options object —
+    then rewrites every `@layer` into `:not(#\\#)` specificity chains, Tailwind's preflight
+    (`* { margin:0; padding:0; border:0 }`) arrives at (2,0,0), and every single-class
+    CSS-module rule in the shell loses its box. That shipped in 0.1.2 and the browser tier
+    never saw it: the e2e fixture copies the APP directory, so it kept the app's
+    browserslist and compiled correctly while the artifact did not.
+
+    found live 2026-08-15 on the deployed demo. The targets must match, or the tier is
+    certifying a different compiler than the one users run.
+    """
+    shell = json.loads(SHELL_TEMPLATE.read_text())
+    app = json.loads(APP_MANIFEST.read_text())
+    assert shell.get("browserslist") == app.get("browserslist"), (
+        "the site-runtime shell and packages/sor-site/app/package.json must declare the "
+        "same `browserslist`; they compile the same CSS and a divergence changes which "
+        "PostCSS polyfills run in a real `vsor build` but not in the e2e fixture"
+    )

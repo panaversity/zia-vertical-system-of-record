@@ -344,6 +344,44 @@ const config: Config = {
         },
       };
     },
+    /* Docusaurus applies postcss-preset-env with an empty options object, which
+     * leaves preset-env's `cascade-layers` polyfill on: every `@layer` is
+     * rewritten into `:not(#\#)` specificity hacks. Tailwind's preflight —
+     * `*,::before,::after { margin: 0; padding: 0; border: 0 solid }` — then
+     * reaches the browser at specificity (2,0,0). CSS modules are not boosted
+     * by that rewrite at all and stay at (0,1,0), so every padding, margin and
+     * border declared in this shell's thirteen modules lost, silently and
+     * everywhere: the quiz rendered as unpadded slabs, the search overlay
+     * ignored its own `padding: 10vh 1rem 1rem` and sat flush to the top of the
+     * viewport, the flashcard became a tall empty box.
+     *
+     * found live 2026-08-15 on the deployed demo, then traced through the
+     * shipped stylesheet to this plugin. Cascade layers are baseline across
+     * every browser this site targets, so the polyfill buys nothing and costs
+     * the entire design system. Turning it off restores the ordinary cascade:
+     * preflight stays inside `@layer base`, and unlayered module rules win.
+     */
+    function cascadeLayersPlugin() {
+      return {
+        name: "vsor-no-cascade-layer-polyfill",
+        configurePostCss(postCssOptions: { plugins: unknown[] }) {
+          postCssOptions.plugins = postCssOptions.plugins.map((plugin) =>
+            Array.isArray(plugin) &&
+            typeof plugin[0] === "string" &&
+            plugin[0].includes("postcss-preset-env")
+              ? [
+                  plugin[0],
+                  {
+                    ...(plugin[1] as Record<string, unknown>),
+                    features: { "cascade-layers": false },
+                  },
+                ]
+              : plugin,
+          );
+          return postCssOptions;
+        },
+      };
+    },
   ],
 
   themeConfig: {

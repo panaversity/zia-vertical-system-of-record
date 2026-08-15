@@ -92,8 +92,8 @@ framework itself is Apache-2.0, so the machinery can also be forked and improved
 ## Status
 
 **The website surface ships today.** `vsor init`, `vsor dev` and `vsor build` are implemented and
-tested — 189 unit tests, 36 browser checks against a real build, and a hosting tier that deploys
-to both shapes a static host can have and drives the result in a browser.
+tested — 330 unit tests, 28 boundary checks, 42 browser checks against a real build, and a hosting
+tier that deploys to both shapes a static host can have and drives the result in a browser.
 
 **The MCP surface is next.** `vsor serve` exits 2 and says so rather than pretending. The
 retrieval kernel it will use runs in production elsewhere; bringing it across is the current work.

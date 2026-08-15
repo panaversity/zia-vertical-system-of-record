@@ -160,5 +160,14 @@ wheel:
 #   (cd packages/sor-site && npm ci && npx playwright install chromium)
 # build-acceptance runs first (before playwright): the browser assertions then
 # certify the same config `vsor build` just proved it emits — one enforcement.
-surface: build-acceptance
+surface: typecheck-app build-acceptance
 	bash packages/sor-site/e2e/run.sh
+
+# The shell's TypeScript, typechecked. Docusaurus compiles with SWC and strips
+# types without reading them, so a broken type annotation builds, deploys and
+# serves — nothing in any tier looked. found live 2026-08-15: the fork shipped
+# `DocPageActions` annotated with `ChapterLesson`, an upstream type deleted on
+# copy, in a function that runs every time a reader downloads a section. Lives in
+# the node lane because `gate` stays node-free; same one-time prereq as `surface`.
+typecheck-app:
+	cd packages/sor-site/app && npx tsc --noEmit
